@@ -1,0 +1,22 @@
+name: mongo_document
+description: › Generate MongoDB CRUD code from Dart classes annotated with @MongoDocument.
+version: 0.0.1
+homepage: https://github.com/wannclem/mongo_document
+repository: https://github.com/wannclem/mongo_document
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  json_annotation: ^4.9.0
+  freezed_annotation: ">=2.4.4 <4.0.0"
+  meta: ^1.16.0
+  mongo_dart: ^0.10.4
+  path: ^1.9.1
+
+dev_dependencies:
+  build_runner: ^2.4.14
+  lints: ^5.0.0
+  test: ^1.24.0
+  source_gen: ^2.0.0
+  freezed: ">=2.5.8 <4.0.0"
+  json_serializable: ^6.9.3

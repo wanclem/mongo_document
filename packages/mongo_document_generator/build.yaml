@@ -1,0 +1,17 @@
+targets:
+  $default:
+    builders:
+      mongo_document_generator:
+        enabled: true
+        generate_for:
+          - lib/*.dart
+
+builders:
+  mongo_document_generator:
+    import: "package:mongo_document_generator/builder.dart"
+    builder_factories: [ "mongoDocumentBuilder" ]
+    build_extensions:
+      ".dart": [ ".mongo_document.dart" ]
+    build_to: source
+    auto_apply: dependents
+    applies_builders: [ ]
