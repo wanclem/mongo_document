@@ -19,8 +19,11 @@ class MongoConnection {
   }
 
   static Future<Db> getDb() async {
-    if (_db == null || _db!.state != State.open) {
+    if (_db == null) {
       await _connect();
+    }
+    if (_db!.isConnected) {
+      await _db?.open();
     }
     return _db!;
   }
