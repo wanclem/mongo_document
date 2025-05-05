@@ -41,17 +41,15 @@ extension $UserExtension on User {
     final coll = (await MongoConnection.getDb()).collection(_collection);
     final now = DateTime.now().toUtc();
     if (id == null) {
-      final doc = toJson()
-        ..remove('_id')
-        ..putIfAbsent('created_at', () => now)
-        ..['updatedAt'] = now;
+      final doc = toJson()..remove('_id');
+      doc.update('created_at', (v) => v ?? now, ifAbsent: () => now);
       final result = await coll.insertOne(doc);
       if (result.isSuccess) return copyWith(id: result.id);
       return null;
     }
-    final updateMap = toJson()
-      ..remove('_id')
-      ..putIfAbsent('created_at', () => now);
+    final updateMap = toJson()..remove('_id');
+    updateMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
+    updateMap.update('updated_at', (v) => v ?? now, ifAbsent: () => now);
     var modifier = modify;
     updateMap.forEach((k, v) => modifier = modifier.set(k, v));
     final res = await coll.updateOne(where.eq(r'_id', id), modifier);
@@ -252,7 +250,7 @@ class Users {
 
   static ModifierBuilder _buildModifier(Map<String, dynamic> updateMap) {
     final now = DateTime.now().toUtc();
-    var modifier = modify.set('updatedAt', now);
+    var modifier = modify.set('updated_at', now);
     updateMap.forEach((k, v) => modifier = modifier.set(k, v));
     return modifier;
   }
