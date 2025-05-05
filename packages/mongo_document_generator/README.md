@@ -111,7 +111,7 @@ This produces `post.mongo_document.dart`, adding:
 ### Create / Insert
 
 ```dart
-// single insertMany
+// single insert
 final post = Post(author: user, tags: ['news'], body: 'Hello');
 await post.save();
 
