@@ -75,8 +75,8 @@ part 'post.freezed.dart';
 part 'post.g.dart';
 part 'post.mongo_document.dart';
 
-@freezed
 @MongoDocument(collection: 'posts')
+@freezed
 abstract class Post with _$Post {
   @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
   const factory Post({
