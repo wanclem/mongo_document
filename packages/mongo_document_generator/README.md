@@ -116,7 +116,7 @@ final post = Post(author: user, tags: ['news'], body: 'Hello');
 await post.save();
 
 // Update a single post
-var existingPost=await Posts.findOne((p)=>p.body.contains('hello'));
+var existingPost = await Posts.findOne((p)=>p.body.contains('hello'));
 await existingPost.copyWith(body:'Hello World!').save();
 
 // bulk insertMany
