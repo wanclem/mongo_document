@@ -115,6 +115,10 @@ This produces `post.mongo_document.dart`, adding:
 final post = Post(author: user, tags: ['news'], body: 'Hello');
 await post.save();
 
+// Update a single post
+var existingPost=await Posts.findOne((p)=>p.body.contains('hello'));
+await existingPost.copyWith(body:'Hello World!').save();
+
 // bulk insertMany
 final p1 = Post(author: user, tags: ['news'], body: 'Hello');
 final p2 = Post(author: user, tags: ['tech'], body: 'World');
