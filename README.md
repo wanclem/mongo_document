@@ -100,7 +100,7 @@ dart run build_runner build --delete-conflicting-outputs
 
 This produces `post.mongo_document.dart`, adding:
 
-* `Post.save()`, `Post.delete()`, `PostQuery.insertMany()`, `PostQuery.findOne()`, `PostQuery.findMany()`, `PostQuery.deleteOne()`, `PostQuery.deleteMany()`, `PostQuery.updateOne()`, `PostQuery.updateMany()`, `PostQuery.count()`
+* `Post.save()`, `Post.delete()`, `Posts.insertMany()`, `Posts.findOne()`, `Posts.findMany()`, `Posts.deleteOne()`, `Posts.deleteMany()`, `Posts.updateOne()`, `Posts.updateMany()`, `Posts.count()`
 * `QPost` with `QueryField`, `QMap`, `QList` getters
 * Automatic nested‐join logic and skip/limit handling
 
@@ -118,7 +118,7 @@ await post.save();
 // bulk insertMany
 final p1 = Post(author: user, tags: ['news'], body: 'Hello');
 final p2 = Post(author: user, tags: ['tech'], body: 'World');
-final inserted = await PostQuery.insertMany([p1, p2]);
+final inserted = await Posts.insertMany([p1, p2]);
 print(inserted.map((p) => p.id));
 ```
 
@@ -126,7 +126,7 @@ print(inserted.map((p) => p.id));
 
 ```dart
 // find a single post whose tags include 'general' and body equals 'hello world'
-final post = await PostQuery.findOne(
+final post = await Posts.findOne(
   (p) => p.tags.contains('general') & p.body.eq('hello world')
 );
 ```
@@ -135,7 +135,7 @@ final post = await PostQuery.findOne(
 
 ```dart
 // load first 10 posts with author populated
-final posts = await PostQuery.findMany(
+final posts = await Posts.findMany(
   (p) => p.author.firstName.startsWith('A'),
   skip: 0,
   limit: 10,
@@ -146,12 +146,12 @@ final posts = await PostQuery.findMany(
 
 ```dart
 // find posts with any tag starting with 'gen'
-final genPosts = await PostQuery.findMany(
+final genPosts = await Posts.findMany(
   (p) => p.tags.elemMatch((t) => t.startsWith('gen'))
 );
 
 // find posts with tags contain 'awesome' in the tag list
-final awesomePosts = await PostQuery.findMany(
+final awesomePosts = await Posts.findMany(
 (p) => p.tags.contains('awesome')
 );
 ```
@@ -160,7 +160,7 @@ final awesomePosts = await PostQuery.findMany(
 
 ```dart
 // find posts where analytics['views'] > 100
-final hot = await PostQuery.findMany(
+final hot = await Posts.findMany(
   (p) => p.analytics['views'].gt(100)
 );
 ```
@@ -168,7 +168,7 @@ final hot = await PostQuery.findMany(
 ### count
 
 ```dart
-final countAll = await PostQuery.count((p) => p.body.ne(null));
+final countAll = await Posts.count((p) => p.body.ne(null));
 ```
 
 ---

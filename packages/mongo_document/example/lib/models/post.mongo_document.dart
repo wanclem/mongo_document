@@ -65,7 +65,7 @@ extension $PostExtension on Post {
   }
 }
 
-class PostQuery {
+class Posts {
   static String get _collection => 'posts';
 
   /// Type‑safe DSL insertMany

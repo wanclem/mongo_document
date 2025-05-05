@@ -164,7 +164,7 @@ extension \$${className}Extension on $className {
   }
 }
 
-class ${className}Query {
+class ${className}s {
   
   static String get _collection => '$collection';
   

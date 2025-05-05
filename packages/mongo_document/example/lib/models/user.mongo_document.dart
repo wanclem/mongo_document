@@ -67,7 +67,7 @@ extension $UserExtension on User {
   }
 }
 
-class UserQuery {
+class Users {
   static String get _collection => 'users';
 
   /// Type‑safe DSL insertMany

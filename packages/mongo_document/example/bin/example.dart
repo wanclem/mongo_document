@@ -11,6 +11,6 @@ Future<void> main() async {
   MongoConnection.init(mongoUri);
 
   /// Execute an asynchronous find‑one query against the `posts` collection.
-  var post = await PostQuery.findOne((p) => p.body.contains("Hello World"));
+  var post = await Posts.findOne((p) => p.body.contains("Hello World"));
   print(post);
 }
