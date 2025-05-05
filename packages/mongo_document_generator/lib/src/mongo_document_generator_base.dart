@@ -191,6 +191,21 @@ class ${className}s {
         .toList();
   }
 
+  /// Type-safe DSL findById
+  static Future<$className?> findById(dynamic id) async {
+    if (id == null) return null;
+    if (id is String) {
+      id = ObjectId.fromHexString(id);
+    }
+    if (id is! ObjectId) {
+      throw ArgumentError('Invalid id type: \${id.runtimeType}');
+    }
+    final doc = await (await MongoConnection.getDb())
+        .collection(_collection)
+        .findOne(where.eq(r'_id', id));
+    return doc == null ? null : $className.fromJson(doc);
+  }
+
   /// Type-safe DSL findOne
   static Future<$className?> findOne(
    Expression Function(Q$className q) predicate
