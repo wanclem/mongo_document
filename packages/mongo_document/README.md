@@ -112,12 +112,13 @@ This produces `post.mongo_document.dart`, adding:
 
 ```dart
 // single insert
-final post = Post(author: user, tags: ['news'], body: 'Hello');
-await post.save();
+final newPost = Post(author: user, tags: ['news'], body: 'Hello');
+await newPost.save();
 
 // Update a single post
-var existingPost = await Posts.findOne((p)=>p.body.contains('hello'));
-await existingPost.copyWith(body:'Hello World!').save();
+var post = await Posts.findOne((p) => p.body.contains("Hello World"));
+post = post?.copyWith(body: 'new post body');
+await post?.save();
 
 // bulk insertMany
 final p1 = Post(author: user, tags: ['news'], body: 'Hello');

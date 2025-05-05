@@ -12,5 +12,7 @@ Future<void> main() async {
 
   /// Execute an asynchronous find‑one query against the `posts` collection.
   var post = await Posts.findOne((p) => p.body.contains("Hello World"));
+  post = post?.copyWith(body: 'new post body');
+  await post?.save();
   print(post);
 }
