@@ -11,7 +11,7 @@ A simple annotation that lets you perform CRUD on MongoDB using native Dart type
 ## Motivation
 While `mongo_dart` provides low-level MongoDB access, it requires you to manually manage collections, types, field names, and query logic. This can easily lead to mismatches, especially when your Dart model fields use different names from the database schema (e.g., `postAuthor` vs. `post_author`).
 
-`@MongoDocument` bridges this gap by generating type-safe CRUD operations and query builders based on your annotated `freezed` classes. This saves you from writing raw queries or worrying about field mapping errors. Behind the scenes, your Dart native types are translated into formats compatible with `mongo_dart`.
+`@MongoDocument` bridges this gap by generating type-safe CRUD operations and query builders based on your annotated `freezed` classes. This saves you from writing raw queries or worrying about field mapping errors. Behind the scenes, your Dart native types are translated into formats compatible for use by `mongo_dart`.
 
 
 ---
