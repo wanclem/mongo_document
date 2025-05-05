@@ -1,17 +1,20 @@
+import 'package:analyzer/dart/constant/value.dart';
 import 'package:analyzer/dart/element/element.dart';
-import 'package:analyzer/dart/element/type.dart';
-import 'package:json_annotation/json_annotation.dart';
+import 'package:mongo_document/mongo_document.dart';
 import 'package:source_gen/source_gen.dart';
 
+const _jsonKeyChecker = TypeChecker.fromRuntime(JsonKey);
+const _defaultChecker = TypeChecker.fromRuntime(Default);
+
 String _snakeCase(String input) => input.replaceAllMapped(
-  RegExp(r'(?<=[a-z])[A-Z]'),
-  (m) => '_${m.group(0)!.toLowerCase()}',
-);
+      RegExp(r'(?<=[a-z])[A-Z]'),
+      (m) => '_${m.group(0)!.toLowerCase()}',
+    );
 
 String _kebabCase(String input) => input.replaceAllMapped(
-  RegExp(r'(?<=[a-z])[A-Z]'),
-  (m) => '-${m.group(0)!.toLowerCase()}',
-);
+      RegExp(r'(?<=[a-z])[A-Z]'),
+      (m) => '-${m.group(0)!.toLowerCase()}',
+    );
 
 String getFieldKey(
   TypeChecker typeChecker,
@@ -35,60 +38,28 @@ String getFieldKey(
 }
 
 String? getDefaultValue(ParameterElement param) {
-  for (final annotation in param.metadata) {
-    final value = annotation.computeConstantValue();
-    if (value == null) continue;
-    if (value.type?.getDisplayString(withNullability: false) == 'Default') {
-      final defaultValue = value.getField('defaultValue');
-      if (defaultValue == null || defaultValue.isNull) return null;
+  final DartObject? annValue = _jsonKeyChecker.firstAnnotationOf(param) ??
+      _defaultChecker.firstAnnotationOf(param);
+  if (annValue == null) return null;
 
-      final type = param.type;
+  final astAnn = param.metadata.firstWhere(
+      (m) => identical(m.computeConstantValue(), annValue),
+      orElse: () => throw StateError('annotation not found'));
 
-      // Handle Map types with typed const {}
-      if (type is InterfaceType && type.element.name == 'Map') {
-        final keyType = type.typeArguments[0].getDisplayString(
-          withNullability: false,
-        );
-        final valueType = type.typeArguments[1].getDisplayString(
-          withNullability: false,
-        );
-        return 'const <$keyType, $valueType>{}';
-      }
-
-      // Handle List types with typed const []
-      if (type is InterfaceType && type.element.name == 'List') {
-        final itemType = type.typeArguments[0].getDisplayString(
-          withNullability: false,
-        );
-        return 'const <$itemType>[]';
-      }
-
-      // Handle Set (represented as DartType "Set<T>")
-      if (type is InterfaceType && type.element.name == 'Set') {
-        final itemType = type.typeArguments[0].getDisplayString(
-          withNullability: false,
-        );
-        return 'const <$itemType>{}';
-      }
-
-      // Handle other literal types
-      final strVal = defaultValue.toStringValue();
-      if (strVal != null) return "'$strVal'";
-      final intVal = defaultValue.toIntValue();
-      if (intVal != null) return '$intVal';
-      final doubleVal = defaultValue.toDoubleValue();
-      if (doubleVal != null) return '$doubleVal';
-      final boolVal = defaultValue.toBoolValue();
-      if (boolVal != null) return '$boolVal';
-
-      // Handle enum constants
-      if (defaultValue.type?.element is ClassElement &&
-          (defaultValue.type!.element as ClassElement).kind ==
-              ElementKind.ENUM) {
-        return defaultValue.toString();
-      }
-      return null;
-    }
+  final src = astAnn.toSource();
+  String? literal;
+  if (src.contains('defaultValue')) {
+    final m = RegExp(r'defaultValue\s*:\s*([^,)]+)').firstMatch(src);
+    literal = m?.group(1)?.trim();
+  } else {
+    final m = RegExp(r'Default\s*\(\s*([^)]*)\)').firstMatch(src);
+    literal = m?.group(1)?.trim();
   }
-  return null;
+  if (literal == null) return null;
+
+  if (!literal.startsWith('const') &&
+      (literal.startsWith('[') || literal.startsWith('{'))) {
+    literal = 'const $literal';
+  }
+  return literal;
 }

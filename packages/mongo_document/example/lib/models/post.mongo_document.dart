@@ -82,6 +82,21 @@ class Posts {
     }).toList();
   }
 
+  /// Type-safe DSL findById
+  static Future<Post?> findById(dynamic id) async {
+    if (id == null) return null;
+    if (id is String) {
+      id = ObjectId.fromHexString(id);
+    }
+    if (id is! ObjectId) {
+      throw ArgumentError('Invalid id type: ${id.runtimeType}');
+    }
+    final doc = await (await MongoConnection.getDb())
+        .collection(_collection)
+        .findOne(where.eq(r'_id', id));
+    return doc == null ? null : Post.fromJson(doc);
+  }
+
   /// Type-safe DSL findOne
   static Future<Post?> findOne(Expression Function(QPost q) predicate) async {
     final selectorBuilder = predicate(QPost()).toSelectorBuilder();
@@ -195,7 +210,7 @@ class Posts {
     Expression Function(QPost q) predicate, {
     ObjectId? id,
     User? author,
-    List<String> tags = const <String>[],
+    List<String> tags = const [],
     String? body,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -221,7 +236,7 @@ class Posts {
     Expression Function(QPost q) predicate, {
     ObjectId? id,
     User? author,
-    List<String> tags = const <String>[],
+    List<String> tags = const [],
     String? body,
     DateTime? createdAt,
     DateTime? updatedAt,

@@ -6,6 +6,25 @@ part 'post.freezed.dart';
 part 'post.g.dart';
 
 part 'post.mongo_document.dart';
+enum PlatformIdentifier {
+  facebook,
+  instagram,
+  twitter,
+  linkedin,
+  x,
+  googleMyBusiness,
+  reddit,
+  pinterest,
+  youtube,
+  tiktok,
+  wordpress,
+  rssFeed,
+  blogger,
+  threads,
+  bluesky,
+  telegram,
+  none,
+}
 
 @freezed
 @MongoDocument(collection: "posts")
