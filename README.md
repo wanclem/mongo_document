@@ -2,7 +2,7 @@
 
 [![pub package](https://img.shields.io/pub/v/mongo_document.svg)](https://pub.dev/packages/mongo_document)
 [![build status](https://github.com/wannclem/mongo_document/actions/workflows/dart.yml/badge.svg)](https://github.com/wannclem/mongo_document/actions)
-[![license](https://img.shields.io/badge/license-BSD%203--Clause-blue)](LICENSE)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ## 📦 mongo\_document
 
@@ -11,7 +11,7 @@ A simple annotation that lets you perform CRUD on MongoDB using native Dart type
 ## Motivation
 While `mongo_dart` provides low-level MongoDB access, it requires you to manually manage collections, types, field names, and query logic. This can easily lead to mismatches, especially when your Dart model fields use different names from the database schema (e.g., `postAuthor` vs. `post_author`).
 
-`@MongoDocument` bridges this gap by generating type-safe CRUD operations and query builders based on your annotated `freezed` classes. This saves you from writing raw queries or worrying about field mapping errors. Behind the scenes, your Dart native types are translated into formats compatible with mongo_dart.
+`@MongoDocument` bridges this gap by generating type-safe CRUD operations and query builders based on your annotated `freezed` classes. This saves you from writing raw queries or worrying about field mapping errors. Behind the scenes, your Dart native types are translated into formats compatible with `mongo_dart`.
 
 
 ---
