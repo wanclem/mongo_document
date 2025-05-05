@@ -158,6 +158,7 @@ extension \$${className}Extension on $className {
     if (id == null) {
       final doc = toJson()..remove('_id');
       doc.update('created_at', (v) => v ?? now, ifAbsent: () => now);
+      doc.update('updated_at', (v) => v ?? now, ifAbsent: () => now);
       final result = await coll.insertOne(doc);
       if (result.isSuccess) return copyWith(id: result.id);
       return null;
