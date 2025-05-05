@@ -214,7 +214,7 @@ class Users {
     String? firstName,
     String? lastName,
     String? email,
-    int age = 18,
+    int? age,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) async {
@@ -242,7 +242,7 @@ class Users {
     String? firstName,
     String? lastName,
     String? email,
-    int age = 18,
+    int? age,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) async {

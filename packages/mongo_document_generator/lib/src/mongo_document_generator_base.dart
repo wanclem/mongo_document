@@ -1,4 +1,5 @@
 import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:build/build.dart';
 import 'package:dart_style/dart_style.dart';
@@ -31,6 +32,18 @@ class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
       return (name == 'List' || name == 'Set') && t.typeArguments.length == 1;
     }
     return false;
+  }
+
+  String _buildUpdateParams(List<ParameterElement> params) {
+    return params.map((p) {
+      final base = p.type.getDisplayString();
+      final suffix = (base != 'dynamic' &&
+              p.type.nullabilitySuffix == NullabilitySuffix.none)
+          ? '?'
+          : '';
+      final name = p.name;
+      return '    $base$suffix $name,';
+    }).join('\n');
   }
 
   @override
@@ -80,40 +93,40 @@ class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
     final nestedMapLiteral =
         'const _nestedCollections = <String,String>{ $mapEntries };';
 
-    final qFields = params
-        .map((p) {
-          final dartType = p.type.getDisplayString(withNullability: true);
-          final key = getFieldKey(_jsonKeyChecker, p, fieldRename);
-          final name = p.name;
-          // nested MongoDocument?
-          if (p.type is InterfaceType &&
-              (p.type as InterfaceType).element.metadata.any((md) {
-                return md.computeConstantValue()?.type?.getDisplayString(
+    final qFields = params.map((p) {
+      final dartType = p.type.getDisplayString(withNullability: true);
+      final key = getFieldKey(_jsonKeyChecker, p, fieldRename);
+      final name = p.name;
+      // nested MongoDocument?
+      if (p.type is InterfaceType &&
+          (p.type as InterfaceType).element.metadata.any((md) {
+            return md.computeConstantValue()?.type?.getDisplayString(
                       withNullability: false,
                     ) ==
-                    'MongoDocument';
-              })) {
-            final nested = (p.type as InterfaceType).element.name;
-            return '''
+                'MongoDocument';
+          })) {
+        final nested = (p.type as InterfaceType).element.name;
+        return '''
   Q$nested get $name => Q$nested(_key('$key'));
 ''';
-          } else if (_isMapStringDynamic(p)) {
-            return '''
+      } else if (_isMapStringDynamic(p)) {
+        return '''
   QMap<dynamic> get $name => QMap<dynamic>(_key('$key'));
 ''';
-          } else if (_isListOrSet(p)) {
-            final itemType = (p.type as InterfaceType).typeArguments.first
-                .getDisplayString(withNullability: true);
-            return """
+      } else if (_isListOrSet(p)) {
+        final itemType = (p.type as InterfaceType)
+            .typeArguments
+            .first
+            .getDisplayString(withNullability: true);
+        return """
   QList<$itemType> get $name => QList<$itemType>(_key('$key'));
 """;
-          } else {
-            return '''
+      } else {
+        return '''
   QueryField<$dartType> get $name => QueryField<$dartType>(_key('$key'));
 ''';
-          }
-        })
-        .join('\n');
+      }
+    }).join('\n');
 
     isNonNullable(param) =>
         !param.type.nullabilitySuffix.toString().contains('question');
@@ -326,17 +339,14 @@ class ${className}s {
   
   static Future<bool> updateOne(
     Expression Function(Q$className q) predicate, {
-${params.map((p) {
-      final type = p.type.getDisplayString(withNullability: true);
-      final name = p.name;
-      var defaultVal = getDefaultValue(p);
-      return defaultVal != null ? '$type $name = $defaultVal,' : '$type $name,';
-    }).join('\n  ')}
+${_buildUpdateParams(params)}
   }) async {
     final modifier = _buildModifier({
       ${params.map((p) {
       final key = getFieldKey(_jsonKeyChecker, p, fieldRename);
-      final hasDefault = _jsonKeyChecker.firstAnnotationOf(p)?.getField('defaultValue') != null;
+      final hasDefault =
+          _jsonKeyChecker.firstAnnotationOf(p)?.getField('defaultValue') !=
+              null;
       final name = p.name;
       if (isNonNullable(p) || hasDefault) {
         return "'$key': $name,";
@@ -356,17 +366,14 @@ ${params.map((p) {
   /// Type-safe DSL updateMany
   static Future<bool> updateMany(
     Expression Function(Q$className q) predicate, {
-${params.map((p) {
-      final type = p.type.getDisplayString(withNullability: true);
-      final name = p.name;
-      final defaultVal = getDefaultValue(p);
-      return defaultVal != null ? '$type $name = $defaultVal,' : '$type $name,';
-    }).join('\n  ')}
+${_buildUpdateParams(params)}
   }) async {
     final modifier = _buildModifier({
       ${params.map((p) {
       final key = getFieldKey(_jsonKeyChecker, p, fieldRename);
-      final hasDefault = _jsonKeyChecker.firstAnnotationOf(p)?.getField('defaultValue') != null;
+      final hasDefault =
+          _jsonKeyChecker.firstAnnotationOf(p)?.getField('defaultValue') !=
+              null;
       final name = p.name;
       if (isNonNullable(p) || hasDefault) {
         return "'$key': $name,";
@@ -403,7 +410,6 @@ ${params.map((p) {
 
 }
 ''';
-
     return _formatter.format(template);
   }
 }

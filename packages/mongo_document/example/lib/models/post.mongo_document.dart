@@ -210,7 +210,7 @@ class Posts {
     Expression Function(QPost q) predicate, {
     ObjectId? id,
     User? author,
-    List<String> tags = const [],
+    List<String>? tags,
     String? body,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -236,7 +236,7 @@ class Posts {
     Expression Function(QPost q) predicate, {
     ObjectId? id,
     User? author,
-    List<String> tags = const [],
+    List<String>? tags,
     String? body,
     DateTime? createdAt,
     DateTime? updatedAt,
