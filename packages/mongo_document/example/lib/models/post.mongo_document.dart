@@ -9,6 +9,27 @@ part of 'post.dart';
 // MongoDocumentGenerator
 // **************************************************************************
 
+enum UserFields { id, firstName, lastName, email, age, createdAt, updatedAt }
+
+class UserProjections implements BaseProjections {
+  final List<UserFields>? fields;
+  const UserProjections([this.fields]);
+
+  @override
+  Map<String, int>? toProjection() {
+    if (fields == null || fields!.isEmpty) return null;
+    return {
+      'author._id': 1,
+      'author.first_name': 1,
+      'author.last_name': 1,
+      'author.email': 1,
+      'author.age': 1,
+      'author.created_at': 1,
+      'author.updated_at': 1
+    };
+  }
+}
+
 const _nestedCollections = <String, String>{'author': 'users'};
 
 class QPost {
@@ -36,23 +57,56 @@ extension $PostExtension on Post {
   static String get _collection => 'posts';
 
   Future<Post?> save() async {
-    final coll = (await MongoConnection.getDb()).collection(_collection);
+    final db = await MongoConnection.getDb();
+    final coll = db.collection(_collection);
     final now = DateTime.now().toUtc();
-    if (id == null) {
-      final doc = toJson()..remove('_id');
-      doc.update('created_at', (v) => v ?? now, ifAbsent: () => now);
-      doc.update('updated_at', (v) => v ?? now, ifAbsent: () => now);
-      final result = await coll.insertOne(doc);
-      if (result.isSuccess) return copyWith(id: result.id);
-      return null;
+    final isInsert = id == null;
+
+    final parentMap = toJson()
+      ..remove('_id')
+      ..removeWhere((key, value) => value == null);
+    parentMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
+    parentMap.update('updated_at', (v) => now, ifAbsent: () => now);
+
+    var doc = {...parentMap};
+    final nestedUpdates = <Future>[];
+    for (var entry in parentMap.entries) {
+      final root = entry.key;
+      if (_nestedCollections.containsKey(root)) {
+        final collectionName = _nestedCollections[root]!;
+        var nestedColl = db.collection(collectionName);
+        var value = entry.value as Map<String, dynamic>?;
+        if (value == null) continue;
+        value.removeWhere((key, value) => value == null);
+        final nestedId = (value['_id'] ?? value['id']) as ObjectId?;
+        if (nestedId == null) {
+          doc.remove(root);
+        } else {
+          doc[root] = nestedId;
+          final nestedMap = value..remove('_id');
+          if (nestedMap.isNotEmpty) {
+            var mod = modify.set('updated_at', now);
+            nestedMap.forEach((k, v) => mod = mod.set(k, v));
+            nestedUpdates
+                .add(nestedColl.updateOne(where.eq(r'_id', nestedId), mod));
+          }
+        }
+      }
     }
-    final updateMap = toJson()..remove('_id');
-    updateMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
-    updateMap.update('updated_at', (v) => v ?? now, ifAbsent: () => now);
-    var modifier = modify;
-    updateMap.forEach((k, v) => modifier = modifier.set(k, v));
-    final res = await coll.updateOne(where.eq(r'_id', id), modifier);
-    return res.isSuccess ? this : null;
+
+    if (isInsert) {
+      final result = await coll.insertOne(doc);
+      if (!result.isSuccess) return null;
+      await Future.wait(nestedUpdates);
+      return copyWith(id: result.id);
+    }
+
+    var parentMod = modify.set('updated_at', now);
+    doc.forEach((k, v) => parentMod = parentMod.set(k, v));
+    final res = await coll.updateOne(where.eq(r'_id', id), parentMod);
+    if (!res.isSuccess) return null;
+    await Future.wait(nestedUpdates);
+    return this;
   }
 
   Future<bool> delete() async {
@@ -68,7 +122,7 @@ class Posts {
   static String get _collection => 'posts';
 
   /// Type‑safe insertMany
-  static Future<List<Post>> insertMany(
+  static Future<List<Post?>> insertMany(
     List<Post> docs,
   ) async {
     if (docs.isEmpty) return <Post>[];
@@ -79,7 +133,7 @@ class Posts {
       final idx = e.key;
       final doc = e.value;
       final id = result.isSuccess ? result.ids![idx] : null;
-      return doc.copyWith(id: id as ObjectId?);
+      return doc.copyWith(id: id);
     }).toList();
   }
 
@@ -136,13 +190,17 @@ class Posts {
     // fallback to simple findOne
     final doc = await (await MongoConnection.getDb())
         .collection(_collection)
-        .findOne(selectorBuilder);
+        .findOne(selectorMap);
     return doc == null ? null : Post.fromJson(doc);
   }
 
   /// Type‑safe findMany
-  static Future<List<Post>> findMany(Expression Function(QPost q) predicate,
-      {int? skip, int? limit}) async {
+  static Future<List<Post>> findMany(
+    Expression Function(QPost q) predicate, {
+    int? skip,
+    int? limit,
+    List<BaseProjections>? project,
+  }) async {
     var selectorBuilder = predicate(QPost()).toSelectorBuilder();
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
     if (limit != null) selectorBuilder = selectorBuilder.limit(limit);
@@ -182,7 +240,7 @@ class Posts {
 
     final docs = await (await MongoConnection.getDb())
         .collection(_collection)
-        .find(selectorBuilder)
+        .find(selectorMap)
         .toList();
     return docs.map((e) => Post.fromJson(e)).toList();
   }
@@ -193,7 +251,7 @@ class Posts {
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
-        .deleteOne(selector);
+        .deleteOne(selector.map);
     return result.isSuccess;
   }
 
@@ -203,7 +261,7 @@ class Posts {
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
-        .deleteMany(selector);
+        .deleteMany(selector.map);
     return result.isSuccess;
   }
 
@@ -229,7 +287,7 @@ class Posts {
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
-        .updateOne(selector, modifier);
+        .updateOne(selector.map, modifier);
     return result.isSuccess;
   }
 
@@ -255,7 +313,7 @@ class Posts {
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
-        .updateMany(selector, modifier);
+        .updateMany(selector.map, modifier);
     return result.isSuccess;
   }
 

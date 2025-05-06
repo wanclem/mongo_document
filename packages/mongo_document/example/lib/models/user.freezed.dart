@@ -16,6 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$User {
   @ObjectIdConverter()
+  @JsonKey(name: '_id')
   ObjectId? get id;
   String? get firstName;
   String? get lastName;
@@ -71,7 +72,7 @@ abstract mixin class $UserCopyWith<$Res> {
       _$UserCopyWithImpl;
   @useResult
   $Res call(
-      {@ObjectIdConverter() ObjectId? id,
+      {@ObjectIdConverter() @JsonKey(name: '_id') ObjectId? id,
       String? firstName,
       String? lastName,
       String? email,
@@ -138,7 +139,7 @@ class _$UserCopyWithImpl<$Res> implements $UserCopyWith<$Res> {
 @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
 class _User implements User {
   const _User(
-      {@ObjectIdConverter() this.id,
+      {@ObjectIdConverter() @JsonKey(name: '_id') this.id,
       this.firstName,
       this.lastName,
       this.email,
@@ -149,6 +150,7 @@ class _User implements User {
 
   @override
   @ObjectIdConverter()
+  @JsonKey(name: '_id')
   final ObjectId? id;
   @override
   final String? firstName;
@@ -217,7 +219,7 @@ abstract mixin class _$UserCopyWith<$Res> implements $UserCopyWith<$Res> {
   @override
   @useResult
   $Res call(
-      {@ObjectIdConverter() ObjectId? id,
+      {@ObjectIdConverter() @JsonKey(name: '_id') ObjectId? id,
       String? firstName,
       String? lastName,
       String? email,

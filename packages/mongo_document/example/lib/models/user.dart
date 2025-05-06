@@ -11,7 +11,7 @@ part 'user.mongo_document.dart';
 abstract class User with _$User {
   @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
   const factory User({
-    @ObjectIdConverter() ObjectId? id,
+    @ObjectIdConverter() @JsonKey(name: '_id') ObjectId? id,
     String? firstName,
     String? lastName,
     String? email,

@@ -6,30 +6,14 @@ part 'post.freezed.dart';
 part 'post.g.dart';
 
 part 'post.mongo_document.dart';
-enum PlatformIdentifier {
-  facebook,
-  instagram,
-  twitter,
-  linkedin,
-  x,
-  googleMyBusiness,
-  reddit,
-  pinterest,
-  youtube,
-  tiktok,
-  wordpress,
-  rssFeed,
-  blogger,
-  threads,
-  bluesky,
-  telegram,
-  none,
-}
 
 @freezed
 @MongoDocument(collection: "posts")
 abstract class Post with _$Post {
-  @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
+  @JsonSerializable(
+    fieldRename: FieldRename.snake,
+    explicitToJson: true,
+  )
   const factory Post({
     @ObjectIdConverter() @JsonKey(name: '_id') ObjectId? id,
     User? author,
