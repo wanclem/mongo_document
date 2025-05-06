@@ -185,7 +185,7 @@ class ${className}s {
   
   static String get _collection => '$collection';
   
-   /// Type‑safe DSL insertMany
+   /// Type‑safe insertMany
   static Future<List<$className>> insertMany(
     List<$className> docs,
   ) async {
@@ -205,7 +205,7 @@ class ${className}s {
         .toList();
   }
 
-  /// Type-safe DSL findById
+  /// Type-safe findById
   static Future<$className?> findById(dynamic id) async {
     if (id == null) return null;
     if (id is String) {
@@ -220,7 +220,7 @@ class ${className}s {
     return doc == null ? null : $className.fromJson(doc);
   }
 
-  /// Type-safe DSL findOne
+  /// Type-safe findOne
   static Future<$className?> findOne(
    Expression Function(Q$className q) predicate
   ) async {
@@ -265,7 +265,7 @@ class ${className}s {
 
   }
 
-  /// Type‑safe DSL findMany
+  /// Type‑safe findMany
   static Future<List<$className>> findMany(
     Expression Function(Q$className q) predicate, {
     int? skip, int? limit
@@ -314,7 +314,7 @@ class ${className}s {
     return docs.map((e) => $className.fromJson(e)).toList();
  }
 
-  /// Type-safe DSL deleteOne
+  /// Type-safe deleteOne
   static Future<bool> deleteOne(
     Expression Function(Q$className q) predicate
   ) async {
@@ -326,7 +326,7 @@ class ${className}s {
     return result.isSuccess;
   }
   
-  /// Type-safe DSL deleteMany
+  /// Type-safe deleteMany
   static Future<bool> deleteMany(
     Expression Function(Q$className q) predicate
   ) async {
@@ -337,7 +337,8 @@ class ${className}s {
       .deleteMany(selector);
     return result.isSuccess;
   }
-  
+
+  /// Type-safe updateOne
   static Future<bool> updateOne(
     Expression Function(Q$className q) predicate, {
 ${_buildUpdateParams(params)}
@@ -364,7 +365,7 @@ ${_buildUpdateParams(params)}
     return result.isSuccess;
   }
 
-  /// Type-safe DSL updateMany
+  /// Type-safe updateMany
   static Future<bool> updateMany(
     Expression Function(Q$className q) predicate, {
 ${_buildUpdateParams(params)}
@@ -398,6 +399,22 @@ ${_buildUpdateParams(params)}
     return modifier;
   }
   
+   /// Use `updateOne` directly whenever possible for better performance and clarity.
+  /// This method is a fallback for cases requiring additional logic or dynamic update maps.
+  static Future<$className?> updateOneFromMap(
+    ObjectId id, 
+    Map<String, dynamic> updateMap,
+  ) async {
+    final conn = await MongoConnection.getDb();
+    final coll = conn.collection(_collection);
+    final result = await coll.updateOne({'_id':id},{'\\\$set':updateMap});
+    if(!result.isSuccess) return null;
+    final updatedDoc = await coll.findOne({
+      '_id': id
+    });
+    return updatedDoc == null?null:$className.fromJson(updatedDoc);
+  }
+
   static Future<int> count(
     Expression Function(Q$className q) predicate
   ) async {

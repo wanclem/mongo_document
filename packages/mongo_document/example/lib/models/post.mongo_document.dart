@@ -41,6 +41,7 @@ extension $PostExtension on Post {
     if (id == null) {
       final doc = toJson()..remove('_id');
       doc.update('created_at', (v) => v ?? now, ifAbsent: () => now);
+      doc.update('updated_at', (v) => v ?? now, ifAbsent: () => now);
       final result = await coll.insertOne(doc);
       if (result.isSuccess) return copyWith(id: result.id);
       return null;
@@ -66,7 +67,7 @@ extension $PostExtension on Post {
 class Posts {
   static String get _collection => 'posts';
 
-  /// Type‑safe DSL insertMany
+  /// Type‑safe insertMany
   static Future<List<Post>> insertMany(
     List<Post> docs,
   ) async {
@@ -82,7 +83,7 @@ class Posts {
     }).toList();
   }
 
-  /// Type-safe DSL findById
+  /// Type-safe findById
   static Future<Post?> findById(dynamic id) async {
     if (id == null) return null;
     if (id is String) {
@@ -97,7 +98,7 @@ class Posts {
     return doc == null ? null : Post.fromJson(doc);
   }
 
-  /// Type-safe DSL findOne
+  /// Type-safe findOne
   static Future<Post?> findOne(Expression Function(QPost q) predicate) async {
     final selectorBuilder = predicate(QPost()).toSelectorBuilder();
     final selectorMap = selectorBuilder.map;
@@ -139,7 +140,7 @@ class Posts {
     return doc == null ? null : Post.fromJson(doc);
   }
 
-  /// Type‑safe DSL findMany
+  /// Type‑safe findMany
   static Future<List<Post>> findMany(Expression Function(QPost q) predicate,
       {int? skip, int? limit}) async {
     var selectorBuilder = predicate(QPost()).toSelectorBuilder();
@@ -186,7 +187,7 @@ class Posts {
     return docs.map((e) => Post.fromJson(e)).toList();
   }
 
-  /// Type-safe DSL deleteOne
+  /// Type-safe deleteOne
   static Future<bool> deleteOne(Expression Function(QPost q) predicate) async {
     final expr = predicate(QPost());
     final selector = expr.toSelectorBuilder();
@@ -196,7 +197,7 @@ class Posts {
     return result.isSuccess;
   }
 
-  /// Type-safe DSL deleteMany
+  /// Type-safe deleteMany
   static Future<bool> deleteMany(Expression Function(QPost q) predicate) async {
     final expr = predicate(QPost());
     final selector = expr.toSelectorBuilder();
@@ -206,6 +207,7 @@ class Posts {
     return result.isSuccess;
   }
 
+  /// Type-safe updateOne
   static Future<bool> updateOne(
     Expression Function(QPost q) predicate, {
     ObjectId? id,
@@ -231,7 +233,7 @@ class Posts {
     return result.isSuccess;
   }
 
-  /// Type-safe DSL updateMany
+  /// Type-safe updateMany
   static Future<bool> updateMany(
     Expression Function(QPost q) predicate, {
     ObjectId? id,
@@ -262,6 +264,20 @@ class Posts {
     var modifier = modify.set('updated_at', now);
     updateMap.forEach((k, v) => modifier = modifier.set(k, v));
     return modifier;
+  }
+
+  /// Use `updateOne` directly whenever possible for better performance and clarity.
+  /// This method is a fallback for cases requiring additional logic or dynamic update maps.
+  static Future<Post?> updateOneFromMap(
+    ObjectId id,
+    Map<String, dynamic> updateMap,
+  ) async {
+    final conn = await MongoConnection.getDb();
+    final coll = conn.collection(_collection);
+    final result = await coll.updateOne({'_id': id}, {'\$set': updateMap});
+    if (!result.isSuccess) return null;
+    final updatedDoc = await coll.findOne({'_id': id});
+    return updatedDoc == null ? null : Post.fromJson(updatedDoc);
   }
 
   static Future<int> count(Expression Function(QPost q) predicate) async {

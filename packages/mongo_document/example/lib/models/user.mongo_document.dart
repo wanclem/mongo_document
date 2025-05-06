@@ -43,6 +43,7 @@ extension $UserExtension on User {
     if (id == null) {
       final doc = toJson()..remove('_id');
       doc.update('created_at', (v) => v ?? now, ifAbsent: () => now);
+      doc.update('updated_at', (v) => v ?? now, ifAbsent: () => now);
       final result = await coll.insertOne(doc);
       if (result.isSuccess) return copyWith(id: result.id);
       return null;
@@ -68,7 +69,7 @@ extension $UserExtension on User {
 class Users {
   static String get _collection => 'users';
 
-  /// Type‑safe DSL insertMany
+  /// Type‑safe insertMany
   static Future<List<User>> insertMany(
     List<User> docs,
   ) async {
@@ -84,7 +85,7 @@ class Users {
     }).toList();
   }
 
-  /// Type-safe DSL findById
+  /// Type-safe findById
   static Future<User?> findById(dynamic id) async {
     if (id == null) return null;
     if (id is String) {
@@ -99,7 +100,7 @@ class Users {
     return doc == null ? null : User.fromJson(doc);
   }
 
-  /// Type-safe DSL findOne
+  /// Type-safe findOne
   static Future<User?> findOne(Expression Function(QUser q) predicate) async {
     final selectorBuilder = predicate(QUser()).toSelectorBuilder();
     final selectorMap = selectorBuilder.map;
@@ -141,7 +142,7 @@ class Users {
     return doc == null ? null : User.fromJson(doc);
   }
 
-  /// Type‑safe DSL findMany
+  /// Type‑safe findMany
   static Future<List<User>> findMany(Expression Function(QUser q) predicate,
       {int? skip, int? limit}) async {
     var selectorBuilder = predicate(QUser()).toSelectorBuilder();
@@ -188,7 +189,7 @@ class Users {
     return docs.map((e) => User.fromJson(e)).toList();
   }
 
-  /// Type-safe DSL deleteOne
+  /// Type-safe deleteOne
   static Future<bool> deleteOne(Expression Function(QUser q) predicate) async {
     final expr = predicate(QUser());
     final selector = expr.toSelectorBuilder();
@@ -198,7 +199,7 @@ class Users {
     return result.isSuccess;
   }
 
-  /// Type-safe DSL deleteMany
+  /// Type-safe deleteMany
   static Future<bool> deleteMany(Expression Function(QUser q) predicate) async {
     final expr = predicate(QUser());
     final selector = expr.toSelectorBuilder();
@@ -208,6 +209,7 @@ class Users {
     return result.isSuccess;
   }
 
+  /// Type-safe updateOne
   static Future<bool> updateOne(
     Expression Function(QUser q) predicate, {
     ObjectId? id,
@@ -235,7 +237,7 @@ class Users {
     return result.isSuccess;
   }
 
-  /// Type-safe DSL updateMany
+  /// Type-safe updateMany
   static Future<bool> updateMany(
     Expression Function(QUser q) predicate, {
     ObjectId? id,
@@ -268,6 +270,20 @@ class Users {
     var modifier = modify.set('updated_at', now);
     updateMap.forEach((k, v) => modifier = modifier.set(k, v));
     return modifier;
+  }
+
+  /// Use `updateOne` directly whenever possible for better performance and clarity.
+  /// This method is a fallback for cases requiring additional logic or dynamic update maps.
+  static Future<User?> updateOneFromMap(
+    ObjectId id,
+    Map<String, dynamic> updateMap,
+  ) async {
+    final conn = await MongoConnection.getDb();
+    final coll = conn.collection(_collection);
+    final result = await coll.updateOne({'_id': id}, {'\$set': updateMap});
+    if (!result.isSuccess) return null;
+    final updatedDoc = await coll.findOne({'_id': id});
+    return updatedDoc == null ? null : User.fromJson(updatedDoc);
   }
 
   static Future<int> count(Expression Function(QUser q) predicate) async {
