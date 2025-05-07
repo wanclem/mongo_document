@@ -172,6 +172,18 @@ final hot = await Posts.findMany(
 
 // Count documents
 final total = await Posts.count((p) => p.body.ne(null));
+
+// Logical AND / OR queries
+// Posts where body contains "hot" AND tags contain "viral"
+final hotPosts = await Posts.findMany(
+  (p) => p.body.contains("hot") & p.tags.contains("viral")
+);
+
+// Posts where body contains "hot" OR "viral"
+final posts = await Posts.findMany(
+  (p) => p.body.contains("hot") | p.body.contains("viral")
+);
+
 ```
 
 ### References & Propagation
