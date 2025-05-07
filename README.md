@@ -160,7 +160,7 @@ await post?.delete();
 ### Advanced Queries
 
 ```dart
-// Find posts whose tags array contain "viral"
+// Find posts whose tags array contains an element called "viral"
 final viralPosts = await Posts.findMany(
   (p) => p.tags.contains("viral")
 );
@@ -174,7 +174,7 @@ final hot = await Posts.findMany(
 final total = await Posts.count((p) => p.body.ne(null));
 
 // Logical AND / OR queries
-// Posts where body contains "hot" AND tags contain "viral"
+// Posts where body contains "hot" AND tags array contain the element "viral"
 final hotPosts = await Posts.findMany(
   (p) => p.body.contains("hot") & p.tags.contains("viral")
 );
