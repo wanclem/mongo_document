@@ -150,6 +150,8 @@ final newPost = await Post(body: 'Hello world', tags: ['intro']).save();
 // Read
 final post = await Posts.findOne((p) => p.body.eq('Hello world'));
 
+// Read by ObjectId
+final myPost = await Posts.findById(objectId|"hexString");
 // Update
 post = await post?.copyWith(body: 'Updated').save();
 
