@@ -133,9 +133,10 @@ class Users {
     return doc == null ? null : User.fromJson(doc.withRefs());
   }
 
-  /// Type-safe findOne
+  /// Type-safe findOne by predicate
   static Future<User?> findOne(
-      [Expression Function(QUser u)? predicate]) async {
+    Expression Function(QUser u)? predicate,
+  ) async {
     if (predicate == null) {
       final docs = await (await MongoConnection.getDb())
           .collection(_collection)
@@ -183,7 +184,38 @@ class Users {
     return doc == null ? null : User.fromJson(doc);
   }
 
-  /// Type‑safe findMany
+  /// Type-safe findOne by named arguments
+  static Future<User?> findOneByNamed({
+    ObjectId? id,
+    String? firstName,
+    String? lastName,
+    String? email,
+    int? age,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) async {
+    final selector = <String, dynamic>{};
+    if (id != null) selector['_id'] = id;
+    if (firstName != null) selector['first_name'] = firstName;
+    if (lastName != null) selector['last_name'] = lastName;
+    if (email != null) selector['email'] = email;
+    if (age != null) selector['age'] = age;
+    if (createdAt != null) selector['created_at'] = createdAt;
+    if (updatedAt != null) selector['updated_at'] = updatedAt;
+    if (selector.isEmpty) {
+      final doc = await (await MongoConnection.getDb())
+          .collection(_collection)
+          .modernFindOne(sort: {'created_at': -1});
+      if (doc == null) return null;
+      return User.fromJson(doc.withRefs());
+    }
+    final doc = await (await MongoConnection.getDb())
+        .collection(_collection)
+        .findOne(selector);
+    return doc == null ? null : User.fromJson(doc.withRefs());
+  }
+
+  /// Type‑safe findMany by predicate
   static Future<List<User>> findMany(
     Expression Function(QUser u) predicate, {
     int? skip,
@@ -231,16 +263,77 @@ class Users {
         .collection(_collection)
         .find(selectorMap)
         .toList();
-    return docs.map((e) => User.fromJson(e)).toList();
+    return docs.map((e) => User.fromJson(e.withRefs())).toList();
   }
 
-  /// Type-safe deleteOne
+  /// Type-safe findMany by named arguments
+  static Future<List<User>> findManyByNamed({
+    ObjectId? id,
+    String? firstName,
+    String? lastName,
+    String? email,
+    int? age,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Map<String, Object> sort = const {},
+    int? skip,
+    int limit = 10,
+  }) async {
+    final selector = <String, dynamic>{};
+    if (id != null) selector['_id'] = id;
+    if (firstName != null) selector['first_name'] = firstName;
+    if (lastName != null) selector['last_name'] = lastName;
+    if (email != null) selector['email'] = email;
+    if (age != null) selector['age'] = age;
+    if (createdAt != null) selector['created_at'] = createdAt;
+    if (updatedAt != null) selector['updated_at'] = updatedAt;
+    if (selector.isEmpty) {
+      final docs = await (await MongoConnection.getDb())
+          .collection(_collection)
+          .modernFind(
+              sort: {'created_at': -1}, limit: limit, skip: skip).toList();
+      if (docs.isEmpty) return [];
+      return docs.map((e) => User.fromJson(e.withRefs())).toList();
+    }
+    final docs = await (await MongoConnection.getDb())
+        .collection(_collection)
+        .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
+        .toList();
+    return docs.map((e) => User.fromJson(e.withRefs())).toList();
+  }
+
+  /// Type-safe deleteOne by predicate
   static Future<bool> deleteOne(Expression Function(QUser u) predicate) async {
     final expr = predicate(QUser());
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
         .deleteOne(selector.map.flatQuery());
+    return result.isSuccess;
+  }
+
+  /// Type-safe deleteOne by named arguments
+  static Future<bool> deleteOneByNamed({
+    ObjectId? id,
+    String? firstName,
+    String? lastName,
+    String? email,
+    int? age,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) async {
+    final selector = <String, dynamic>{};
+    if (id != null) selector['_id'] = id;
+    if (firstName != null) selector['first_name'] = firstName;
+    if (lastName != null) selector['last_name'] = lastName;
+    if (email != null) selector['email'] = email;
+    if (age != null) selector['age'] = age;
+    if (createdAt != null) selector['created_at'] = createdAt;
+    if (updatedAt != null) selector['updated_at'] = updatedAt;
+    if (selector.isEmpty) return false;
+    final result = await (await MongoConnection.getDb())
+        .collection(_collection)
+        .deleteOne(selector);
     return result.isSuccess;
   }
 

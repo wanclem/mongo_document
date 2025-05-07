@@ -152,9 +152,10 @@ class Posts {
     return doc == null ? null : Post.fromJson(doc.withRefs());
   }
 
-  /// Type-safe findOne
+  /// Type-safe findOne by predicate
   static Future<Post?> findOne(
-      [Expression Function(QPost p)? predicate]) async {
+    Expression Function(QPost p)? predicate,
+  ) async {
     if (predicate == null) {
       final docs = await (await MongoConnection.getDb())
           .collection(_collection)
@@ -202,7 +203,36 @@ class Posts {
     return doc == null ? null : Post.fromJson(doc);
   }
 
-  /// Type‑safe findMany
+  /// Type-safe findOne by named arguments
+  static Future<Post?> findOneByNamed({
+    ObjectId? id,
+    User? author,
+    List<String>? tags,
+    String? body,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) async {
+    final selector = <String, dynamic>{};
+    if (id != null) selector['_id'] = id;
+    if (author != null) selector['author'] = author;
+    if (tags != null) selector['tags'] = tags;
+    if (body != null) selector['body'] = body;
+    if (createdAt != null) selector['created_at'] = createdAt;
+    if (updatedAt != null) selector['updated_at'] = updatedAt;
+    if (selector.isEmpty) {
+      final doc = await (await MongoConnection.getDb())
+          .collection(_collection)
+          .modernFindOne(sort: {'created_at': -1});
+      if (doc == null) return null;
+      return Post.fromJson(doc.withRefs());
+    }
+    final doc = await (await MongoConnection.getDb())
+        .collection(_collection)
+        .findOne(selector);
+    return doc == null ? null : Post.fromJson(doc.withRefs());
+  }
+
+  /// Type‑safe findMany by predicate
   static Future<List<Post>> findMany(
     Expression Function(QPost p) predicate, {
     int? skip,
@@ -250,16 +280,73 @@ class Posts {
         .collection(_collection)
         .find(selectorMap)
         .toList();
-    return docs.map((e) => Post.fromJson(e)).toList();
+    return docs.map((e) => Post.fromJson(e.withRefs())).toList();
   }
 
-  /// Type-safe deleteOne
+  /// Type-safe findMany by named arguments
+  static Future<List<Post>> findManyByNamed({
+    ObjectId? id,
+    User? author,
+    List<String>? tags,
+    String? body,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Map<String, Object> sort = const {},
+    int? skip,
+    int limit = 10,
+  }) async {
+    final selector = <String, dynamic>{};
+    if (id != null) selector['_id'] = id;
+    if (author != null) selector['author'] = author;
+    if (tags != null) selector['tags'] = tags;
+    if (body != null) selector['body'] = body;
+    if (createdAt != null) selector['created_at'] = createdAt;
+    if (updatedAt != null) selector['updated_at'] = updatedAt;
+    if (selector.isEmpty) {
+      final docs = await (await MongoConnection.getDb())
+          .collection(_collection)
+          .modernFind(
+              sort: {'created_at': -1}, limit: limit, skip: skip).toList();
+      if (docs.isEmpty) return [];
+      return docs.map((e) => Post.fromJson(e.withRefs())).toList();
+    }
+    final docs = await (await MongoConnection.getDb())
+        .collection(_collection)
+        .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
+        .toList();
+    return docs.map((e) => Post.fromJson(e.withRefs())).toList();
+  }
+
+  /// Type-safe deleteOne by predicate
   static Future<bool> deleteOne(Expression Function(QPost p) predicate) async {
     final expr = predicate(QPost());
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
         .deleteOne(selector.map.flatQuery());
+    return result.isSuccess;
+  }
+
+  /// Type-safe deleteOne by named arguments
+  static Future<bool> deleteOneByNamed({
+    ObjectId? id,
+    User? author,
+    List<String>? tags,
+    String? body,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) async {
+    final selector = <String, dynamic>{};
+    if (id != null) selector['_id'] = id;
+    if (author != null) selector['author'] = author;
+    if (tags != null) selector['tags'] = tags;
+    if (body != null) selector['body'] = body;
+    if (createdAt != null) selector['created_at'] = createdAt;
+    if (updatedAt != null) selector['updated_at'] = updatedAt;
+    if (selector.isEmpty) return false;
+    final result = await (await MongoConnection.getDb())
+        .collection(_collection)
+        .deleteOne(selector);
     return result.isSuccess;
   }
 
