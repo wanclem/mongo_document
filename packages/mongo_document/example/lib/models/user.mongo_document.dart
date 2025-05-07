@@ -130,13 +130,21 @@ class Users {
     final doc = await (await MongoConnection.getDb())
         .collection(_collection)
         .findOne(where.eq(r'_id', id));
-    return doc == null ? null : User.fromJson(doc);
+    return doc == null ? null : User.fromJson(doc.withRefs());
   }
 
   /// Type-safe findOne
-  static Future<User?> findOne(Expression Function(QUser q) predicate) async {
+  static Future<User?> findOne(
+      [Expression Function(QUser u)? predicate]) async {
+    if (predicate == null) {
+      final docs = await (await MongoConnection.getDb())
+          .collection(_collection)
+          .modernFindOne(sort: {'created_at': -1});
+      if (docs == null) return null;
+      return User.fromJson(docs.withRefs());
+    }
     final selectorBuilder = predicate(QUser()).toSelectorBuilder();
-    final selectorMap = selectorBuilder.map;
+    final selectorMap = selectorBuilder.map.flatQuery();
 
     final allKeys = <String>{};
     collectKeys(selectorMap, allKeys);
@@ -165,7 +173,7 @@ class Users {
           .collection(_collection)
           .modernAggregate(builder.build());
       final doc = await stream.first;
-      return User.fromJson(doc);
+      return User.fromJson(doc.withRefs());
     }
 
     // fallback to simple findOne
@@ -177,7 +185,7 @@ class Users {
 
   /// Type‑safe findMany
   static Future<List<User>> findMany(
-    Expression Function(QUser q) predicate, {
+    Expression Function(QUser u) predicate, {
     int? skip,
     int? limit,
     List<BaseProjections>? project,
@@ -185,7 +193,7 @@ class Users {
     var selectorBuilder = predicate(QUser()).toSelectorBuilder();
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
     if (limit != null) selectorBuilder = selectorBuilder.limit(limit);
-    final selectorMap = selectorBuilder.map;
+    final selectorMap = selectorBuilder.map.flatQuery();
 
     final allKeys = <String>{};
     collectKeys(selectorMap, allKeys);
@@ -227,28 +235,28 @@ class Users {
   }
 
   /// Type-safe deleteOne
-  static Future<bool> deleteOne(Expression Function(QUser q) predicate) async {
+  static Future<bool> deleteOne(Expression Function(QUser u) predicate) async {
     final expr = predicate(QUser());
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
-        .deleteOne(selector.map);
+        .deleteOne(selector.map.flatQuery());
     return result.isSuccess;
   }
 
   /// Type-safe deleteMany
-  static Future<bool> deleteMany(Expression Function(QUser q) predicate) async {
+  static Future<bool> deleteMany(Expression Function(QUser u) predicate) async {
     final expr = predicate(QUser());
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
-        .deleteMany(selector.map);
+        .deleteMany(selector.map.flatQuery());
     return result.isSuccess;
   }
 
   /// Type-safe updateOne
   static Future<bool> updateOne(
-    Expression Function(QUser q) predicate, {
+    Expression Function(QUser u) predicate, {
     ObjectId? id,
     String? firstName,
     String? lastName,
@@ -270,13 +278,13 @@ class Users {
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
-        .updateOne(selector.map, modifier);
+        .updateOne(selector.map.flatQuery(), modifier);
     return result.isSuccess;
   }
 
   /// Type-safe updateMany
   static Future<bool> updateMany(
-    Expression Function(QUser q) predicate, {
+    Expression Function(QUser u) predicate, {
     ObjectId? id,
     String? firstName,
     String? lastName,
@@ -298,7 +306,7 @@ class Users {
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
-        .updateMany(selector.map, modifier);
+        .updateMany(selector.map.flatQuery(), modifier);
     return result.isSuccess;
   }
 
@@ -323,8 +331,10 @@ class Users {
     return updatedDoc == null ? null : User.fromJson(updatedDoc);
   }
 
-  static Future<int> count(Expression Function(QUser q) predicate) async {
-    final selectorMap = predicate(QUser()).toSelectorBuilder().map;
+  static Future<int> count(Expression Function(QUser u)? predicate) async {
+    final selectorMap = predicate == null
+        ? {}
+        : predicate(QUser()).toSelectorBuilder().map.flatQuery();
     return (await MongoConnection.getDb())
         .collection(_collection)
         .count(selectorMap);

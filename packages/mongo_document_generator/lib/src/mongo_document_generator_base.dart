@@ -162,15 +162,22 @@ class ${className}s {
     final doc = await (await MongoConnection.getDb())
         .collection(_collection)
         .findOne(where.eq(r'_id', id));
-    return doc == null ? null : $className.fromJson(doc);
+    return doc == null ? null : $className.fromJson(doc.withRefs());
   }
 
   /// Type-safe findOne
   static Future<$className?> findOne(
-   Expression Function(Q$className q) predicate
+   [Expression Function(Q$className ${className[0].toLowerCase()})? predicate]
   ) async {
+    if (predicate == null) {
+      final docs = await (await MongoConnection.getDb())
+          .collection(_collection)
+          .modernFindOne(sort: {'created_at': -1});
+      if (docs == null) return null;
+      return $className.fromJson(docs.withRefs());
+    }
     final selectorBuilder = predicate(Q$className()).toSelectorBuilder();
-    final selectorMap = selectorBuilder.map;
+    final selectorMap = selectorBuilder.map.flatQuery();
 
     final allKeys = <String>{};
       collectKeys(selectorMap, allKeys);
@@ -199,7 +206,7 @@ class ${className}s {
           .collection(_collection)
           .modernAggregate(builder.build());
       final doc = await stream.first;  
-      return $className.fromJson(doc);
+      return $className.fromJson(doc.withRefs());
     }
   
     // fallback to simple findOne
@@ -212,7 +219,7 @@ class ${className}s {
 
   /// Type‑safe findMany
   static Future<List<$className>> findMany(
-    Expression Function(Q$className q) predicate, {
+    Expression Function(Q$className ${className[0].toLowerCase()}) predicate, {
     int? skip, int? limit,
     List<BaseProjections>? project,
   }) async {
@@ -220,7 +227,7 @@ class ${className}s {
     var selectorBuilder = predicate(Q$className()).toSelectorBuilder();
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
     if (limit != null) selectorBuilder = selectorBuilder.limit(limit);
-    final selectorMap = selectorBuilder.map;
+    final selectorMap = selectorBuilder.map.flatQuery();
   
     final allKeys = <String>{};
     collectKeys(selectorMap, allKeys);
@@ -262,31 +269,31 @@ class ${className}s {
 
   /// Type-safe deleteOne
   static Future<bool> deleteOne(
-    Expression Function(Q$className q) predicate
+    Expression Function(Q$className ${className[0].toLowerCase()}) predicate
   ) async {
     final expr = predicate(Q$className());
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
       .collection(_collection)
-      .deleteOne(selector.map);
+      .deleteOne(selector.map.flatQuery());
     return result.isSuccess;
   }
   
   /// Type-safe deleteMany
   static Future<bool> deleteMany(
-    Expression Function(Q$className q) predicate
+    Expression Function(Q$className ${className[0].toLowerCase()}) predicate
   ) async {
     final expr = predicate(Q$className());
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
       .collection(_collection)
-      .deleteMany(selector.map);
+      .deleteMany(selector.map.flatQuery());
     return result.isSuccess;
   }
 
   /// Type-safe updateOne
   static Future<bool> updateOne(
-    Expression Function(Q$className q) predicate, {
+    Expression Function(Q$className ${className[0].toLowerCase()}) predicate, {
 ${_buildUpdateParams(params)}
   }) async {
     final modifier = _buildModifier({
@@ -307,13 +314,13 @@ ${_buildUpdateParams(params)}
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
       .collection(_collection)
-      .updateOne(selector.map, modifier);
+      .updateOne(selector.map.flatQuery(), modifier);
     return result.isSuccess;
   }
 
   /// Type-safe updateMany
   static Future<bool> updateMany(
-    Expression Function(Q$className q) predicate, {
+    Expression Function(Q$className ${className[0].toLowerCase()}) predicate, {
 ${_buildUpdateParams(params)}
   }) async {
     final modifier = _buildModifier({
@@ -334,7 +341,7 @@ ${_buildUpdateParams(params)}
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
       .collection(_collection)
-      .updateMany(selector.map, modifier);
+      .updateMany(selector.map.flatQuery(), modifier);
     return result.isSuccess;
   }
 
@@ -362,11 +369,11 @@ ${_buildUpdateParams(params)}
   }
 
   static Future<int> count(
-    Expression Function(Q$className q) predicate
+    Expression Function(Q$className ${className[0].toLowerCase()})? predicate
   ) async {
-    final selectorMap = predicate(Q$className())
+    final selectorMap =predicate==null? {}: predicate(Q$className())
         .toSelectorBuilder()
-        .map;
+        .map.flatQuery();
     return (await MongoConnection.getDb())
         .collection(_collection)
         .count(selectorMap);

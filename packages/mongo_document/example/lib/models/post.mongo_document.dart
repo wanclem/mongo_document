@@ -149,13 +149,21 @@ class Posts {
     final doc = await (await MongoConnection.getDb())
         .collection(_collection)
         .findOne(where.eq(r'_id', id));
-    return doc == null ? null : Post.fromJson(doc);
+    return doc == null ? null : Post.fromJson(doc.withRefs());
   }
 
   /// Type-safe findOne
-  static Future<Post?> findOne(Expression Function(QPost q) predicate) async {
+  static Future<Post?> findOne(
+      [Expression Function(QPost p)? predicate]) async {
+    if (predicate == null) {
+      final docs = await (await MongoConnection.getDb())
+          .collection(_collection)
+          .modernFindOne(sort: {'created_at': -1});
+      if (docs == null) return null;
+      return Post.fromJson(docs.withRefs());
+    }
     final selectorBuilder = predicate(QPost()).toSelectorBuilder();
-    final selectorMap = selectorBuilder.map;
+    final selectorMap = selectorBuilder.map.flatQuery();
 
     final allKeys = <String>{};
     collectKeys(selectorMap, allKeys);
@@ -184,7 +192,7 @@ class Posts {
           .collection(_collection)
           .modernAggregate(builder.build());
       final doc = await stream.first;
-      return Post.fromJson(doc);
+      return Post.fromJson(doc.withRefs());
     }
 
     // fallback to simple findOne
@@ -196,7 +204,7 @@ class Posts {
 
   /// Type‑safe findMany
   static Future<List<Post>> findMany(
-    Expression Function(QPost q) predicate, {
+    Expression Function(QPost p) predicate, {
     int? skip,
     int? limit,
     List<BaseProjections>? project,
@@ -204,7 +212,7 @@ class Posts {
     var selectorBuilder = predicate(QPost()).toSelectorBuilder();
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
     if (limit != null) selectorBuilder = selectorBuilder.limit(limit);
-    final selectorMap = selectorBuilder.map;
+    final selectorMap = selectorBuilder.map.flatQuery();
 
     final allKeys = <String>{};
     collectKeys(selectorMap, allKeys);
@@ -246,28 +254,28 @@ class Posts {
   }
 
   /// Type-safe deleteOne
-  static Future<bool> deleteOne(Expression Function(QPost q) predicate) async {
+  static Future<bool> deleteOne(Expression Function(QPost p) predicate) async {
     final expr = predicate(QPost());
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
-        .deleteOne(selector.map);
+        .deleteOne(selector.map.flatQuery());
     return result.isSuccess;
   }
 
   /// Type-safe deleteMany
-  static Future<bool> deleteMany(Expression Function(QPost q) predicate) async {
+  static Future<bool> deleteMany(Expression Function(QPost p) predicate) async {
     final expr = predicate(QPost());
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
-        .deleteMany(selector.map);
+        .deleteMany(selector.map.flatQuery());
     return result.isSuccess;
   }
 
   /// Type-safe updateOne
   static Future<bool> updateOne(
-    Expression Function(QPost q) predicate, {
+    Expression Function(QPost p) predicate, {
     ObjectId? id,
     User? author,
     List<String>? tags,
@@ -287,13 +295,13 @@ class Posts {
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
-        .updateOne(selector.map, modifier);
+        .updateOne(selector.map.flatQuery(), modifier);
     return result.isSuccess;
   }
 
   /// Type-safe updateMany
   static Future<bool> updateMany(
-    Expression Function(QPost q) predicate, {
+    Expression Function(QPost p) predicate, {
     ObjectId? id,
     User? author,
     List<String>? tags,
@@ -313,7 +321,7 @@ class Posts {
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
-        .updateMany(selector.map, modifier);
+        .updateMany(selector.map.flatQuery(), modifier);
     return result.isSuccess;
   }
 
@@ -338,8 +346,10 @@ class Posts {
     return updatedDoc == null ? null : Post.fromJson(updatedDoc);
   }
 
-  static Future<int> count(Expression Function(QPost q) predicate) async {
-    final selectorMap = predicate(QPost()).toSelectorBuilder().map;
+  static Future<int> count(Expression Function(QPost p)? predicate) async {
+    final selectorMap = predicate == null
+        ? {}
+        : predicate(QPost()).toSelectorBuilder().map.flatQuery();
     return (await MongoConnection.getDb())
         .collection(_collection)
         .count(selectorMap);

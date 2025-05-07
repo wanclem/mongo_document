@@ -1,5 +1,53 @@
 import 'package:mongo_dart/mongo_dart.dart';
 
+extension CleanQuery on Map<String, dynamic> {
+  Map<String, dynamic> flatQuery() {
+    final cleaned = <String, dynamic>{};
+    forEach((key, value) {
+      if (key == r'$query' && value is Map<String, dynamic>) {
+        value.forEach((innerKey, innerVal) {
+          cleaned[innerKey] = _cleanNode(innerVal);
+        });
+      } else {
+        cleaned[key] = _cleanNode(value);
+      }
+    });
+    return cleaned;
+  }
+
+  dynamic _cleanNode(dynamic node) {
+    if (node is Map<String, dynamic>) {
+      return node.flatQuery();
+    }
+    if (node is List) {
+      return node.map((e) => _cleanNode(e)).toList();
+    }
+    return node;
+  }
+
+  Map<String, dynamic> withRefs() {
+    final result = <String, dynamic>{...this};
+    forEach((key, value) {
+      if (value is ObjectId && key != '_id' && key != 'id') {
+        result[key] = <String, dynamic>{
+          '_id': value,
+          'id': value,
+        };
+      }
+    });
+    return result;
+  }
+}
+
+mixin ExistMixin {
+  String get _key;
+
+  /// Common exists implementation
+  Expression exists([bool doesExist = true]) => _RawExpression({
+        _key: {r'$exists': doesExist}
+      });
+}
+
 abstract class Expression {
   SelectorBuilder toSelectorBuilder();
 
@@ -78,9 +126,9 @@ class MethodCall implements Expression {
   @override
   SelectorBuilder toSelectorBuilder() {
     final pattern = method == 'startsWith'
-        ? '^\${RegExp.escape(value)}'
+        ? RegExp.escape(value)
         : method == 'endsWith'
-            ? '\${RegExp.escape(value)}\$'
+            ? '${RegExp.escape(value)}\$'
             : method == 'contains'
                 ? RegExp.escape(value)
                 : RegExp.escape(value);
@@ -144,10 +192,13 @@ class Logical implements Expression {
   }
 }
 
-class QueryField<T> {
+class QueryField<T> with ExistMixin {
   final String name;
 
   QueryField(this.name);
+
+  @override
+  String get _key => name;
 
   Expression eq(T v) => Comparison(name, r'$eq', v);
 
@@ -166,6 +217,10 @@ class QueryField<T> {
   Expression endsWith(String v) => MethodCall(name, 'endsWith', v);
 
   Expression contains(String v) => MethodCall(name, 'contains', v);
+
+  Expression exists([bool doesExist = true]) => _RawExpression({
+        name: {r'$exists': doesExist}
+      });
 }
 
 void collectKeys(dynamic node, Set<String> out) {
@@ -181,33 +236,40 @@ void collectKeys(dynamic node, Set<String> out) {
   }
 }
 
-class QMap<T> {
+class QMap<T> with ExistMixin {
   final String _prefix;
 
   QMap(this._prefix);
+
+  @override
+  String get _key => _prefix;
 
   QueryField<T> key<V>(String k) => QueryField<T>('$_prefix.$k');
 
   QueryField<T> operator [](String k) => key<T>(k);
 }
 
-class QList<T> {
+class QList<T> with ExistMixin {
   final String _prefix;
 
   QList(this._prefix);
 
+  @override
+  String get _key => _prefix;
+
+  ///Check if the list contains a value
   Expression contains(T value) => _RawExpression({
         _prefix: {
           r'$in': [value],
         },
       });
 
-  Expression elemMatch(Expression Function(QueryField<T> f) exprBuilder) {
-    final expr = exprBuilder(QueryField<T>(_prefix));
-    return _RawExpression({
-      _prefix: {r'$elemMatch': expr.toSelectorBuilder().map},
-    });
-  }
+  ///Check if the list contains a value that matches the given expression
+  Expression elemMatch(T value) => _RawExpression({
+        _prefix: {
+          r'$elemMatch': value,
+        },
+      });
 }
 
 class _RawExpression implements Expression {
