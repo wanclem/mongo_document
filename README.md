@@ -113,7 +113,7 @@ part 'post.mongo_document.dart';
 abstract class Post with _$Post {
   @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
   const factory Post({
-    @ObjectIdConverter() @JsonKey(name: '_id') ObjectId? id,
+    @ObjectIdConverter() @JsonKey(name: '_id') ObjectId? id, //Compulsory
     User? author,
     String? body,
     @Default(<String>[]) List<String> tags,
