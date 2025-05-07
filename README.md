@@ -28,7 +28,7 @@
 
 ## Overview
 
-**mongo_document** bridges Dart `freezed` models and MongoDB via `mongo_dart`, generating zero‑boilerplate, type‑safe CRUD and query builders that respect your Dart-native naming conventions (e.g. camelCase) while serializing to your DB schema (e.g. snake_case).
+**mongo_document** bridges Dart `freezed` models and MongoDB via `mongo_dart`, generating zero‑boilerplate, type‑safe CRUD and query builders that respect your Dart-native naming conventions (e.g. camelCase) while serializing to and from your DB schema (e.g. snake_case).
 
 > ⚠️ _Work in Progress_: Experimental features may change. Your feedback and contributions are welcome.
 
