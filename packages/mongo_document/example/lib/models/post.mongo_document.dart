@@ -9,11 +9,11 @@ part of 'post.dart';
 // MongoDocumentGenerator
 // **************************************************************************
 
-enum UserFields { id, firstName, lastName, email, age, createdAt, updatedAt }
+enum AuthorFields { id, firstName, lastName, email, age, createdAt, updatedAt }
 
-class UserProjections implements BaseProjections {
-  final List<UserFields>? fields;
-  const UserProjections([this.fields]);
+class AuthorProjections implements BaseProjections {
+  final List<AuthorFields>? fields;
+  const AuthorProjections([this.fields]);
 
   @override
   Map<String, int>? toProjection() {
