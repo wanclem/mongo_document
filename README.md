@@ -1,4 +1,4 @@
-[![pub package](https://img.shields.io/pub/v/mongo_document.svg)](https://pub.dev/packages/mongo_document)  [![build status](https://github.com/wannclem/mongo_document/actions/workflows/dart.yml/badge.svg)](https://github.com/wannclem/mongo_document/actions)  [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![pub package](https://img.shields.io/pub/v/mongo_document.svg)](https://pub.dev/packages/mongo_document) [![build status](https://github.com/wannclem/mongo_document/actions/workflows/dart.yml/badge.svg)](https://github.com/wannclem/mongo_document/actions) [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 <!-- TOC -->
 
@@ -8,15 +8,17 @@
 2. [Features](#features)
 3. [Getting Started](#getting-started)
 
-   * [Prerequisites](#prerequisites)
-   * [Installation](#installation)
-   * [Initialization](#initialization)
+   - [Prerequisites](#prerequisites)
+   - [Installation](#installation)
+   - [Initialization](#initialization)
+
 4. [Usage](#usage)
 
-   * [Defining Models](#defining-models)
-   * [Generating Code](#generating-code)
-   * [CRUD Examples](#crud-examples)
-   * [Advanced Queries](#advanced-queries)
+   - [Defining Models](#defining-models)
+   - [Generating Code](#generating-code)
+   - [CRUD Examples](#crud-examples)
+   - [Advanced Queries](#advanced-queries)
+
 5. [Configuration & Conventions](#configuration--conventions)
 6. [Troubleshooting](#troubleshooting)
 7. [Contributing](#contributing)
@@ -26,38 +28,37 @@
 
 ## Overview
 
-**mongo\_document** bridges Dart `freezed` models and MongoDB via `mongo_dart`, generating zero‑boilerplate, type‑safe CRUD and query builders that respect your Dart-native naming conventions (e.g. camelCase) while serializing to your DB schema (e.g. snake\_case).
+**mongo_document** bridges Dart `freezed` models and MongoDB via `mongo_dart`, generating zero‑boilerplate, type‑safe CRUD and query builders that respect your Dart-native naming conventions (e.g. camelCase) while serializing to your DB schema (e.g. snake_case).
 
-> ⚠️ *Work in Progress*: Experimental features may change. Your feedback and contributions are welcome.
+> ⚠️ _Work in Progress_: Experimental features may change. Your feedback and contributions are welcome.
 
 ## Features
 
-* **Document References & Propagation** — support for referencing other `@MongoDocument` models (e.g. `User? author` in `Post`), storing an `ObjectId` behind the scenes and automatically propagating `.save()` calls to nested documents
+- **Document References & Propagation** — support for referencing other `@MongoDocument` models (e.g. `User? author` in `Post`), storing an `ObjectId` behind the scenes and automatically propagating `.save()` calls to nested documents
 
-* **Zero‑Boilerplate CRUD** — instance methods: `.save()`, `.delete()`, static helpers: `.insertMany()`
+- **Zero‑Boilerplate CRUD** — instance methods: `.save()`, `.delete()`, static helpers: `.insertMany()`
 
-* **Zero‑Boilerplate CRUD** — instance methods: `.save()`, `.delete()`, static helpers: `.insertMany()`
+- **Zero‑Boilerplate CRUD** — instance methods: `.save()`, `.delete()`, static helpers: `.insertMany()`
 
-* **Type‑Safe Query DSL** — `.findOne()`, `.findMany()`, `.updateOne()`, `.deleteMany()`, `.count()`
+- **Type‑Safe Query DSL** — `.findOne()`, `.findMany()`, `.updateOne()`, `.deleteMany()`, `.count()`
 
-* **Nested Joins** — automatic `$lookup` + `$unwind` for referenced `@MongoDocument` relations
+- **Nested Joins** — automatic `$lookup` + `$unwind` for referenced `@MongoDocument` relations
 
-* **Array & Map Support** — `QList<T>` (.contains(), .elemMatch()), `QMap<V>` (sub-key queries)
+- **Array & Map Support** — `QList<T>` (.contains(), .elemMatch()), `QMap<V>` (sub-key queries)
 
-* **Field Renaming** — honors `@JsonSerializable(fieldRename: …)` settings without manual mapping
+- **Field Renaming** — honors `@JsonSerializable(fieldRename: …)` settings without manual mapping
 
-* **Timestamps & IDs** — auto-manages `_id`, `created_at`, `updated_at`
+- **Timestamps & IDs** — auto-manages `_id`, `created_at`, `updated_at`
 
 ## Getting Started
 
 ### Prerequisites
 
-* Dart SDK ≥ 2.18
+- Dart SDK ≥ 2.18
 
-* A running MongoDB instance (local or remote)
+- A running MongoDB instance (local or remote)
 
-* **MongoDB server version ≥ 3.6** (this library does not support older MongoDB releases)
-
+- **MongoDB server version ≥ 3.6** (this library does not support older MongoDB releases)
 
 ### Installation
 
@@ -98,7 +99,7 @@ Future<void> main() async {
 
 ### Defining Models
 
-**⚠️ Requirement:** Every `@MongoDocument` class **must** include an `ObjectId` field in its primary constructor annotated with `@JsonKey(name: '_id')`. This ensures a valid MongoDB `_id` is always present.
+**⚠️ Requirement:** Every `@MongoDocument` class **must** include an `ObjectId` field in its primary constructor annotated with `@ObjectIdConverter()` and `@JsonKey(name: '_id')`. This ensures a valid MongoDB `_id` is always present.
 
 ```dart
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -111,11 +112,12 @@ part 'post.mongo_document.dart';
 @freezed
 @MongoDocument(collection: 'posts')
 abstract class Post with _$Post {
-  @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
+  @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true) //Serialization to and from your database will respect this fieldRename policy
   const factory Post({
-    @ObjectIdConverter() @JsonKey(name: '_id') ObjectId? id, //Compulsory
+    @ObjectIdConverter() @JsonKey(name: '_id') ObjectId? id, //Mandatory
     User? author,
     String? body,
+    @JsonKey(name:'post_note')String? postNote, //Serialization of this field to and from the database will respect your jsonkey name
     @Default(<String>[]) List<String> tags,
     @DateTimeConverter() DateTime? createdAt,
     @DateTimeConverter() DateTime? updatedAt,
@@ -127,7 +129,7 @@ abstract class Post with _$Post {
 
 ### Generating Code
 
-Run build\_runner to generate `.mongo_document.dart` helpers:
+Run build_runner to generate `.mongo_document.dart` helpers:
 
 ```bash
 dart run build_runner build --delete-conflicting-outputs
@@ -135,23 +137,21 @@ dart run build_runner build --delete-conflicting-outputs
 
 This creates:
 
-* Model instance methods: `.save()`, `.delete()`
-* Static APIs: `Posts.findOne()`, `Posts.findMany()`, etc.
-* Query builder `QPost` with typed fields, lists, maps.
+- Model instance methods: `.save()`, `.delete()`
+- Static APIs: `Posts.findOne()`, `Posts.findMany()`, etc.
+- Query builder `QPost` with typed fields, lists, maps.
 
 ### CRUD Examples
 
 ```dart
 // Create & save
-final newPost = Post(body: 'Hello world', tags: ['intro']);
-await newPost.save();
+final newPost = await Post(body: 'Hello world', tags: ['intro']).save();
 
 // Read
 final post = await Posts.findOne((p) => p.body.eq('Hello world'));
 
 // Update
-post = post?.copyWith(body: 'Updated');
-await post?.save();
+post = await post?.copyWith(body: 'Updated').save();
 
 // Delete
 await post?.delete();
@@ -185,14 +185,13 @@ author = author?.copyWith(firstName: 'newName');
 
 // Load a Post, update its author reference, then save both
 Post? post = await Posts.findById(postId);
-post = post?.copyWith(author: author);
-await post?.save(); // changes to `author` propagate to the users collection
+post = await post?.copyWith(author: author).save(); // changes to `author` propagate to the users collection
 ```
 
 ## Configuration & Conventions
 
-* Customize converters via `@ObjectIdConverter()` and `@DateTimeConverter()`.
-* Collection name comes from `@MongoDocument(collection: ...)`.
+- Customize converters via `@ObjectIdConverter()` and `@DateTimeConverter()`.
+- Collection name comes from `@MongoDocument(collection: ...)`.
 
 ## Troubleshooting
 
