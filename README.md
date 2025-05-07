@@ -202,7 +202,7 @@ post = await post?.copyWith(author: author).save(); // changes to `author` propa
 
 ## Configuration & Conventions
 
-- Customize converters via `@ObjectIdConverter()` and `@DateTimeConverter()`.
+- Customize converters via e.g `@ObjectIdConverter()` and `@DateTimeConverter()`.
 - Collection name comes from `@MongoDocument(collection: ...)`.
 
 ## Troubleshooting
