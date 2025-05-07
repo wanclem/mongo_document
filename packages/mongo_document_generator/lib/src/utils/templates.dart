@@ -2,6 +2,7 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mongo_document_generator/mongo_document_generator.dart';
+import 'package:recase/recase.dart';
 import 'package:source_gen/source_gen.dart';
 
 String buildNestedCollectionProjectionClasses(
@@ -13,7 +14,8 @@ String buildNestedCollectionProjectionClasses(
   final projectionTemplate = '''
 ${nestedCollectionMap.keys.map((root) {
     final param = params.firstWhere((p) => p.name == root);
-    final typeName = (param.type as InterfaceType).element.name;
+    final rc = ReCase(param.name);
+    final typeName = rc.pascalCase;
     final enumName = '${typeName}Fields';
     final projName = '${typeName}Projections';
     final nestedClass = (param.type as InterfaceType).element as ClassElement;
@@ -25,16 +27,23 @@ ${nestedCollectionMap.keys.map((root) {
       return "'$root.$jsonKey': 1";
     }).join(', ');
     final enumValues = nestedClassParams.map((f) => f.name).join(', ');
+    final mappingEntries = nestedClassParams.map((p) {
+      final jsonKey = getParameterKey(jsonKeyChecker, p, nestedRename);
+      return '    "${p.name}": "$root.$jsonKey"';
+    }).join(',\n');
+
     return '''
 enum $enumName { $enumValues }
 
 class $projName implements BaseProjections {
+  @override
   final List<$enumName>? fields;
+  @override
+  final Map<String, dynamic> fieldMappings = const {$mappingEntries};
   const $projName([this.fields]);
 
   @override
-  Map<String,int>? toProjection() {
-    if (fields == null || fields!.isEmpty) return null;
+  Map<String,int> toProjection() {
     return {
       $entries
     };
@@ -46,7 +55,8 @@ class $projName implements BaseProjections {
   return projectionTemplate;
 }
 
-String buildNestedCollectiontionsMapLiteral(Map<String, dynamic> nestedCollectionMap) {
+String buildNestedCollectiontionsMapLiteral(
+    Map<String, dynamic> nestedCollectionMap) {
   final nestedCollectionMapEntries = nestedCollectionMap.entries
       .map((e) => "'${e.key}': '${e.value}'")
       .join(', ');
@@ -131,4 +141,38 @@ $qFields
 }
 ''';
   return qClass;
+}
+
+String buildProjectionFlowTemplate(String matchQuery) {
+  return '''
+final pipeline = <Map<String, Object>>[];
+     final projDoc = <String, int>{};
+     pipeline.add($matchQuery);
+     for (var p in projections) {
+        final projectedFields = p.fields;
+        final allProjections = p.toProjection();
+        final localField = allProjections.keys.first.split(".").first;
+        final foreignColl = _nestedCollections[localField];
+        if (projectedFields != null && projectedFields.isNotEmpty) {
+          final selected = <String, int>{};
+          for (var f in projectedFields) {
+            final path = p.fieldMappings[(f as Enum).name]!;
+            selected[path] = 1;
+          }
+          projDoc.addAll(selected);
+        } else {
+          projDoc.addAll(allProjections);
+        }
+        pipeline.add({
+          r'\$lookup': {
+            'from': foreignColl,
+            'localField': localField,
+            'foreignField': '_id',
+            'as': localField,
+          }
+        });
+        pipeline.add({r'\$unwind': localField});
+      }
+      pipeline.add({r'\$project': projDoc});
+''';
 }

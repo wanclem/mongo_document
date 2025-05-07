@@ -118,69 +118,117 @@ class Users {
     }).toList();
   }
 
-  /// Type-safe findById
-  static Future<User?> findById(dynamic id) async {
+  /// Type‑safe findById with optional nested‑doc projections
+  static Future<User?> findById(
+    dynamic id, {
+    List<BaseProjections> projections = const [],
+  }) async {
     if (id == null) return null;
-    if (id is String) {
-      id = ObjectId.fromHexString(id);
-    }
+    if (id is String) id = ObjectId.fromHexString(id);
     if (id is! ObjectId) {
       throw ArgumentError('Invalid id type: ${id.runtimeType}');
     }
-    final doc = await (await MongoConnection.getDb())
-        .collection(_collection)
-        .findOne(where.eq(r'_id', id));
+
+    final db = await MongoConnection.getDb();
+    final coll = db.collection(_collection);
+
+    if (projections.isNotEmpty) {
+      final pipeline = <Map<String, Object>>[];
+      final projDoc = <String, int>{};
+      pipeline.add({
+        r"$match": {'_id': id}
+      });
+      for (var p in projections) {
+        final projectedFields = p.fields;
+        final allProjections = p.toProjection();
+        final localField = allProjections.keys.first.split(".").first;
+        final foreignColl = _nestedCollections[localField];
+        if (projectedFields != null && projectedFields.isNotEmpty) {
+          final selected = <String, int>{};
+          for (var f in projectedFields) {
+            final path = p.fieldMappings[(f as Enum).name]!;
+            selected[path] = 1;
+          }
+          projDoc.addAll(selected);
+        } else {
+          projDoc.addAll(allProjections);
+        }
+        pipeline.add({
+          r'$lookup': {
+            'from': foreignColl,
+            'localField': localField,
+            'foreignField': '_id',
+            'as': localField,
+          }
+        });
+        pipeline.add({r'$unwind': localField});
+      }
+      pipeline.add({r'$project': projDoc});
+
+      final docs = await coll.aggregateToStream(pipeline).toList();
+      if (docs.isEmpty) return null;
+      return User.fromJson(docs.first.withRefs());
+    }
+
+    // fallback: return entire document
+    final doc = await coll.findOne(where.eq(r'_id', id));
     return doc == null ? null : User.fromJson(doc.withRefs());
   }
 
   /// Type-safe findOne by predicate
   static Future<User?> findOne(
-    Expression Function(QUser u)? predicate,
-  ) async {
+    Expression Function(QUser u)? predicate, {
+    List<BaseProjections> projections = const [],
+  }) async {
+    final db = await MongoConnection.getDb();
+    final coll = db.collection(_collection);
+
     if (predicate == null) {
-      final docs = await (await MongoConnection.getDb())
-          .collection(_collection)
-          .modernFindOne(sort: {'created_at': -1});
+      final docs = await coll.modernFindOne(sort: {'created_at': -1});
       if (docs == null) return null;
       return User.fromJson(docs.withRefs());
     }
     final selectorBuilder = predicate(QUser()).toSelectorBuilder();
     final selectorMap = selectorBuilder.map.flatQuery();
 
-    final allKeys = <String>{};
-    collectKeys(selectorMap, allKeys);
-    final roots = allKeys
-        .where((k) => k.contains('.'))
-        .map((k) => k.split('.').first)
-        .toSet();
-
-    if (roots.isNotEmpty) {
-      var builder = AggregationPipelineBuilder();
-      for (final root in roots) {
-        if (!_nestedCollections.containsKey(root)) {
-          continue;
+    if (projections.isNotEmpty) {
+      final pipeline = <Map<String, Object>>[];
+      final projDoc = <String, int>{};
+      pipeline.add({r"$match": selectorMap});
+      for (var p in projections) {
+        final projectedFields = p.fields;
+        final allProjections = p.toProjection();
+        final localField = allProjections.keys.first.split(".").first;
+        final foreignColl = _nestedCollections[localField];
+        if (projectedFields != null && projectedFields.isNotEmpty) {
+          final selected = <String, int>{};
+          for (var f in projectedFields) {
+            final path = p.fieldMappings[(f as Enum).name]!;
+            selected[path] = 1;
+          }
+          projDoc.addAll(selected);
+        } else {
+          projDoc.addAll(allProjections);
         }
-        final foreignColl = _nestedCollections[root]!;
-        builder = builder
-            .addStage(Lookup(
-                from: foreignColl,
-                localField: root,
-                foreignField: '_id',
-                as: root))
-            .addStage(Unwind(Field(root)));
+        pipeline.add({
+          r'$lookup': {
+            'from': foreignColl,
+            'localField': localField,
+            'foreignField': '_id',
+            'as': localField,
+          }
+        });
+        pipeline.add({r'$unwind': localField});
       }
-      builder = builder.addStage(Match(selectorMap));
-      final stream = (await MongoConnection.getDb())
-          .collection(_collection)
-          .modernAggregate(builder.build());
-      final doc = await stream.first;
-      return User.fromJson(doc.withRefs());
+      pipeline.add({r'$project': projDoc});
+
+      final docs = await coll.aggregateToStream(pipeline).toList();
+      if (docs.isEmpty) return null;
+      return User.fromJson(docs.first.withRefs());
     }
 
     // fallback to simple findOne
-    final doc = await (await MongoConnection.getDb())
-        .collection(_collection)
-        .findOne(selectorMap);
+    final doc = await coll.findOne(selectorMap);
     return doc == null ? null : User.fromJson(doc);
   }
 
@@ -193,7 +241,11 @@ class Users {
     int? age,
     DateTime? createdAt,
     DateTime? updatedAt,
+    List<BaseProjections> projections = const [],
   }) async {
+    final db = await MongoConnection.getDb();
+    final coll = db.collection(_collection);
+
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
     if (firstName != null) selector['first_name'] = firstName;
@@ -203,15 +255,46 @@ class Users {
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
-      final doc = await (await MongoConnection.getDb())
-          .collection(_collection)
-          .modernFindOne(sort: {'created_at': -1});
+      final doc = await coll.modernFindOne(sort: {'created_at': -1});
       if (doc == null) return null;
       return User.fromJson(doc.withRefs());
     }
-    final doc = await (await MongoConnection.getDb())
-        .collection(_collection)
-        .findOne(selector);
+    if (projections.isNotEmpty) {
+      final pipeline = <Map<String, Object>>[];
+      final projDoc = <String, int>{};
+      pipeline.add({r"$match": selector});
+      for (var p in projections) {
+        final projectedFields = p.fields;
+        final allProjections = p.toProjection();
+        final localField = allProjections.keys.first.split(".").first;
+        final foreignColl = _nestedCollections[localField];
+        if (projectedFields != null && projectedFields.isNotEmpty) {
+          final selected = <String, int>{};
+          for (var f in projectedFields) {
+            final path = p.fieldMappings[(f as Enum).name]!;
+            selected[path] = 1;
+          }
+          projDoc.addAll(selected);
+        } else {
+          projDoc.addAll(allProjections);
+        }
+        pipeline.add({
+          r'$lookup': {
+            'from': foreignColl,
+            'localField': localField,
+            'foreignField': '_id',
+            'as': localField,
+          }
+        });
+        pipeline.add({r'$unwind': localField});
+      }
+      pipeline.add({r'$project': projDoc});
+
+      final docs = await coll.aggregateToStream(pipeline).toList();
+      if (docs.isEmpty) return null;
+      return User.fromJson(docs.first.withRefs());
+    }
+    final doc = await coll.findOne(selector);
     return doc == null ? null : User.fromJson(doc.withRefs());
   }
 
@@ -220,45 +303,51 @@ class Users {
     Expression Function(QUser u) predicate, {
     int? skip,
     int? limit,
-    List<BaseProjections>? project,
+    List<BaseProjections> projections = const [],
   }) async {
+    final db = await MongoConnection.getDb();
+    final coll = db.collection(_collection);
+
     var selectorBuilder = predicate(QUser()).toSelectorBuilder();
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
     if (limit != null) selectorBuilder = selectorBuilder.limit(limit);
     final selectorMap = selectorBuilder.map.flatQuery();
 
-    final allKeys = <String>{};
-    collectKeys(selectorMap, allKeys);
-    final roots = allKeys
-        .where((k) => k.contains('.'))
-        .map((k) => k.split('.').first)
-        .toSet();
-
-    if (roots.isNotEmpty) {
-      var builder = AggregationPipelineBuilder();
-      for (final root in roots) {
-        if (!_nestedCollections.containsKey(root)) continue;
-        builder = builder
-            .addStage(Lookup(
-              from: _nestedCollections[root]!,
-              localField: root,
-              foreignField: '_id',
-              as: root,
-            ))
-            .addStage(Unwind(Field(root)));
+    if (projections.isNotEmpty) {
+      final pipeline = <Map<String, Object>>[];
+      final projDoc = <String, int>{};
+      pipeline.add({r"$match": selectorMap});
+      for (var p in projections) {
+        final projectedFields = p.fields;
+        final allProjections = p.toProjection();
+        final localField = allProjections.keys.first.split(".").first;
+        final foreignColl = _nestedCollections[localField];
+        if (projectedFields != null && projectedFields.isNotEmpty) {
+          final selected = <String, int>{};
+          for (var f in projectedFields) {
+            final path = p.fieldMappings[(f as Enum).name]!;
+            selected[path] = 1;
+          }
+          projDoc.addAll(selected);
+        } else {
+          projDoc.addAll(allProjections);
+        }
+        pipeline.add({
+          r'$lookup': {
+            'from': foreignColl,
+            'localField': localField,
+            'foreignField': '_id',
+            'as': localField,
+          }
+        });
+        pipeline.add({r'$unwind': localField});
       }
-      builder = builder.addStage(Match(selectorMap));
+      pipeline.add({r'$project': projDoc});
 
-      if (skip != null) builder = builder.addStage(Skip(skip));
-      if (limit != null) builder = builder.addStage(Limit(limit));
-
-      final docs = await (await MongoConnection.getDb())
-          .collection(_collection)
-          .modernAggregate(builder.build())
-          .toList();
-      return docs.map((e) => User.fromJson(e)).toList();
+      final docs = await coll.aggregateToStream(pipeline).toList();
+      if (docs.isEmpty) return [];
+      return docs.map((d) => User.fromJson(d.withRefs())).toList();
     }
-
     final docs = await (await MongoConnection.getDb())
         .collection(_collection)
         .find(selectorMap)
@@ -275,10 +364,14 @@ class Users {
     int? age,
     DateTime? createdAt,
     DateTime? updatedAt,
+    List<BaseProjections> projections = const [],
     Map<String, Object> sort = const {},
     int? skip,
     int limit = 10,
   }) async {
+    final db = await MongoConnection.getDb();
+    final coll = db.collection(_collection);
+
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
     if (firstName != null) selector['first_name'] = firstName;
@@ -288,15 +381,47 @@ class Users {
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
-      final docs = await (await MongoConnection.getDb())
-          .collection(_collection)
-          .modernFind(
-              sort: {'created_at': -1}, limit: limit, skip: skip).toList();
+      final docs = await coll.modernFind(
+          sort: {'created_at': -1}, limit: limit, skip: skip).toList();
       if (docs.isEmpty) return [];
       return docs.map((e) => User.fromJson(e.withRefs())).toList();
     }
-    final docs = await (await MongoConnection.getDb())
-        .collection(_collection)
+    if (projections.isNotEmpty) {
+      final pipeline = <Map<String, Object>>[];
+      final projDoc = <String, int>{};
+      pipeline.add({r"$match": selector});
+      for (var p in projections) {
+        final projectedFields = p.fields;
+        final allProjections = p.toProjection();
+        final localField = allProjections.keys.first.split(".").first;
+        final foreignColl = _nestedCollections[localField];
+        if (projectedFields != null && projectedFields.isNotEmpty) {
+          final selected = <String, int>{};
+          for (var f in projectedFields) {
+            final path = p.fieldMappings[(f as Enum).name]!;
+            selected[path] = 1;
+          }
+          projDoc.addAll(selected);
+        } else {
+          projDoc.addAll(allProjections);
+        }
+        pipeline.add({
+          r'$lookup': {
+            'from': foreignColl,
+            'localField': localField,
+            'foreignField': '_id',
+            'as': localField,
+          }
+        });
+        pipeline.add({r'$unwind': localField});
+      }
+      pipeline.add({r'$project': projDoc});
+
+      final docs = await coll.aggregateToStream(pipeline).toList();
+      if (docs.isEmpty) return [];
+      return docs.map((d) => User.fromJson(d.withRefs())).toList();
+    }
+    final docs = await coll
         .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
         .toList();
     return docs.map((e) => User.fromJson(e.withRefs())).toList();

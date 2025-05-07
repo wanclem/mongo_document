@@ -10,6 +10,9 @@ Future<void> main() async {
   /// All generated .save(), .findOne(), .findMany(), etc. will reuse this.
   await MongoConnection.init(mongoUri);
 
-  List<Post> posts = await Posts.findManyByNamed();
-  print(posts);
+  Post? post = await Posts.findById("", projections: [
+    AuthorProjections([AuthorFields.age]),
+    LastCommentProjections([LastCommentFields.text]),
+  ]);
+  print(post);
 }

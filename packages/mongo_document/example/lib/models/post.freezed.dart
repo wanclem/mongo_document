@@ -19,6 +19,7 @@ mixin _$Post {
   @JsonKey(name: '_id')
   ObjectId? get id;
   User? get author;
+  Comment? get lastComment;
   List<String> get tags;
   String? get body;
   @DateTimeConverter()
@@ -43,6 +44,8 @@ mixin _$Post {
             other is Post &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.author, author) || other.author == author) &&
+            (identical(other.lastComment, lastComment) ||
+                other.lastComment == lastComment) &&
             const DeepCollectionEquality().equals(other.tags, tags) &&
             (identical(other.body, body) || other.body == body) &&
             (identical(other.createdAt, createdAt) ||
@@ -53,12 +56,12 @@ mixin _$Post {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, author,
+  int get hashCode => Object.hash(runtimeType, id, author, lastComment,
       const DeepCollectionEquality().hash(tags), body, createdAt, updatedAt);
 
   @override
   String toString() {
-    return 'Post(id: $id, author: $author, tags: $tags, body: $body, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'Post(id: $id, author: $author, lastComment: $lastComment, tags: $tags, body: $body, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 }
 
@@ -70,12 +73,14 @@ abstract mixin class $PostCopyWith<$Res> {
   $Res call(
       {@ObjectIdConverter() @JsonKey(name: '_id') ObjectId? id,
       User? author,
+      Comment? lastComment,
       List<String> tags,
       String? body,
       @DateTimeConverter() DateTime? createdAt,
       @DateTimeConverter() DateTime? updatedAt});
 
   $UserCopyWith<$Res>? get author;
+  $CommentCopyWith<$Res>? get lastComment;
 }
 
 /// @nodoc
@@ -92,6 +97,7 @@ class _$PostCopyWithImpl<$Res> implements $PostCopyWith<$Res> {
   $Res call({
     Object? id = freezed,
     Object? author = freezed,
+    Object? lastComment = freezed,
     Object? tags = null,
     Object? body = freezed,
     Object? createdAt = freezed,
@@ -106,6 +112,10 @@ class _$PostCopyWithImpl<$Res> implements $PostCopyWith<$Res> {
           ? _self.author
           : author // ignore: cast_nullable_to_non_nullable
               as User?,
+      lastComment: freezed == lastComment
+          ? _self.lastComment
+          : lastComment // ignore: cast_nullable_to_non_nullable
+              as Comment?,
       tags: null == tags
           ? _self.tags
           : tags // ignore: cast_nullable_to_non_nullable
@@ -138,6 +148,20 @@ class _$PostCopyWithImpl<$Res> implements $PostCopyWith<$Res> {
       return _then(_self.copyWith(author: value));
     });
   }
+
+  /// Create a copy of Post
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $CommentCopyWith<$Res>? get lastComment {
+    if (_self.lastComment == null) {
+      return null;
+    }
+
+    return $CommentCopyWith<$Res>(_self.lastComment!, (value) {
+      return _then(_self.copyWith(lastComment: value));
+    });
+  }
 }
 
 /// @nodoc
@@ -147,6 +171,7 @@ class _Post implements Post {
   const _Post(
       {@ObjectIdConverter() @JsonKey(name: '_id') this.id,
       this.author,
+      this.lastComment,
       final List<String> tags = const [],
       this.body,
       @DateTimeConverter() this.createdAt,
@@ -160,6 +185,8 @@ class _Post implements Post {
   final ObjectId? id;
   @override
   final User? author;
+  @override
+  final Comment? lastComment;
   final List<String> _tags;
   @override
   @JsonKey()
@@ -200,6 +227,8 @@ class _Post implements Post {
             other is _Post &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.author, author) || other.author == author) &&
+            (identical(other.lastComment, lastComment) ||
+                other.lastComment == lastComment) &&
             const DeepCollectionEquality().equals(other._tags, _tags) &&
             (identical(other.body, body) || other.body == body) &&
             (identical(other.createdAt, createdAt) ||
@@ -210,12 +239,12 @@ class _Post implements Post {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, author,
+  int get hashCode => Object.hash(runtimeType, id, author, lastComment,
       const DeepCollectionEquality().hash(_tags), body, createdAt, updatedAt);
 
   @override
   String toString() {
-    return 'Post(id: $id, author: $author, tags: $tags, body: $body, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'Post(id: $id, author: $author, lastComment: $lastComment, tags: $tags, body: $body, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 }
 
@@ -228,6 +257,7 @@ abstract mixin class _$PostCopyWith<$Res> implements $PostCopyWith<$Res> {
   $Res call(
       {@ObjectIdConverter() @JsonKey(name: '_id') ObjectId? id,
       User? author,
+      Comment? lastComment,
       List<String> tags,
       String? body,
       @DateTimeConverter() DateTime? createdAt,
@@ -235,6 +265,8 @@ abstract mixin class _$PostCopyWith<$Res> implements $PostCopyWith<$Res> {
 
   @override
   $UserCopyWith<$Res>? get author;
+  @override
+  $CommentCopyWith<$Res>? get lastComment;
 }
 
 /// @nodoc
@@ -251,6 +283,7 @@ class __$PostCopyWithImpl<$Res> implements _$PostCopyWith<$Res> {
   $Res call({
     Object? id = freezed,
     Object? author = freezed,
+    Object? lastComment = freezed,
     Object? tags = null,
     Object? body = freezed,
     Object? createdAt = freezed,
@@ -265,6 +298,10 @@ class __$PostCopyWithImpl<$Res> implements _$PostCopyWith<$Res> {
           ? _self.author
           : author // ignore: cast_nullable_to_non_nullable
               as User?,
+      lastComment: freezed == lastComment
+          ? _self.lastComment
+          : lastComment // ignore: cast_nullable_to_non_nullable
+              as Comment?,
       tags: null == tags
           ? _self._tags
           : tags // ignore: cast_nullable_to_non_nullable
@@ -295,6 +332,20 @@ class __$PostCopyWithImpl<$Res> implements _$PostCopyWith<$Res> {
 
     return $UserCopyWith<$Res>(_self.author!, (value) {
       return _then(_self.copyWith(author: value));
+    });
+  }
+
+  /// Create a copy of Post
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $CommentCopyWith<$Res>? get lastComment {
+    if (_self.lastComment == null) {
+      return null;
+    }
+
+    return $CommentCopyWith<$Res>(_self.lastComment!, (value) {
+      return _then(_self.copyWith(lastComment: value));
     });
   }
 }

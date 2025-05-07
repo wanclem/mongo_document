@@ -11,6 +11,9 @@ _Post _$PostFromJson(Map<String, dynamic> json) => _Post(
       author: json['author'] == null
           ? null
           : User.fromJson(json['author'] as Map<String, dynamic>),
+      lastComment: json['last_comment'] == null
+          ? null
+          : Comment.fromJson(json['last_comment'] as Map<String, dynamic>),
       tags:
           (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
               const [],
@@ -22,6 +25,7 @@ _Post _$PostFromJson(Map<String, dynamic> json) => _Post(
 Map<String, dynamic> _$PostToJson(_Post instance) => <String, dynamic>{
       '_id': const ObjectIdConverter().toJson(instance.id),
       'author': instance.author?.toJson(),
+      'last_comment': instance.lastComment?.toJson(),
       'tags': instance.tags,
       'body': instance.body,
       'created_at': const DateTimeConverter().toJson(instance.createdAt),

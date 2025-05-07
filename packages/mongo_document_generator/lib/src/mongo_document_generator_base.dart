@@ -25,6 +25,19 @@ class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
     }).join('\n');
   }
 
+  String _buildFindByFieldParams(
+    List<ParameterElement> params,
+    FieldRename? fieldRename,
+  ) {
+    return params.map((p) {
+      final dartType = p.type.getDisplayString();
+      final needsQuestion =
+          p.type.nullabilitySuffix != NullabilitySuffix.question;
+      final typeWithNull = needsQuestion ? '$dartType?' : dartType;
+      return '    $typeWithNull ${p.name},';
+    }).join('\n');
+  }
+
   @override
   Future<String> generateForAnnotatedElement(
     Element element,
@@ -150,124 +163,150 @@ class ${className}s {
         .toList();
   }
 
-  /// Type-safe findById
-  static Future<$className?> findById(dynamic id) async {
+  /// Type‑safe findById with optional nested‑doc projections
+  static Future<$className?> findById(
+    dynamic id, {
+    List<BaseProjections> projections=const [],
+  }) async {
     if (id == null) return null;
-    if (id is String) {
-      id = ObjectId.fromHexString(id);
-    }
+    if (id is String) id = ObjectId.fromHexString(id);
     if (id is! ObjectId) {
       throw ArgumentError('Invalid id type: \${id.runtimeType}');
     }
-    final doc = await (await MongoConnection.getDb())
-        .collection(_collection)
-        .findOne(where.eq(r'_id', id));
+
+    final db = await MongoConnection.getDb();
+    final coll = db.collection(_collection);
+
+    if (projections.isNotEmpty) {
+       ${buildProjectionFlowTemplate('''{
+          r"\$match": {'_id': id}
+        }''')}
+      final docs = await coll.aggregateToStream(pipeline).toList();
+      if (docs.isEmpty) return null;
+      return $className.fromJson(docs.first.withRefs());
+    }
+
+    // fallback: return entire document
+    final doc = await coll.findOne(where.eq(r'_id', id));
     return doc == null ? null : $className.fromJson(doc.withRefs());
   }
 
-  /// Type-safe findOne
+  /// Type-safe findOne by predicate
   static Future<$className?> findOne(
-   [Expression Function(Q$className ${className[0].toLowerCase()})? predicate]
+  Expression Function(Q$className ${className[0].toLowerCase()})? predicate,
+  {List<BaseProjections> projections=const [],}
   ) async {
+
+    final db = await MongoConnection.getDb();
+    final coll = db.collection(_collection);
+
     if (predicate == null) {
-      final docs = await (await MongoConnection.getDb())
-          .collection(_collection)
-          .modernFindOne(sort: {'created_at': -1});
+      final docs = await coll.modernFindOne(sort: {'created_at': -1});
       if (docs == null) return null;
       return $className.fromJson(docs.withRefs());
     }
     final selectorBuilder = predicate(Q$className()).toSelectorBuilder();
     final selectorMap = selectorBuilder.map.flatQuery();
 
-    final allKeys = <String>{};
-      collectKeys(selectorMap, allKeys);
-      final roots =
-          allKeys
-              .where((k) => k.contains('.'))
-              .map((k) => k.split('.').first)
-              .toSet();
-
-    if (roots.isNotEmpty) {
-      var builder = AggregationPipelineBuilder();
-      for (final root in roots) {
-        if (!_nestedCollections.containsKey(root)) {
-            continue;
-        }
-        final foreignColl = _nestedCollections[root]!;
-        builder = builder
-          .addStage(Lookup(from: foreignColl,
-                           localField: root,
-                           foreignField: '_id',
-                           as: root))
-          .addStage(Unwind(Field(root)));
-      }
-      builder = builder.addStage(Match(selectorMap));
-      final stream = (await MongoConnection.getDb())
-          .collection(_collection)
-          .modernAggregate(builder.build());
-      final doc = await stream.first;  
-      return $className.fromJson(doc.withRefs());
+    if (projections.isNotEmpty) {
+       ${buildProjectionFlowTemplate('''{
+          r"\$match": selectorMap
+        }''')}
+      final docs = await coll.aggregateToStream(pipeline).toList();
+      if (docs.isEmpty) return null;
+      return $className.fromJson(docs.first.withRefs());
     }
-  
-    // fallback to simple findOne
-    final doc = await (await MongoConnection.getDb())
-        .collection(_collection)
-        .findOne(selectorMap);
-    return doc == null ? null : $className.fromJson(doc);
 
+    // fallback to simple findOne
+    final doc = await coll.findOne(selectorMap);
+    return doc == null ? null : $className.fromJson(doc);
   }
 
-  /// Type‑safe findMany
+  /// Type-safe findOne by named arguments
+  static Future<$className?> findOneByNamed({${_buildFindByFieldParams(params, fieldRename)}List<BaseProjections> projections=const [],})async{
+    final db = await MongoConnection.getDb();
+    final coll = db.collection(_collection);
+
+    final selector = <String, dynamic>{};
+    ${params.map((p) {
+      final paramName = p.name;
+      final key = getParameterKey(_jsonKeyChecker, p, fieldRename);
+      return '''if ($paramName != null) selector['$key'] = $paramName;''';
+    }).join('\n')}
+    if (selector.isEmpty) {
+      final doc = await coll.modernFindOne(sort: {'created_at': -1});
+      if (doc == null) return null;
+      return $className.fromJson(doc.withRefs());
+    }
+    if (projections.isNotEmpty) {
+       ${buildProjectionFlowTemplate('''{
+          r"\$match": selector
+        }''')}
+      final docs = await coll.aggregateToStream(pipeline).toList();
+      if (docs.isEmpty) return null;
+      return $className.fromJson(docs.first.withRefs());
+    }
+    final doc = await coll.findOne(selector);
+    return doc == null ? null : $className.fromJson(doc.withRefs());
+  }
+
+  /// Type‑safe findMany by predicate
   static Future<List<$className>> findMany(
     Expression Function(Q$className ${className[0].toLowerCase()}) predicate, {
     int? skip, int? limit,
-    List<BaseProjections>? project,
+    List<BaseProjections> projections=const [],
   }) async {
+    final db = await MongoConnection.getDb();
+    final coll = db.collection(_collection);
 
     var selectorBuilder = predicate(Q$className()).toSelectorBuilder();
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
     if (limit != null) selectorBuilder = selectorBuilder.limit(limit);
     final selectorMap = selectorBuilder.map.flatQuery();
-  
-    final allKeys = <String>{};
-    collectKeys(selectorMap, allKeys);
-    final roots = allKeys
-        .where((k) => k.contains('.'))
-        .map((k) => k.split('.').first)
-        .toSet();
-  
-    if (roots.isNotEmpty) {
-      var builder = AggregationPipelineBuilder();
-      for (final root in roots) {
-        if (!_nestedCollections.containsKey(root)) continue;
-        builder = builder
-          .addStage(Lookup(
-            from: _nestedCollections[root]!,
-            localField: root,
-            foreignField: '_id',
-            as: root,
-          ))
-          .addStage(Unwind(Field(root)));
-      }
-      builder = builder.addStage(Match(selectorMap));
-    
-      if (skip != null) builder = builder.addStage(Skip(skip));
-      if (limit != null) builder = builder.addStage(Limit(limit));
 
-      final docs = await (await MongoConnection.getDb())
-          .collection(_collection)
-          .modernAggregate(builder.build())
-          .toList();
-      return docs.map((e) => $className.fromJson(e)).toList();
+    if (projections.isNotEmpty) {
+       ${buildProjectionFlowTemplate('''{
+          r"\$match": selectorMap
+        }''')}
+      final docs = await coll.aggregateToStream(pipeline).toList();
+      if (docs.isEmpty) return [];
+      return docs.map((d)=>$className.fromJson(d.withRefs())).toList();
     }
-  
     final docs = await (await MongoConnection.getDb())
       .collection(_collection)
       .find(selectorMap).toList();
-    return docs.map((e) => $className.fromJson(e)).toList();
+    return docs.map((e) => $className.fromJson(e.withRefs())).toList();
  }
 
-  /// Type-safe deleteOne
+  /// Type-safe findMany by named arguments
+  static Future<List<$className>> findManyByNamed({${_buildFindByFieldParams(params, fieldRename)}    List<BaseProjections> projections=const [],Map<String,Object>sort=const{},int? skip,int limit=10,})async{
+    final db = await MongoConnection.getDb();
+    final coll = db.collection(_collection);
+
+    final selector = <String, dynamic>{};
+    ${params.map((p) {
+      final paramName = p.name;
+      final key = getParameterKey(_jsonKeyChecker, p, fieldRename);
+      return '''if ($paramName != null) selector['$key'] = $paramName;''';
+    }).join('\n')}
+    if (selector.isEmpty) {
+      final docs = await coll.modernFind(sort: {'created_at': -1},limit:limit,skip:skip).toList();
+      if (docs.isEmpty) return [];
+     return docs.map((e) => $className.fromJson(e.withRefs())).toList();
+    }
+    if (projections.isNotEmpty) {
+       ${buildProjectionFlowTemplate('''{
+          r"\$match": selector
+        }''')}
+      final docs = await coll.aggregateToStream(pipeline).toList();
+      if (docs.isEmpty) return [];
+      return docs.map((d)=>$className.fromJson(d.withRefs())).toList();
+    }
+    final docs = await coll.modernFind(filter:selector,limit:limit,skip:skip,sort:sort).toList();
+    return docs.map((e) => $className.fromJson(e.withRefs())).toList();
+  }
+
+  /// Type-safe deleteOne by predicate
   static Future<bool> deleteOne(
     Expression Function(Q$className ${className[0].toLowerCase()}) predicate
   ) async {
@@ -276,6 +315,23 @@ class ${className}s {
     final result = await (await MongoConnection.getDb())
       .collection(_collection)
       .deleteOne(selector.map.flatQuery());
+    return result.isSuccess;
+  }
+
+  /// Type-safe deleteOne by named arguments
+  static Future<bool> deleteOneByNamed(
+  {${_buildFindByFieldParams(params, fieldRename)}}
+  ) async {
+  final selector = <String, dynamic>{};
+  ${params.map((p) {
+      final paramName = p.name;
+      final key = getParameterKey(_jsonKeyChecker, p, fieldRename);
+      return '''if ($paramName != null) selector['$key'] = $paramName;''';
+    }).join('\n')}
+    if (selector.isEmpty) return false;
+    final result = await (await MongoConnection.getDb())
+      .collection(_collection)
+      .deleteOne(selector);
     return result.isSuccess;
   }
   

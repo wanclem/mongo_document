@@ -39,12 +39,19 @@ extension CleanQuery on Map<String, dynamic> {
   }
 }
 
-mixin ExistMixin {
+mixin MoreExMixin {
   String get _key;
 
-  /// Common exists implementation
   Expression exists([bool doesExist = true]) => _RawExpression({
         _key: {r'$exists': doesExist}
+      });
+
+  Expression nin(dynamic value) => _RawExpression({
+        _key: {r'$nin': value}
+      });
+
+  Expression containsAll(dynamic value) => _RawExpression({
+        _key: {r'$all': value}
       });
 }
 
@@ -192,7 +199,7 @@ class Logical implements Expression {
   }
 }
 
-class QueryField<T> with ExistMixin {
+class QueryField<T> with MoreExMixin {
   final String name;
 
   QueryField(this.name);
@@ -217,10 +224,6 @@ class QueryField<T> with ExistMixin {
   Expression endsWith(String v) => MethodCall(name, 'endsWith', v);
 
   Expression contains(String v) => MethodCall(name, 'contains', v);
-
-  Expression exists([bool doesExist = true]) => _RawExpression({
-        name: {r'$exists': doesExist}
-      });
 }
 
 void collectKeys(dynamic node, Set<String> out) {
@@ -236,7 +239,7 @@ void collectKeys(dynamic node, Set<String> out) {
   }
 }
 
-class QMap<T> with ExistMixin {
+class QMap<T> with MoreExMixin {
   final String _prefix;
 
   QMap(this._prefix);
@@ -249,7 +252,7 @@ class QMap<T> with ExistMixin {
   QueryField<T> operator [](String k) => key<T>(k);
 }
 
-class QList<T> with ExistMixin {
+class QList<T> with MoreExMixin {
   final String _prefix;
 
   QList(this._prefix);
@@ -288,7 +291,8 @@ class _RawExpression implements Expression {
 }
 
 /// Marker interface for all projections
-abstract class BaseProjections {
-  /// Return a map of "path":1 entries (or empty to include all)
-  Map<String, int>? toProjection();
+abstract class BaseProjections<E> {
+  List<E>? get fields;
+  Map<String, dynamic> get fieldMappings;
+  Map<String, int> toProjection();
 }

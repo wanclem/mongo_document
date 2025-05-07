@@ -3,92 +3,58 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // Author: Wan Clem <wannclem@gmail.com>
 
-part of 'post.dart';
+part of 'comment.dart';
 
 // **************************************************************************
 // MongoDocumentGenerator
 // **************************************************************************
 
-enum AuthorFields { id, firstName, lastName, email, age, createdAt, updatedAt }
+enum PostFields { id, author, lastComment, tags, body, createdAt, updatedAt }
 
-class AuthorProjections implements BaseProjections {
+class PostProjections implements BaseProjections {
   @override
-  final List<AuthorFields>? fields;
+  final List<PostFields>? fields;
   @override
   final Map<String, dynamic> fieldMappings = const {
-    "id": "author._id",
-    "firstName": "author.first_name",
-    "lastName": "author.last_name",
-    "email": "author.email",
-    "age": "author.age",
-    "createdAt": "author.created_at",
-    "updatedAt": "author.updated_at"
+    "id": "post._id",
+    "author": "post.author",
+    "lastComment": "post.last_comment",
+    "tags": "post.tags",
+    "body": "post.body",
+    "createdAt": "post.created_at",
+    "updatedAt": "post.updated_at"
   };
-  const AuthorProjections([this.fields]);
+  const PostProjections([this.fields]);
 
   @override
   Map<String, int> toProjection() {
     return {
-      'author._id': 1,
-      'author.first_name': 1,
-      'author.last_name': 1,
-      'author.email': 1,
-      'author.age': 1,
-      'author.created_at': 1,
-      'author.updated_at': 1
+      'post._id': 1,
+      'post.author': 1,
+      'post.last_comment': 1,
+      'post.tags': 1,
+      'post.body': 1,
+      'post.created_at': 1,
+      'post.updated_at': 1
     };
   }
 }
 
-enum LastCommentFields { id, post, text, age, createdAt, updatedAt }
+const _nestedCollections = <String, String>{'post': 'posts'};
 
-class LastCommentProjections implements BaseProjections {
-  @override
-  final List<LastCommentFields>? fields;
-  @override
-  final Map<String, dynamic> fieldMappings = const {
-    "id": "lastComment._id",
-    "post": "lastComment.post",
-    "text": "lastComment.text",
-    "age": "lastComment.age",
-    "createdAt": "lastComment.created_at",
-    "updatedAt": "lastComment.updated_at"
-  };
-  const LastCommentProjections([this.fields]);
-
-  @override
-  Map<String, int> toProjection() {
-    return {
-      'lastComment._id': 1,
-      'lastComment.post': 1,
-      'lastComment.text': 1,
-      'lastComment.age': 1,
-      'lastComment.created_at': 1,
-      'lastComment.updated_at': 1
-    };
-  }
-}
-
-const _nestedCollections = <String, String>{
-  'author': 'users',
-  'lastComment': 'comments'
-};
-
-class QPost {
+class QComment {
   final String _prefix;
-  QPost([this._prefix = '']);
+  QComment([this._prefix = '']);
 
   String _key(String field) => _prefix.isEmpty ? field : '$_prefix.$field';
 
   QueryField<ObjectId?> get id => QueryField<ObjectId?>(_key('_id'));
 
-  QUser get author => QUser(_key('author'));
+  QPost get post => QPost(_key('post'));
 
-  QComment get lastComment => QComment(_key('last_comment'));
+  QueryField<String?> get text => QueryField<String?>(_key('text'));
 
-  QList<String> get tags => QList<String>(_key('tags'));
-
-  QueryField<String?> get body => QueryField<String?>(_key('body'));
+  QueryField<int> get age => QueryField<int>(_key('age'));
 
   QueryField<DateTime?> get createdAt =>
       QueryField<DateTime?>(_key('created_at'));
@@ -97,10 +63,10 @@ class QPost {
       QueryField<DateTime?>(_key('updated_at'));
 }
 
-extension $PostExtension on Post {
-  static String get _collection => 'posts';
+extension $CommentExtension on Comment {
+  static String get _collection => 'comments';
 
-  Future<Post?> save() async {
+  Future<Comment?> save() async {
     final db = await MongoConnection.getDb();
     final coll = db.collection(_collection);
     final now = DateTime.now().toUtc();
@@ -162,14 +128,14 @@ extension $PostExtension on Post {
   }
 }
 
-class Posts {
-  static String get _collection => 'posts';
+class Comments {
+  static String get _collection => 'comments';
 
   /// Type‑safe insertMany
-  static Future<List<Post?>> insertMany(
-    List<Post> docs,
+  static Future<List<Comment?>> insertMany(
+    List<Comment> docs,
   ) async {
-    if (docs.isEmpty) return <Post>[];
+    if (docs.isEmpty) return <Comment>[];
     final raw = docs.map((d) => d.toJson()..remove('_id')).toList();
     final coll = (await MongoConnection.getDb()).collection(_collection);
     final result = await coll.insertMany(raw);
@@ -182,7 +148,7 @@ class Posts {
   }
 
   /// Type‑safe findById with optional nested‑doc projections
-  static Future<Post?> findById(
+  static Future<Comment?> findById(
     dynamic id, {
     List<BaseProjections> projections = const [],
   }) async {
@@ -230,17 +196,17 @@ class Posts {
 
       final docs = await coll.aggregateToStream(pipeline).toList();
       if (docs.isEmpty) return null;
-      return Post.fromJson(docs.first.withRefs());
+      return Comment.fromJson(docs.first.withRefs());
     }
 
     // fallback: return entire document
     final doc = await coll.findOne(where.eq(r'_id', id));
-    return doc == null ? null : Post.fromJson(doc.withRefs());
+    return doc == null ? null : Comment.fromJson(doc.withRefs());
   }
 
   /// Type-safe findOne by predicate
-  static Future<Post?> findOne(
-    Expression Function(QPost p)? predicate, {
+  static Future<Comment?> findOne(
+    Expression Function(QComment c)? predicate, {
     List<BaseProjections> projections = const [],
   }) async {
     final db = await MongoConnection.getDb();
@@ -249,9 +215,9 @@ class Posts {
     if (predicate == null) {
       final docs = await coll.modernFindOne(sort: {'created_at': -1});
       if (docs == null) return null;
-      return Post.fromJson(docs.withRefs());
+      return Comment.fromJson(docs.withRefs());
     }
-    final selectorBuilder = predicate(QPost()).toSelectorBuilder();
+    final selectorBuilder = predicate(QComment()).toSelectorBuilder();
     final selectorMap = selectorBuilder.map.flatQuery();
 
     if (projections.isNotEmpty) {
@@ -287,21 +253,20 @@ class Posts {
 
       final docs = await coll.aggregateToStream(pipeline).toList();
       if (docs.isEmpty) return null;
-      return Post.fromJson(docs.first.withRefs());
+      return Comment.fromJson(docs.first.withRefs());
     }
 
     // fallback to simple findOne
     final doc = await coll.findOne(selectorMap);
-    return doc == null ? null : Post.fromJson(doc);
+    return doc == null ? null : Comment.fromJson(doc);
   }
 
   /// Type-safe findOne by named arguments
-  static Future<Post?> findOneByNamed({
+  static Future<Comment?> findOneByNamed({
     ObjectId? id,
-    User? author,
-    Comment? lastComment,
-    List<String>? tags,
-    String? body,
+    Post? post,
+    String? text,
+    int? age,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<BaseProjections> projections = const [],
@@ -311,16 +276,15 @@ class Posts {
 
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
-    if (author != null) selector['author'] = author;
-    if (lastComment != null) selector['last_comment'] = lastComment;
-    if (tags != null) selector['tags'] = tags;
-    if (body != null) selector['body'] = body;
+    if (post != null) selector['post'] = post;
+    if (text != null) selector['text'] = text;
+    if (age != null) selector['age'] = age;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
       final doc = await coll.modernFindOne(sort: {'created_at': -1});
       if (doc == null) return null;
-      return Post.fromJson(doc.withRefs());
+      return Comment.fromJson(doc.withRefs());
     }
     if (projections.isNotEmpty) {
       final pipeline = <Map<String, Object>>[];
@@ -355,15 +319,15 @@ class Posts {
 
       final docs = await coll.aggregateToStream(pipeline).toList();
       if (docs.isEmpty) return null;
-      return Post.fromJson(docs.first.withRefs());
+      return Comment.fromJson(docs.first.withRefs());
     }
     final doc = await coll.findOne(selector);
-    return doc == null ? null : Post.fromJson(doc.withRefs());
+    return doc == null ? null : Comment.fromJson(doc.withRefs());
   }
 
   /// Type‑safe findMany by predicate
-  static Future<List<Post>> findMany(
-    Expression Function(QPost p) predicate, {
+  static Future<List<Comment>> findMany(
+    Expression Function(QComment c) predicate, {
     int? skip,
     int? limit,
     List<BaseProjections> projections = const [],
@@ -371,7 +335,7 @@ class Posts {
     final db = await MongoConnection.getDb();
     final coll = db.collection(_collection);
 
-    var selectorBuilder = predicate(QPost()).toSelectorBuilder();
+    var selectorBuilder = predicate(QComment()).toSelectorBuilder();
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
     if (limit != null) selectorBuilder = selectorBuilder.limit(limit);
     final selectorMap = selectorBuilder.map.flatQuery();
@@ -409,22 +373,21 @@ class Posts {
 
       final docs = await coll.aggregateToStream(pipeline).toList();
       if (docs.isEmpty) return [];
-      return docs.map((d) => Post.fromJson(d.withRefs())).toList();
+      return docs.map((d) => Comment.fromJson(d.withRefs())).toList();
     }
     final docs = await (await MongoConnection.getDb())
         .collection(_collection)
         .find(selectorMap)
         .toList();
-    return docs.map((e) => Post.fromJson(e.withRefs())).toList();
+    return docs.map((e) => Comment.fromJson(e.withRefs())).toList();
   }
 
   /// Type-safe findMany by named arguments
-  static Future<List<Post>> findManyByNamed({
+  static Future<List<Comment>> findManyByNamed({
     ObjectId? id,
-    User? author,
-    Comment? lastComment,
-    List<String>? tags,
-    String? body,
+    Post? post,
+    String? text,
+    int? age,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<BaseProjections> projections = const [],
@@ -437,17 +400,16 @@ class Posts {
 
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
-    if (author != null) selector['author'] = author;
-    if (lastComment != null) selector['last_comment'] = lastComment;
-    if (tags != null) selector['tags'] = tags;
-    if (body != null) selector['body'] = body;
+    if (post != null) selector['post'] = post;
+    if (text != null) selector['text'] = text;
+    if (age != null) selector['age'] = age;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
       final docs = await coll.modernFind(
           sort: {'created_at': -1}, limit: limit, skip: skip).toList();
       if (docs.isEmpty) return [];
-      return docs.map((e) => Post.fromJson(e.withRefs())).toList();
+      return docs.map((e) => Comment.fromJson(e.withRefs())).toList();
     }
     if (projections.isNotEmpty) {
       final pipeline = <Map<String, Object>>[];
@@ -482,17 +444,18 @@ class Posts {
 
       final docs = await coll.aggregateToStream(pipeline).toList();
       if (docs.isEmpty) return [];
-      return docs.map((d) => Post.fromJson(d.withRefs())).toList();
+      return docs.map((d) => Comment.fromJson(d.withRefs())).toList();
     }
     final docs = await coll
         .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
         .toList();
-    return docs.map((e) => Post.fromJson(e.withRefs())).toList();
+    return docs.map((e) => Comment.fromJson(e.withRefs())).toList();
   }
 
   /// Type-safe deleteOne by predicate
-  static Future<bool> deleteOne(Expression Function(QPost p) predicate) async {
-    final expr = predicate(QPost());
+  static Future<bool> deleteOne(
+      Expression Function(QComment c) predicate) async {
+    final expr = predicate(QComment());
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
@@ -503,19 +466,17 @@ class Posts {
   /// Type-safe deleteOne by named arguments
   static Future<bool> deleteOneByNamed({
     ObjectId? id,
-    User? author,
-    Comment? lastComment,
-    List<String>? tags,
-    String? body,
+    Post? post,
+    String? text,
+    int? age,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) async {
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
-    if (author != null) selector['author'] = author;
-    if (lastComment != null) selector['last_comment'] = lastComment;
-    if (tags != null) selector['tags'] = tags;
-    if (body != null) selector['body'] = body;
+    if (post != null) selector['post'] = post;
+    if (text != null) selector['text'] = text;
+    if (age != null) selector['age'] = age;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) return false;
@@ -526,8 +487,9 @@ class Posts {
   }
 
   /// Type-safe deleteMany
-  static Future<bool> deleteMany(Expression Function(QPost p) predicate) async {
-    final expr = predicate(QPost());
+  static Future<bool> deleteMany(
+      Expression Function(QComment c) predicate) async {
+    final expr = predicate(QComment());
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
@@ -537,25 +499,23 @@ class Posts {
 
   /// Type-safe updateOne
   static Future<bool> updateOne(
-    Expression Function(QPost p) predicate, {
+    Expression Function(QComment c) predicate, {
     ObjectId? id,
-    User? author,
-    Comment? lastComment,
-    List<String>? tags,
-    String? body,
+    Post? post,
+    String? text,
+    int? age,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) async {
     final modifier = _buildModifier({
       '_id': id,
-      if (author != null) 'author': author,
-      if (lastComment != null) 'last_comment': lastComment,
-      'tags': tags,
-      if (body != null) 'body': body,
+      if (post != null) 'post': post,
+      if (text != null) 'text': text,
+      'age': age,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
-    final expr = predicate(QPost());
+    final expr = predicate(QComment());
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
@@ -565,25 +525,23 @@ class Posts {
 
   /// Type-safe updateMany
   static Future<bool> updateMany(
-    Expression Function(QPost p) predicate, {
+    Expression Function(QComment c) predicate, {
     ObjectId? id,
-    User? author,
-    Comment? lastComment,
-    List<String>? tags,
-    String? body,
+    Post? post,
+    String? text,
+    int? age,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) async {
     final modifier = _buildModifier({
       '_id': id,
-      if (author != null) 'author': author,
-      if (lastComment != null) 'last_comment': lastComment,
-      'tags': tags,
-      if (body != null) 'body': body,
+      if (post != null) 'post': post,
+      if (text != null) 'text': text,
+      'age': age,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
-    final expr = predicate(QPost());
+    final expr = predicate(QComment());
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
@@ -600,7 +558,7 @@ class Posts {
 
   /// Use `updateOne` directly whenever possible for better performance and clarity.
   /// This method is a fallback for cases requiring additional logic or dynamic update maps.
-  static Future<Post?> updateOneFromMap(
+  static Future<Comment?> updateOneFromMap(
     ObjectId id,
     Map<String, dynamic> updateMap,
   ) async {
@@ -609,13 +567,13 @@ class Posts {
     final result = await coll.updateOne({'_id': id}, {'\$set': updateMap});
     if (!result.isSuccess) return null;
     final updatedDoc = await coll.findOne({'_id': id});
-    return updatedDoc == null ? null : Post.fromJson(updatedDoc);
+    return updatedDoc == null ? null : Comment.fromJson(updatedDoc);
   }
 
-  static Future<int> count(Expression Function(QPost p)? predicate) async {
+  static Future<int> count(Expression Function(QComment c)? predicate) async {
     final selectorMap = predicate == null
         ? {}
-        : predicate(QPost()).toSelectorBuilder().map.flatQuery();
+        : predicate(QComment()).toSelectorBuilder().map.flatQuery();
     return (await MongoConnection.getDb())
         .collection(_collection)
         .count(selectorMap);

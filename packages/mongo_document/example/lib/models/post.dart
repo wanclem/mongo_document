@@ -1,3 +1,4 @@
+import 'package:example/models/comment.dart';
 import 'package:example/models/user.dart';
 import 'package:mongo_document/mongo_document.dart';
 
@@ -17,6 +18,7 @@ abstract class Post with _$Post {
   const factory Post({
     @ObjectIdConverter() @JsonKey(name: '_id') ObjectId? id,
     User? author,
+    Comment? lastComment,
     @Default([]) List<String> tags,
     String? body,
     @DateTimeConverter() DateTime? createdAt,
