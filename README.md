@@ -1,38 +1,67 @@
-# mongo\_document
+[![pub package](https://img.shields.io/pub/v/mongo_document.svg)](https://pub.dev/packages/mongo_document)  [![build status](https://github.com/wannclem/mongo_document/actions/workflows/dart.yml/badge.svg)](https://github.com/wannclem/mongo_document/actions)  [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-[![pub package](https://img.shields.io/pub/v/mongo_document.svg)](https://pub.dev/packages/mongo_document)
-[![build status](https://github.com/wannclem/mongo_document/actions/workflows/dart.yml/badge.svg)](https://github.com/wannclem/mongo_document/actions)
-[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+<!-- TOC -->
 
-## 📦 mongo\_document
+## Table of Contents
 
-A simple annotation that lets you perform CRUD on MongoDB using native Dart types.
-> ⚠️ Work in Progress: This package is still under active development. Many features are experimental or not yet implemented. Expect breaking changes and missing functionality.
-## Motivation
-While `mongo_dart` provides low-level MongoDB access, it requires you to manually manage collections, types, field names, and query logic. This can easily lead to mismatches, especially when your Dart model fields use different names from the database schema (e.g., `postAuthor` vs. `post_author`).
+1. [Overview](#overview)
+2. [Features](#features)
+3. [Getting Started](#getting-started)
 
-`@MongoDocument` bridges this gap by generating type-safe CRUD operations and query builders based on your annotated `freezed` classes. This saves you from writing raw queries or worrying about field mapping errors. Behind the scenes, your Dart native types are translated into formats compatible for use by `mongo_dart`.
+   * [Prerequisites](#prerequisites)
+   * [Installation](#installation)
+   * [Initialization](#initialization)
+4. [Usage](#usage)
+
+   * [Defining Models](#defining-models)
+   * [Generating Code](#generating-code)
+   * [CRUD Examples](#crud-examples)
+   * [Advanced Queries](#advanced-queries)
+5. [Configuration & Conventions](#configuration--conventions)
+6. [Troubleshooting](#troubleshooting)
+7. [Contributing](#contributing)
+8. [License](#license)
+
+<!-- /TOC -->
+
+## Overview
+
+**mongo\_document** bridges Dart `freezed` models and MongoDB via `mongo_dart`, generating zero‑boilerplate, type‑safe CRUD and query builders that respect your Dart-native naming conventions (e.g. camelCase) while serializing to your DB schema (e.g. snake\_case).
+
+> ⚠️ *Work in Progress*: Experimental features may change. Your feedback and contributions are welcome.
+
+## Features
+
+* **Document References & Propagation** — support for referencing other `@MongoDocument` models (e.g. `User? author` in `Post`), storing an `ObjectId` behind the scenes and automatically propagating `.save()` calls to nested documents
+
+* **Zero‑Boilerplate CRUD** — instance methods: `.save()`, `.delete()`, static helpers: `.insertMany()`
+
+* **Zero‑Boilerplate CRUD** — instance methods: `.save()`, `.delete()`, static helpers: `.insertMany()`
+
+* **Type‑Safe Query DSL** — `.findOne()`, `.findMany()`, `.updateOne()`, `.deleteMany()`, `.count()`
+
+* **Nested Joins** — automatic `$lookup` + `$unwind` for referenced `@MongoDocument` relations
+
+* **Array & Map Support** — `QList<T>` (.contains(), .elemMatch()), `QMap<V>` (sub-key queries)
+
+* **Field Renaming** — honors `@JsonSerializable(fieldRename: …)` settings without manual mapping
+
+* **Timestamps & IDs** — auto-manages `_id`, `created_at`, `updated_at`
+
+## Getting Started
+
+### Prerequisites
+
+* Dart SDK ≥ 2.18
+
+* A running MongoDB instance (local or remote)
+
+* **MongoDB server version ≥ 3.6** (this library does not support older MongoDB releases)
 
 
----
+### Installation
 
-## 🚀 Features
-
-* **Zero‑boilerplate CRUD** — `.save()`, `.delete()`, `.insertMany()` on your model instance
-* **Rich Query API** — type‑safe DSL: `.findOne()`, `.findMany(skip:limit:)`, `.deleteOne()`, `.deleteMany()`, `.updateOne()`, `.updateMany()`, `.count()`
-* **Nested joins** — automatic `$lookup` + `$unwind` when querying referenced `@MongoDocument` fields
-* **Array support** — `QList<T>` with `.contains()`, `.inList()`, `.elemMatch()` for List/Set fields
-* **Map support** — `QMap<V>` with sub‑key queries e.g `p.misc['key'].eq(value)`
-* **Field renaming** — honors `@JsonSerializable(fieldRename: …)`
-* **Timestamps** — auto‑manages `_id`, `createdAt`, `updatedAt`
-
----
-
-## 🛠️ Getting Started
-
-### 1. Add dependencies
-
-In your `pubspec.yaml`:
+Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
@@ -46,26 +75,30 @@ dev_dependencies:
   mongo_document_generator: ^0.0.1
 ```
 
+Then:
+
 ```bash
 dart pub get
 ```
 
-### 2. Initialize the MongoDB connection
+### Initialization
 
-Call once before using any generated APIs (e.g. in `main()`):
+In your application entrypoint (e.g. `main()`), configure the MongoDB connection once:
 
 ```dart
 import 'package:mongo_document/mongo_connection.dart';
 
 Future<void> main() async {
   await MongoConnection.init('mongodb://localhost:27017/mydb');
-  // Now generated .save(), .findOne(), etc. will work
+  // Now you can use generated .save(), .findOne(), etc.
 }
 ```
 
-### 3. Define & annotate your models
+## Usage
 
-Use `freezed` + `@MongoDocument`:
+### Defining Models
+
+**⚠️ Requirement:** Every `@MongoDocument` class **must** include an `ObjectId` field in its primary constructor annotated with `@JsonKey(name: '_id')`. This ensures a valid MongoDB `_id` is always present.
 
 ```dart
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -75,8 +108,8 @@ part 'post.freezed.dart';
 part 'post.g.dart';
 part 'post.mongo_document.dart';
 
-@MongoDocument(collection: 'posts')
 @freezed
+@MongoDocument(collection: 'posts')
 abstract class Post with _$Post {
   @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
   const factory Post({
@@ -92,101 +125,91 @@ abstract class Post with _$Post {
 }
 ```
 
-### 4. Generate the code
+### Generating Code
+
+Run build\_runner to generate `.mongo_document.dart` helpers:
 
 ```bash
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-This produces `post.mongo_document.dart`, adding:
+This creates:
 
-* `Post.save()`, `Post.delete()`, `Posts.insertMany()`, `Posts.findOne()`, `Posts.findMany()`, `Posts.deleteOne()`, `Posts.deleteMany()`, `Posts.updateOne()`, `Posts.updateMany()`, `Posts.count()`
-* `QPost` with `QueryField`, `QMap`, `QList` getters
-* Automatic nested‐join logic and skip/limit handling
+* Model instance methods: `.save()`, `.delete()`
+* Static APIs: `Posts.findOne()`, `Posts.findMany()`, etc.
+* Query builder `QPost` with typed fields, lists, maps.
 
----
-
-## 💡 Usage Examples
-
-### Create / Insert
+### CRUD Examples
 
 ```dart
-// single insert
-final newPost = Post(author: user, tags: ['news'], body: 'Hello');
+// Create & save
+final newPost = Post(body: 'Hello world', tags: ['intro']);
 await newPost.save();
 
-// Update a single post
-var post = await Posts.findOne((p) => p.body.contains("Hello World"));
-post = post?.copyWith(body: 'new post body');
+// Read
+final post = await Posts.findOne((p) => p.body.eq('Hello world'));
+
+// Update
+post = post?.copyWith(body: 'Updated');
 await post?.save();
 
-// bulk insertMany
-final p1 = Post(author: user, tags: ['news'], body: 'Hello');
-final p2 = Post(author: user, tags: ['tech'], body: 'World');
-final inserted = await Posts.insertMany([p1, p2]);
-print(inserted.map((p) => p.id));
+// Delete
+await post?.delete();
 ```
 
-### findOne
+### Advanced Queries
 
 ```dart
-// find a single post whose tags include 'general' and body equals 'hello world'
-final post = await Posts.findOne(
-  (p) => p.tags.contains('general') & p.body.eq('hello world')
-);
-```
-
-### findMany
-
-```dart
-// load first 10 posts with author populated
-final posts = await Posts.findMany(
-  (p) => p.author.firstName.startsWith('A'),
-  skip: 0,
-  limit: 10,
-);
-```
-
-### Array element match
-
-```dart
-// find posts with any tag starting with 'gen'
-final genPosts = await Posts.findMany(
-  (p) => p.tags.elemMatch((t) => t.startsWith('gen'))
+// Find posts whose tags array contain "viral"
+final viralPosts = await Posts.findMany(
+  (p) => p.tags.contains("viral")
 );
 
-// find posts with tags contain 'awesome' in the tag list
-final awesomePosts = await Posts.findMany(
-(p) => p.tags.contains('awesome')
-);
-```
-
-### Map key query
-
-```dart
-// find posts where analytics['views'] > 100
+// Map key query: analytics['views'] > 100
 final hot = await Posts.findMany(
   (p) => p.analytics['views'].gt(100)
 );
+
+// Count documents
+final total = await Posts.count((p) => p.body.ne(null));
 ```
 
-### count
+### References & Propagation
+
+You can reference other MongoDocument models and have nested saves propagate automatically. Behind the scenes, a reference field stores the related document's `ObjectId`, and invoking `.save()` on the parent will also persist changes in the referenced document.
 
 ```dart
-final countAll = await Posts.count((p) => p.body.ne(null));
+// Load and modify a referenced User
+User? author = await Users.findById(authorId);
+author = author?.copyWith(firstName: 'newName');
+
+// Load a Post, update its author reference, then save both
+Post? post = await Posts.findById(postId);
+post = post?.copyWith(author: author);
+await post?.save(); // changes to `author` propagate to the users collection
 ```
 
----
+## Configuration & Conventions
 
-## ⚙️ Troubleshooting
+* Customize converters via `@ObjectIdConverter()` and `@DateTimeConverter()`.
+* Collection name comes from `@MongoDocument(collection: ...)`.
 
-If you encounter the warning `@JsonSerializable can only be used on classes`:
-  add the following to your `analysis_options.yaml` to suppress it
+## Troubleshooting
 
-  ```yaml
-  analyzer:
-    errors:
-      invalid_annotation_target: ignore
-  ```
+**Warning**: `@JsonSerializable can only be used on classes`
+Add to your `analysis_options.yaml`:
 
----
+```yaml
+analyzer:
+  errors:
+    invalid_annotation_target: ignore
+```
+
+## Contributing
+
+Contributions, issues, and feature requests are welcome!
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
