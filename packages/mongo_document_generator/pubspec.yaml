@@ -17,6 +17,7 @@ dependencies:
   dart_style: ^2.3.8
   path: ^1.9.1
   collection: ^1.19.1
+  recase: ^4.1.0
 
 dev_dependencies:
   lints: ^5.0.0

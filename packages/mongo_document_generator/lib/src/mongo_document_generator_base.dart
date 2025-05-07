@@ -1,11 +1,10 @@
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
-import 'package:analyzer/dart/element/type.dart';
 import 'package:build/build.dart';
 import 'package:dart_style/dart_style.dart';
-import 'package:json_annotation/json_annotation.dart';
-import 'package:mongo_document/mongo_document_annotation.dart';
+import 'package:mongo_document/mongo_document.dart';
 import 'package:mongo_document_generator/mongo_document_generator.dart';
+import 'package:mongo_document_generator/src/utils/templates.dart';
 import 'package:source_gen/source_gen.dart';
 
 const _jsonKeyChecker = TypeChecker.fromRuntime(JsonKey);
@@ -13,26 +12,6 @@ const _jsonSerializableChecker = TypeChecker.fromRuntime(JsonSerializable);
 
 class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
   final _formatter = DartFormatter();
-
-  bool _isMapStringDynamic(ParameterElement p) {
-    final t = p.type;
-    if (t is InterfaceType && t.element.name == 'Map') {
-      final args = t.typeArguments;
-      return args.length == 2 &&
-          args[0].getDisplayString(withNullability: false) == 'String' &&
-          args[1].getDisplayString(withNullability: false) == 'dynamic';
-    }
-    return false;
-  }
-
-  bool _isListOrSet(ParameterElement p) {
-    final t = p.type;
-    if (t is InterfaceType) {
-      final name = t.element.name;
-      return (name == 'List' || name == 'Set') && t.typeArguments.length == 1;
-    }
-    return false;
-  }
 
   String _buildUpdateParams(List<ParameterElement> params) {
     return params.map((p) {
@@ -53,123 +32,89 @@ class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
     BuildStep buildStep,
   ) async {
     if (element is! ClassElement) return '';
-
-    var jsAnn = _jsonSerializableChecker.firstAnnotationOf(element);
-    if (jsAnn == null && element.unnamedConstructor != null) {
-      jsAnn = _jsonSerializableChecker.firstAnnotationOf(
-        element.unnamedConstructor!,
-      );
-    }
-    FieldRename? fieldRename;
-    if (jsAnn != null) {
-      final idx =
-          jsAnn.getField('fieldRename')?.getField('index')?.toIntValue();
-      if (idx != null) fieldRename = FieldRename.values[idx];
-    }
-
+    FieldRename? fieldRename = getFieldRenamePolicy(
+      _jsonSerializableChecker,
+      element,
+    );
     final className = element.name;
     final collection = annotation.peek('collection')!.stringValue;
     final params = element.unnamedConstructor?.parameters ?? [];
+    final nestedCollectionMap = getNestedCollectionMap(params);
+    final nestedCollectionProjectionClasses =
+        buildNestedCollectionProjectionClasses(
+      _jsonSerializableChecker,
+      _jsonKeyChecker,
+      nestedCollectionMap,
+      params,
+    );
+    final nestedCollectionMapLiteral = buildNestedCollectiontionsMapLiteral(
+      nestedCollectionMap,
+    );
+    final queryClasses = buildQueryClasses(
+      _jsonKeyChecker,
+      className,
+      fieldRename,
+      params,
+    );
 
-    final nestedCollectionMap = <String, String>{};
-
-    for (final p in params) {
-      final pType = p.type;
-      if (pType is InterfaceType) {
-        final nestedClassElem = pType.element;
-        final mongoAnn = TypeChecker.fromRuntime(
-          MongoDocument,
-        ).firstAnnotationOf(nestedClassElem);
-        if (mongoAnn != null) {
-          final collName = mongoAnn.getField('collection')!.toStringValue()!;
-          nestedCollectionMap[p.name] = collName;
-        }
-      }
-    }
-
-    final mapEntries = nestedCollectionMap.entries
-        .map((e) => "'${e.key}': '${e.value}'")
-        .join(', ');
-    final nestedMapLiteral =
-        'const _nestedCollections = <String,String>{ $mapEntries };';
-
-    final qFields = params.map((p) {
-      final dartType = p.type.getDisplayString(withNullability: true);
-      final key = getFieldKey(_jsonKeyChecker, p, fieldRename);
-      final name = p.name;
-      // nested MongoDocument?
-      if (p.type is InterfaceType &&
-          (p.type as InterfaceType).element.metadata.any((md) {
-            return md.computeConstantValue()?.type?.getDisplayString(
-                      withNullability: false,
-                    ) ==
-                'MongoDocument';
-          })) {
-        final nested = (p.type as InterfaceType).element.name;
-        return '''
-  Q$nested get $name => Q$nested(_key('$key'));
-''';
-      } else if (_isMapStringDynamic(p)) {
-        return '''
-  QMap<dynamic> get $name => QMap<dynamic>(_key('$key'));
-''';
-      } else if (_isListOrSet(p)) {
-        final itemType = (p.type as InterfaceType)
-            .typeArguments
-            .first
-            .getDisplayString(withNullability: true);
-        return """
-  QList<$itemType> get $name => QList<$itemType>(_key('$key'));
-""";
-      } else {
-        return '''
-  QueryField<$dartType> get $name => QueryField<$dartType>(_key('$key'));
-''';
-      }
-    }).join('\n');
-
-    isNonNullable(param) =>
-        !param.type.nullabilitySuffix.toString().contains('question');
-
-    final qClass = '''
-class Q$className {
-final String _prefix;
-  Q$className([this._prefix = '']);
-
-  String _key(String field) =>
-    _prefix.isEmpty ? field : '\$_prefix.\$field';
-
-$qFields
-}
-''';
-
-    // Generate extension + Query class
     final template = '''
-$nestedMapLiteral
-
-$qClass
+$nestedCollectionProjectionClasses
+$nestedCollectionMapLiteral
+$queryClasses
 
 extension \$${className}Extension on $className {
   static String get _collection => '$collection';
 
   Future<$className?> save() async {
-    final coll = (await MongoConnection.getDb()).collection(_collection);
+    final db = await MongoConnection.getDb();
+    final coll = db.collection(_collection);
     final now = DateTime.now().toUtc();
-    if (id == null) {
-      final doc = toJson()..remove('_id');
-      doc.update('created_at', (v) => v ?? now, ifAbsent: () => now);
-      doc.update('updated_at', (v) => v ?? now, ifAbsent: () => now);
-      final result = await coll.insertOne(doc);
-      if (result.isSuccess) return copyWith(id: result.id);
-      return null;
+    final isInsert = id == null;
+
+    final parentMap = toJson()..remove('_id')..removeWhere((key, value) => value == null);
+    parentMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
+    parentMap.update('updated_at', (v) => now,    ifAbsent: () => now);
+
+    var doc = {...parentMap};
+    final nestedUpdates = <Future>[];
+    for (var entry in parentMap.entries) {
+      final root = entry.key;
+      if (_nestedCollections.containsKey(root)) {
+        final collectionName = _nestedCollections[root]!;
+        var nestedColl =db.collection(collectionName);
+        var value = entry.value as Map<String, dynamic>?;
+        if (value == null) continue;
+        value.removeWhere((key, value) => value == null);
+        final nestedId = (value['_id'] ?? value['id']) as ObjectId?;
+        if (nestedId == null) {
+           doc.remove(root);
+        }else{
+           doc[root] = nestedId;
+           final nestedMap = value..remove('_id');
+           if (nestedMap.isNotEmpty) {
+            var mod = modify.set('updated_at', now);
+            nestedMap.forEach((k, v) => mod = mod.set(k, v));
+            nestedUpdates.add(
+              nestedColl.updateOne(where.eq(r'_id', nestedId), mod)
+            );
+          }
+        }
+      }
     }
-    final updateMap = toJson()..remove('_id');
-    updateMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
-    updateMap.update('updated_at', (v) => v ?? now, ifAbsent: () => now);
-    var modifier = modify;
-    updateMap.forEach((k, v) => modifier = modifier.set(k, v));
-    final res = await coll.updateOne(where.eq(r'_id', id), modifier);
-    return res.isSuccess ? this : null;
+
+    if (isInsert) {
+      final result = await coll.insertOne(doc);
+      if (!result.isSuccess) return null;
+      await Future.wait(nestedUpdates);
+      return copyWith(id: result.id);
+    }
+
+    var parentMod = modify.set('updated_at', now);
+    doc.forEach((k, v) => parentMod = parentMod.set(k, v));
+    final res = await coll.updateOne(where.eq(r'_id', id), parentMod);
+    if (!res.isSuccess) return null;
+    await Future.wait(nestedUpdates);
+    return this;
   }
    
   Future<bool> delete() async {
@@ -186,7 +131,7 @@ class ${className}s {
   static String get _collection => '$collection';
   
    /// Type‑safe insertMany
-  static Future<List<$className>> insertMany(
+  static Future<List<$className?>> insertMany(
     List<$className> docs,
   ) async {
     if (docs.isEmpty) return <$className>[];
@@ -200,7 +145,7 @@ class ${className}s {
           final idx = e.key;
           final doc = e.value;
           final id = result.isSuccess ? result.ids![idx] : null;
-          return doc.copyWith(id: id as ObjectId?);
+          return doc.copyWith(id: id);
         })
         .toList();
   }
@@ -260,7 +205,7 @@ class ${className}s {
     // fallback to simple findOne
     final doc = await (await MongoConnection.getDb())
         .collection(_collection)
-        .findOne(selectorBuilder);
+        .findOne(selectorMap);
     return doc == null ? null : $className.fromJson(doc);
 
   }
@@ -268,7 +213,8 @@ class ${className}s {
   /// Type‑safe findMany
   static Future<List<$className>> findMany(
     Expression Function(Q$className q) predicate, {
-    int? skip, int? limit
+    int? skip, int? limit,
+    List<BaseProjections>? project,
   }) async {
 
     var selectorBuilder = predicate(Q$className()).toSelectorBuilder();
@@ -310,7 +256,7 @@ class ${className}s {
   
     final docs = await (await MongoConnection.getDb())
       .collection(_collection)
-      .find(selectorBuilder).toList();
+      .find(selectorMap).toList();
     return docs.map((e) => $className.fromJson(e)).toList();
  }
 
@@ -322,7 +268,7 @@ class ${className}s {
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
       .collection(_collection)
-      .deleteOne(selector);
+      .deleteOne(selector.map);
     return result.isSuccess;
   }
   
@@ -334,7 +280,7 @@ class ${className}s {
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
       .collection(_collection)
-      .deleteMany(selector);
+      .deleteMany(selector.map);
     return result.isSuccess;
   }
 
@@ -345,7 +291,7 @@ ${_buildUpdateParams(params)}
   }) async {
     final modifier = _buildModifier({
       ${params.map((p) {
-      final key = getFieldKey(_jsonKeyChecker, p, fieldRename);
+      final key = getParameterKey(_jsonKeyChecker, p, fieldRename);
       final hasDefault =
           _jsonKeyChecker.firstAnnotationOf(p)?.getField('defaultValue') !=
               null;
@@ -361,7 +307,7 @@ ${_buildUpdateParams(params)}
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
       .collection(_collection)
-      .updateOne(selector, modifier);
+      .updateOne(selector.map, modifier);
     return result.isSuccess;
   }
 
@@ -372,7 +318,7 @@ ${_buildUpdateParams(params)}
   }) async {
     final modifier = _buildModifier({
       ${params.map((p) {
-      final key = getFieldKey(_jsonKeyChecker, p, fieldRename);
+      final key = getParameterKey(_jsonKeyChecker, p, fieldRename);
       final hasDefault =
           _jsonKeyChecker.firstAnnotationOf(p)?.getField('defaultValue') !=
               null;
@@ -388,7 +334,7 @@ ${_buildUpdateParams(params)}
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
       .collection(_collection)
-      .updateMany(selector, modifier);
+      .updateMany(selector.map, modifier);
     return result.isSuccess;
   }
 

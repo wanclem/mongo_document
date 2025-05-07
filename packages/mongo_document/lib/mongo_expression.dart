@@ -77,14 +77,13 @@ class MethodCall implements Expression {
 
   @override
   SelectorBuilder toSelectorBuilder() {
-    final pattern =
-        method == 'startsWith'
-            ? '^\${RegExp.escape(value)}'
-            : method == 'endsWith'
+    final pattern = method == 'startsWith'
+        ? '^\${RegExp.escape(value)}'
+        : method == 'endsWith'
             ? '\${RegExp.escape(value)}\$'
             : method == 'contains'
-            ? RegExp.escape(value)
-            : RegExp.escape(value);
+                ? RegExp.escape(value)
+                : RegExp.escape(value);
     if (field.contains('.')) {
       final parts = field.split('.');
       final nestedField = parts.last;
@@ -122,13 +121,15 @@ class Logical implements Expression {
     final leftMap = left.toSelectorBuilder().map;
     final rightMap = right.toSelectorBuilder().map;
     if (op == '&') {
-      return SelectorBuilder()..raw({
-        r'$and': [leftMap, rightMap],
-      });
+      return SelectorBuilder()
+        ..raw({
+          r'$and': [leftMap, rightMap],
+        });
     } else {
-      return SelectorBuilder()..raw({
-        r'$or': [leftMap, rightMap],
-      });
+      return SelectorBuilder()
+        ..raw({
+          r'$or': [leftMap, rightMap],
+        });
     }
   }
 
@@ -196,10 +197,10 @@ class QList<T> {
   QList(this._prefix);
 
   Expression contains(T value) => _RawExpression({
-    _prefix: {
-      r'$in': [value],
-    },
-  });
+        _prefix: {
+          r'$in': [value],
+        },
+      });
 
   Expression elemMatch(Expression Function(QueryField<T> f) exprBuilder) {
     final expr = exprBuilder(QueryField<T>(_prefix));
@@ -222,4 +223,10 @@ class _RawExpression implements Expression {
 
   @override
   Expression operator &(Expression other) => Logical(this, '&', other);
+}
+
+/// Marker interface for all projections
+abstract class BaseProjections {
+  /// Return a map of "path":1 entries (or empty to include all)
+  Map<String, int>? toProjection();
 }
