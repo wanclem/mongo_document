@@ -60,11 +60,14 @@ class $projName implements BaseProjections {
   }
 
   static String buildNestedCollectiontionsMapLiteral(
-      Map<String, dynamic> nestedCollectionMap) {
+    Map<String, dynamic> nestedCollectionMap,
+  ) {
+    if (nestedCollectionMap.isEmpty) {
+      return r"""const _nestedCollections = <String, String>{};""";
+    }
     final nestedCollectionMapEntries = nestedCollectionMap.entries
         .map((e) => "'${e.key}': '${e.value}'")
         .join(', ');
     return 'const _nestedCollections = <String,String>{ $nestedCollectionMapEntries };';
   }
-
 }

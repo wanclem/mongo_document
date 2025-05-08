@@ -2,6 +2,8 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:build/build.dart';
 import 'package:dart_style/dart_style.dart';
 import 'package:mongo_document/mongo_document_generator.dart';
+import 'package:mongo_document/src/checkers/annotation_checker.dart';
+import 'package:mongo_document/src/checkers/default_annotation_checker.dart';
 import 'package:mongo_document/src/templates/crud/create/create_template.dart';
 import 'package:mongo_document/src/templates/crud/delete/delete_template.dart';
 import 'package:mongo_document/src/templates/crud/read/query_templates.dart';
@@ -17,6 +19,11 @@ const _jsonSerializableChecker = TypeChecker.fromRuntime(JsonSerializable);
 
 class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
   final _formatter = DartFormatter();
+  final AnnotationChecker checker;
+
+  MongoDocumentGenerator({
+    AnnotationChecker? checker,
+  }) : checker = checker ?? DefaultAnnotationChecker();
 
   @override
   Future<String> generateForAnnotatedElement(
@@ -25,6 +32,21 @@ class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
     BuildStep buildStep,
   ) async {
     if (element is! ClassElement) return '';
+    final ctor = element.unnamedConstructor!;
+    final idParam = ctor.parameters.firstWhere((p) => p.name == 'id',
+        orElse: () => throw InvalidGenerationSourceError(
+            'Missing required `id` parameter…',
+            element: element));
+
+    if (!checker.hasObjectIdConverter(idParam) ||
+        !checker.hasJsonKeyWithId(idParam)) {
+      throw InvalidGenerationSourceError(
+        'The `id` parameter must be annotated with '
+        '`@ObjectIdConverter()` and `@JsonKey(name: \'_id\')`.',
+        element: element,
+      );
+    }
+
     FieldRename? fieldRename = getFieldRenamePolicy(
       _jsonSerializableChecker,
       element,
