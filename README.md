@@ -184,10 +184,10 @@ List<Post> intros = await Posts.findManyByNamed(body: "Welcome", tags: ["intro"]
 Use the style that best fits your needs—DSL predicates or named-argument—to retrieve one or multiple documents. In DSL predicates you can combine conditions using `&` (AND) and `|` (OR), for example:
 
 ```dart
-//DSL And Query
+//AND Query
 Post? awesomePost = await Posts.findOne((p) => p.body.eq("Hello world") & p.tags.contains("awesome"));
 
-//DSL OR Query
+//OR Query
 Post? viralPost = await Posts.findOne((p) => p.body.eq("Viral") | p.tags.contains("viral"));
 ```
 
