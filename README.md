@@ -71,8 +71,6 @@ First, add `build_runner`, `freezed`, `json_serializable`, and `mongo_document_a
 
 Add to your `pubspec.yaml`:
 
-Add to your `pubspec.yaml`:
-
 ```yaml
 dependencies:
   json_annotation: ^4.9.0
