@@ -169,7 +169,7 @@ extension $PostExtension on Post {
 class Posts {
   static String get _collection => 'posts';
 
-  /// Type‑safe saveMany
+  /// Type-safe saveMany
   static Future<List<Post?>> saveMany(
     List<Post> docs,
   ) async {
@@ -585,36 +585,6 @@ class Posts {
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
         .updateOne(selector.map.flatQuery(), modifier);
-    return result.isSuccess;
-  }
-
-  /// Type-safe updateMany
-  static Future<bool> updateMany(
-    Expression Function(QPost p) predicate, {
-    ObjectId? id,
-    User? author,
-    Comment? lastComment,
-    List<String>? tags,
-    String? body,
-    dynamic name,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) async {
-    final modifier = _buildModifier({
-      '_id': id,
-      if (author != null) 'author': author,
-      if (lastComment != null) 'last_comment': lastComment,
-      'tags': tags,
-      if (body != null) 'body': body,
-      'name': name,
-      if (createdAt != null) 'created_at': createdAt,
-      if (updatedAt != null) 'updated_at': updatedAt,
-    });
-    final expr = predicate(QPost());
-    final selector = expr.toSelectorBuilder();
-    final result = await (await MongoConnection.getDb())
-        .collection(_collection)
-        .updateMany(selector.map.flatQuery(), modifier);
     return result.isSuccess;
   }
 

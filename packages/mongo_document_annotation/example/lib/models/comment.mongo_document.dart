@@ -144,7 +144,7 @@ extension $CommentExtension on Comment {
 class Comments {
   static String get _collection => 'comments';
 
-  /// Type‑safe saveMany
+  /// Type-safe saveMany
   static Future<List<Comment?>> saveMany(
     List<Comment> docs,
   ) async {
@@ -546,32 +546,6 @@ class Comments {
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
         .updateOne(selector.map.flatQuery(), modifier);
-    return result.isSuccess;
-  }
-
-  /// Type-safe updateMany
-  static Future<bool> updateMany(
-    Expression Function(QComment c) predicate, {
-    ObjectId? id,
-    Post? post,
-    String? text,
-    int? age,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) async {
-    final modifier = _buildModifier({
-      '_id': id,
-      if (post != null) 'post': post,
-      if (text != null) 'text': text,
-      'age': age,
-      if (createdAt != null) 'created_at': createdAt,
-      if (updatedAt != null) 'updated_at': updatedAt,
-    });
-    final expr = predicate(QComment());
-    final selector = expr.toSelectorBuilder();
-    final result = await (await MongoConnection.getDb())
-        .collection(_collection)
-        .updateMany(selector.map.flatQuery(), modifier);
     return result.isSuccess;
   }
 

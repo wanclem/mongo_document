@@ -104,7 +104,7 @@ extension $UserExtension on User {
 class Users {
   static String get _collection => 'users';
 
-  /// Type‑safe saveMany
+  /// Type-safe saveMany
   static Future<List<User?>> saveMany(
     List<User> docs,
   ) async {
@@ -512,34 +512,6 @@ class Users {
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
         .updateOne(selector.map.flatQuery(), modifier);
-    return result.isSuccess;
-  }
-
-  /// Type-safe updateMany
-  static Future<bool> updateMany(
-    Expression Function(QUser u) predicate, {
-    ObjectId? id,
-    String? firstName,
-    String? lastName,
-    String? email,
-    int? age,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) async {
-    final modifier = _buildModifier({
-      '_id': id,
-      if (firstName != null) 'first_name': firstName,
-      if (lastName != null) 'last_name': lastName,
-      if (email != null) 'email': email,
-      'age': age,
-      if (createdAt != null) 'created_at': createdAt,
-      if (updatedAt != null) 'updated_at': updatedAt,
-    });
-    final expr = predicate(QUser());
-    final selector = expr.toSelectorBuilder();
-    final result = await (await MongoConnection.getDb())
-        .collection(_collection)
-        .updateMany(selector.map.flatQuery(), modifier);
     return result.isSuccess;
   }
 

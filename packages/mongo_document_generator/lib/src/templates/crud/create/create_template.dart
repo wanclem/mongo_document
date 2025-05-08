@@ -58,7 +58,7 @@ class CreateTemplates {
 
   static saveMany(String className) {
     return '''
-   /// Type‑safe saveMany
+   /// Type-safe saveMany
   static Future<List<$className?>> saveMany(
     List<$className> docs,
   ) async {
