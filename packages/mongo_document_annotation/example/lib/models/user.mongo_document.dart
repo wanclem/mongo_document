@@ -131,15 +131,15 @@ class Users {
     }).toList();
   }
 
-  /// Type-safe findById with optional nested‑doc projections
+  /// Find a User by its _id with optional nested-doc projections
   static Future<User?> findById(
-    dynamic id, {
+    dynamic userId, {
     List<BaseProjections> projections = const [],
   }) async {
-    if (id == null) return null;
-    if (id is String) id = ObjectId.fromHexString(id);
-    if (id is! ObjectId) {
-      throw ArgumentError('Invalid id type: ${id.runtimeType}');
+    if (userId == null) return null;
+    if (userId is String) userId = ObjectId.fromHexString(userId);
+    if (userId is! ObjectId) {
+      throw ArgumentError('Invalid userId type: ${userId.runtimeType}');
     }
 
     final db = await MongoConnection.getDb();
@@ -149,7 +149,7 @@ class Users {
       final pipeline = <Map<String, Object>>[];
       final projDoc = <String, int>{};
       pipeline.add({
-        r"$match": {'_id': id}
+        r"$match": {'_id': userId}
       });
       for (var p in projections) {
         final projectedFields = p.fields;
@@ -178,14 +178,14 @@ class Users {
       }
       pipeline.add({r'$project': projDoc});
 
-      final docs = await coll.aggregateToStream(pipeline).toList();
-      if (docs.isEmpty) return null;
-      return User.fromJson(docs.first.withRefs());
+      final users = await coll.aggregateToStream(pipeline).toList();
+      if (users.isEmpty) return null;
+      return User.fromJson(users.first.withRefs());
     }
 
-    // fallback: return entire document
-    final doc = await coll.findOne(where.eq(r'_id', id));
-    return doc == null ? null : User.fromJson(doc.withRefs());
+    // fallback: return entire user
+    final user = await coll.findOne(where.eq(r'_id', userId));
+    return user == null ? null : User.fromJson(user.withRefs());
   }
 
   /// Type-safe findOne by predicate
@@ -197,9 +197,9 @@ class Users {
     final coll = db.collection(_collection);
 
     if (predicate == null) {
-      final docs = await coll.modernFindOne(sort: {'created_at': -1});
-      if (docs == null) return null;
-      return User.fromJson(docs.withRefs());
+      final user = await coll.modernFindOne(sort: {'created_at': -1});
+      if (user == null) return null;
+      return User.fromJson(user.withRefs());
     }
     final selectorBuilder = predicate(QUser()).toSelectorBuilder();
     final selectorMap =
@@ -236,14 +236,14 @@ class Users {
       }
       pipeline.add({r'$project': projDoc});
 
-      final docs = await coll.aggregateToStream(pipeline).toList();
-      if (docs.isEmpty) return null;
-      return User.fromJson(docs.first.withRefs());
+      final users = await coll.aggregateToStream(pipeline).toList();
+      if (users.isEmpty) return null;
+      return User.fromJson(users.first.withRefs());
     }
 
     // fallback to simple findOne
-    final doc = await coll.findOne(selectorMap);
-    return doc == null ? null : User.fromJson(doc);
+    final user = await coll.findOne(selectorMap);
+    return user == null ? null : User.fromJson(user);
   }
 
   /// Type-safe findOne by named arguments
@@ -269,9 +269,9 @@ class Users {
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
-      final doc = await coll.modernFindOne(sort: {'created_at': -1});
-      if (doc == null) return null;
-      return User.fromJson(doc.withRefs());
+      final user = await coll.modernFindOne(sort: {'created_at': -1});
+      if (user == null) return null;
+      return User.fromJson(user.withRefs());
     }
     if (projections.isNotEmpty) {
       final pipeline = <Map<String, Object>>[];
@@ -304,12 +304,12 @@ class Users {
       }
       pipeline.add({r'$project': projDoc});
 
-      final docs = await coll.aggregateToStream(pipeline).toList();
-      if (docs.isEmpty) return null;
-      return User.fromJson(docs.first.withRefs());
+      final users = await coll.aggregateToStream(pipeline).toList();
+      if (users.isEmpty) return null;
+      return User.fromJson(users.first.withRefs());
     }
-    final doc = await coll.findOne(selector);
-    return doc == null ? null : User.fromJson(doc.withRefs());
+    final user = await coll.findOne(selector);
+    return user == null ? null : User.fromJson(user.withRefs());
   }
 
   /// Type-safe findMany by predicate
@@ -359,15 +359,15 @@ class Users {
       }
       pipeline.add({r'$project': projDoc});
 
-      final docs = await coll.aggregateToStream(pipeline).toList();
-      if (docs.isEmpty) return [];
-      return docs.map((d) => User.fromJson(d.withRefs())).toList();
+      final users = await coll.aggregateToStream(pipeline).toList();
+      if (users.isEmpty) return [];
+      return users.map((d) => User.fromJson(d.withRefs())).toList();
     }
-    final docs = await (await MongoConnection.getDb())
+    final users = await (await MongoConnection.getDb())
         .collection(_collection)
         .find(selectorMap)
         .toList();
-    return docs.map((e) => User.fromJson(e.withRefs())).toList();
+    return users.map((e) => User.fromJson(e.withRefs())).toList();
   }
 
   /// Type-safe findMany by named arguments
@@ -396,10 +396,10 @@ class Users {
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
-      final docs = await coll.modernFind(
+      final users = await coll.modernFind(
           sort: {'created_at': -1}, limit: limit, skip: skip).toList();
-      if (docs.isEmpty) return [];
-      return docs.map((e) => User.fromJson(e.withRefs())).toList();
+      if (users.isEmpty) return [];
+      return users.map((e) => User.fromJson(e.withRefs())).toList();
     }
     if (projections.isNotEmpty) {
       final pipeline = <Map<String, Object>>[];
@@ -432,14 +432,14 @@ class Users {
       }
       pipeline.add({r'$project': projDoc});
 
-      final docs = await coll.aggregateToStream(pipeline).toList();
-      if (docs.isEmpty) return [];
-      return docs.map((d) => User.fromJson(d.withRefs())).toList();
+      final users = await coll.aggregateToStream(pipeline).toList();
+      if (users.isEmpty) return [];
+      return users.map((d) => User.fromJson(d.withRefs())).toList();
     }
-    final docs = await coll
+    final users = await coll
         .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
         .toList();
-    return docs.map((e) => User.fromJson(e.withRefs())).toList();
+    return users.map((e) => User.fromJson(e.withRefs())).toList();
   }
 
   /// Type-safe deleteOne by predicate

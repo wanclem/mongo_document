@@ -5,39 +5,41 @@ import 'package:source_gen/source_gen.dart';
 
 class ReadTemplates {
   static String findById(String className) {
+    String classNameVar = className.toLowerCase();
     return '''
-/// Type-safe findById with optional nested‑doc projections
+/// Find a $className by its _id with optional nested-doc projections
   static Future<$className?> findById(
-    dynamic id, {
+    dynamic ${classNameVar}Id, {
     List<BaseProjections> projections=const [],
   }) async {
-    if (id == null) return null;
-    if (id is String) id = ObjectId.fromHexString(id);
-    if (id is! ObjectId) {
-      throw ArgumentError('Invalid id type: \${id.runtimeType}');
+    if (${classNameVar}Id == null) return null;
+    if (${classNameVar}Id is String) ${classNameVar}Id = ObjectId.fromHexString(${classNameVar}Id);
+    if (${classNameVar}Id is! ObjectId) {
+      throw ArgumentError('Invalid ${classNameVar}Id type: \${${classNameVar}Id.runtimeType}');
     }
 
     final db = await MongoConnection.getDb();
     final coll = db.collection(_collection);
 
     if (projections.isNotEmpty) {
-       ${buildProjectionFlowTemplate('''{
-          r"\$match": {'_id': id}
+       ${buildAggregationPipeline('''{
+          r"\$match": {'_id': ${classNameVar}Id}
         }''')}
-      final docs = await coll.aggregateToStream(pipeline).toList();
-      if (docs.isEmpty) return null;
-      return $className.fromJson(docs.first.withRefs());
+      final ${classNameVar}s = await coll.aggregateToStream(pipeline).toList();
+      if (${classNameVar}s.isEmpty) return null;
+      return $className.fromJson(${classNameVar}s.first.withRefs());
     }
 
-    // fallback: return entire document
-    final doc = await coll.findOne(where.eq(r'_id', id));
-    return doc == null ? null : $className.fromJson(doc.withRefs());
+    // fallback: return entire $classNameVar
+    final $classNameVar = await coll.findOne(where.eq(r'_id', ${classNameVar}Id));
+    return $classNameVar == null ? null : $className.fromJson($classNameVar.withRefs());
   }
 
 ''';
   }
 
   static String findOne(String className) {
+    String classNameVar = className.toLowerCase();
     return '''
 /// Type-safe findOne by predicate
   static Future<$className?> findOne(
@@ -49,25 +51,25 @@ class ReadTemplates {
     final coll = db.collection(_collection);
 
     if (predicate == null) {
-      final docs = await coll.modernFindOne(sort: {'created_at': -1});
-      if (docs == null) return null;
-      return $className.fromJson(docs.withRefs());
+      final $classNameVar = await coll.modernFindOne(sort: {'created_at': -1});
+      if ($classNameVar == null) return null;
+      return $className.fromJson($classNameVar.withRefs());
     }
     final selectorBuilder = predicate(Q$className()).toSelectorBuilder();
     final selectorMap = selectorBuilder.map.flatQuery().withLookupAwareness(_nestedCollections);
 
     if (projections.isNotEmpty) {
-       ${buildProjectionFlowTemplate('''{
+       ${buildAggregationPipeline('''{
           r"\$match": selectorMap
         }''')}
-      final docs = await coll.aggregateToStream(pipeline).toList();
-      if (docs.isEmpty) return null;
-      return $className.fromJson(docs.first.withRefs());
+      final ${classNameVar}s = await coll.aggregateToStream(pipeline).toList();
+      if (${classNameVar}s.isEmpty) return null;
+      return $className.fromJson(${classNameVar}s.first.withRefs());
     }
 
     // fallback to simple findOne
-    final doc = await coll.findOne(selectorMap);
-    return doc == null ? null : $className.fromJson(doc);
+    final $classNameVar = await coll.findOne(selectorMap);
+    return $classNameVar == null ? null : $className.fromJson($classNameVar);
   }
 ''';
   }
@@ -78,6 +80,7 @@ class ReadTemplates {
     List<ParameterElement> params,
     String className,
   ) {
+    String classNameVar = className.toLowerCase();
     return '''
 /// Type-safe findOne by named arguments
   static Future<$className?> findOneByNamed({${ParameterTemplates.buildNullableParams(params, fieldRename)}List<BaseProjections> projections=const [],})async{
@@ -92,25 +95,26 @@ class ReadTemplates {
       return '''if ($paramName != null) selector['$key'] = $paramName;''';
     }).join('\n')}
     if (selector.isEmpty) {
-      final doc = await coll.modernFindOne(sort: {'created_at': -1});
-      if (doc == null) return null;
-      return $className.fromJson(doc.withRefs());
+      final $classNameVar = await coll.modernFindOne(sort: {'created_at': -1});
+      if ($classNameVar == null) return null;
+      return $className.fromJson($classNameVar.withRefs());
     }
     if (projections.isNotEmpty) {
-       ${buildProjectionFlowTemplate('''{
+       ${buildAggregationPipeline('''{
           r"\$match": selector
         }''')}
-      final docs = await coll.aggregateToStream(pipeline).toList();
-      if (docs.isEmpty) return null;
-      return $className.fromJson(docs.first.withRefs());
+      final ${classNameVar}s = await coll.aggregateToStream(pipeline).toList();
+      if (${classNameVar}s.isEmpty) return null;
+      return $className.fromJson(${classNameVar}s.first.withRefs());
     }
-    final doc = await coll.findOne(selector);
-    return doc == null ? null : $className.fromJson(doc.withRefs());
+    final $classNameVar = await coll.findOne(selector);
+    return $classNameVar == null ? null : $className.fromJson($classNameVar.withRefs());
   }
 ''';
   }
 
   static String findMany(String className) {
+    String classNameVar = className.toLowerCase();
     return '''
   /// Type-safe findMany by predicate
   static Future<List<$className>> findMany(
@@ -127,17 +131,17 @@ class ReadTemplates {
     final selectorMap = selectorBuilder.map.flatQuery().withLookupAwareness(_nestedCollections);
 
     if (projections.isNotEmpty) {
-       ${buildProjectionFlowTemplate('''{
+       ${buildAggregationPipeline('''{
           r"\$match": selectorMap
         }''')}
-      final docs = await coll.aggregateToStream(pipeline).toList();
-      if (docs.isEmpty) return [];
-      return docs.map((d)=>$className.fromJson(d.withRefs())).toList();
+      final ${classNameVar}s = await coll.aggregateToStream(pipeline).toList();
+      if (${classNameVar}s.isEmpty) return [];
+      return ${classNameVar}s.map((d)=>$className.fromJson(d.withRefs())).toList();
     }
-    final docs = await (await MongoConnection.getDb())
+    final ${classNameVar}s = await (await MongoConnection.getDb())
       .collection(_collection)
       .find(selectorMap).toList();
-    return docs.map((e) => $className.fromJson(e.withRefs())).toList();
+    return ${classNameVar}s.map((e) => $className.fromJson(e.withRefs())).toList();
  }
 ''';
   }
@@ -148,6 +152,7 @@ class ReadTemplates {
     List<ParameterElement> params,
     String className,
   ) {
+    String classNameVar = className.toLowerCase();
     return '''
 /// Type-safe findMany by named arguments
   static Future<List<$className>> findManyByNamed({${ParameterTemplates.buildNullableParams(params, fieldRename)}    List<BaseProjections> projections=const [],Map<String,Object>sort=const{},int? skip,int limit=10,})async{
@@ -162,20 +167,20 @@ class ReadTemplates {
       return '''if ($paramName != null) selector['$key'] = $paramName;''';
     }).join('\n')}
     if (selector.isEmpty) {
-      final docs = await coll.modernFind(sort: {'created_at': -1},limit:limit,skip:skip).toList();
-      if (docs.isEmpty) return [];
-     return docs.map((e) => $className.fromJson(e.withRefs())).toList();
+      final ${classNameVar}s = await coll.modernFind(sort: {'created_at': -1},limit:limit,skip:skip).toList();
+      if (${classNameVar}s.isEmpty) return [];
+     return ${classNameVar}s.map((e) => $className.fromJson(e.withRefs())).toList();
     }
     if (projections.isNotEmpty) {
-       ${buildProjectionFlowTemplate('''{
+       ${buildAggregationPipeline('''{
           r"\$match": selector
         }''')}
-      final docs = await coll.aggregateToStream(pipeline).toList();
-      if (docs.isEmpty) return [];
-      return docs.map((d)=>$className.fromJson(d.withRefs())).toList();
+      final ${classNameVar}s = await coll.aggregateToStream(pipeline).toList();
+      if (${classNameVar}s.isEmpty) return [];
+      return ${classNameVar}s.map((d)=>$className.fromJson(d.withRefs())).toList();
     }
-    final docs = await coll.modernFind(filter:selector,limit:limit,skip:skip,sort:sort).toList();
-    return docs.map((e) => $className.fromJson(e.withRefs())).toList();
+    final ${classNameVar}s = await coll.modernFind(filter:selector,limit:limit,skip:skip,sort:sort).toList();
+    return ${classNameVar}s.map((e) => $className.fromJson(e.withRefs())).toList();
   }
 ''';
   }
@@ -196,7 +201,7 @@ class ReadTemplates {
   }
 }
 
-String buildProjectionFlowTemplate(String matchQuery) {
+String buildAggregationPipeline(String matchQuery) {
   return '''
 final pipeline = <Map<String, Object>>[];
      final projDoc = <String, int>{};

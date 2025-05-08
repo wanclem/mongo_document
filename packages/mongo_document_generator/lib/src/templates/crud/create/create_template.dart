@@ -1,5 +1,6 @@
 class CreateTemplates {
   static save(String className) {
+    String classNameVar = className.toLowerCase();
     return '''
   Future<$className?> save() async {
     final db = await MongoConnection.getDb();
@@ -7,13 +8,13 @@ class CreateTemplates {
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
-    final parentMap = toJson()..remove('_id')..removeWhere((key, value) => value == null);
-    parentMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
-    parentMap.update('updated_at', (v) => now,    ifAbsent: () => now);
+    final ${classNameVar}Map = toJson()..remove('_id')..removeWhere((key, value) => value == null);
+    ${classNameVar}Map.update('created_at', (v) => v ?? now, ifAbsent: () => now);
+    ${classNameVar}Map.update('updated_at', (v) => now,    ifAbsent: () => now);
 
-    var doc = {...parentMap};
+    var $classNameVar = {...${classNameVar}Map};
     final nestedUpdates = <Future>[];
-    for (var entry in parentMap.entries) {
+    for (var entry in ${classNameVar}Map.entries) {
       final root = entry.key;
       if (_nestedCollections.containsKey(root)) {
         final collectionName = _nestedCollections[root]!;
@@ -23,9 +24,9 @@ class CreateTemplates {
         value.removeWhere((key, value) => value == null);
         final nestedId = (value['_id'] ?? value['id']) as ObjectId?;
         if (nestedId == null) {
-           doc.remove(root);
+           $classNameVar.remove(root);
         }else{
-           doc[root] = nestedId;
+           $classNameVar[root] = nestedId;
            final nestedMap = value..remove('_id');
            if (nestedMap.isNotEmpty) {
             var mod = modify.set('updated_at', now);
@@ -39,14 +40,14 @@ class CreateTemplates {
     }
 
     if (isInsert) {
-      final result = await coll.insertOne(doc);
+      final result = await coll.insertOne($classNameVar);
       if (!result.isSuccess) return null;
       await Future.wait(nestedUpdates);
       return copyWith(id: result.id);
     }
 
     var parentMod = modify.set('updated_at', now);
-    doc.forEach((k, v) => parentMod = parentMod.set(k, v));
+    $classNameVar.forEach((k, v) => parentMod = parentMod.set(k, v));
     final res = await coll.updateOne(where.eq(r'_id', id), parentMod);
     if (!res.isSuccess) return null;
     await Future.wait(nestedUpdates);
@@ -57,14 +58,15 @@ class CreateTemplates {
   }
 
   static saveMany(String className) {
+    String classNameVar = className.toLowerCase();
     return '''
    /// Type-safe saveMany
   static Future<List<$className?>> saveMany(
-    List<$className> docs,
+    List<$className> ${classNameVar}s,
   ) async {
-    if (docs.isEmpty) return <$className>[];
-    final List<Map<String, dynamic>> raw = docs.map((d) {
-      final json = d.toJson()..remove('_id');
+    if (${classNameVar}s.isEmpty) return <$className>[];
+    final List<Map<String, dynamic>> ${classNameVar}sMap = ${classNameVar}s.map((${classNameVar[0]}) {
+      final json = ${classNameVar[0]}.toJson()..remove('_id');
       return json.map((key, value) {
         if (_nestedCollections.containsKey(key)) {
           return MapEntry<String, dynamic>(
@@ -76,15 +78,15 @@ class CreateTemplates {
       });
     }).toList();
     final coll = (await MongoConnection.getDb()).collection(_collection);
-    final result = await coll.insertMany(raw);
-    return docs
+    final result = await coll.insertMany(${classNameVar}sMap);
+    return ${classNameVar}s
         .asMap()
         .entries
         .map((e) {
           final idx = e.key;
-          final doc = e.value;
+          final $classNameVar = e.value;
           final id = result.isSuccess ? result.ids![idx] : null;
-          return doc.copyWith(id: id);
+          return $classNameVar.copyWith(id: id);
         })
         .toList();
   }

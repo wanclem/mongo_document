@@ -171,15 +171,15 @@ class Comments {
     }).toList();
   }
 
-  /// Type-safe findById with optional nested‑doc projections
+  /// Find a Comment by its _id with optional nested-doc projections
   static Future<Comment?> findById(
-    dynamic id, {
+    dynamic commentId, {
     List<BaseProjections> projections = const [],
   }) async {
-    if (id == null) return null;
-    if (id is String) id = ObjectId.fromHexString(id);
-    if (id is! ObjectId) {
-      throw ArgumentError('Invalid id type: ${id.runtimeType}');
+    if (commentId == null) return null;
+    if (commentId is String) commentId = ObjectId.fromHexString(commentId);
+    if (commentId is! ObjectId) {
+      throw ArgumentError('Invalid commentId type: ${commentId.runtimeType}');
     }
 
     final db = await MongoConnection.getDb();
@@ -189,7 +189,7 @@ class Comments {
       final pipeline = <Map<String, Object>>[];
       final projDoc = <String, int>{};
       pipeline.add({
-        r"$match": {'_id': id}
+        r"$match": {'_id': commentId}
       });
       for (var p in projections) {
         final projectedFields = p.fields;
@@ -218,14 +218,14 @@ class Comments {
       }
       pipeline.add({r'$project': projDoc});
 
-      final docs = await coll.aggregateToStream(pipeline).toList();
-      if (docs.isEmpty) return null;
-      return Comment.fromJson(docs.first.withRefs());
+      final comments = await coll.aggregateToStream(pipeline).toList();
+      if (comments.isEmpty) return null;
+      return Comment.fromJson(comments.first.withRefs());
     }
 
-    // fallback: return entire document
-    final doc = await coll.findOne(where.eq(r'_id', id));
-    return doc == null ? null : Comment.fromJson(doc.withRefs());
+    // fallback: return entire comment
+    final comment = await coll.findOne(where.eq(r'_id', commentId));
+    return comment == null ? null : Comment.fromJson(comment.withRefs());
   }
 
   /// Type-safe findOne by predicate
@@ -237,9 +237,9 @@ class Comments {
     final coll = db.collection(_collection);
 
     if (predicate == null) {
-      final docs = await coll.modernFindOne(sort: {'created_at': -1});
-      if (docs == null) return null;
-      return Comment.fromJson(docs.withRefs());
+      final comment = await coll.modernFindOne(sort: {'created_at': -1});
+      if (comment == null) return null;
+      return Comment.fromJson(comment.withRefs());
     }
     final selectorBuilder = predicate(QComment()).toSelectorBuilder();
     final selectorMap =
@@ -276,14 +276,14 @@ class Comments {
       }
       pipeline.add({r'$project': projDoc});
 
-      final docs = await coll.aggregateToStream(pipeline).toList();
-      if (docs.isEmpty) return null;
-      return Comment.fromJson(docs.first.withRefs());
+      final comments = await coll.aggregateToStream(pipeline).toList();
+      if (comments.isEmpty) return null;
+      return Comment.fromJson(comments.first.withRefs());
     }
 
     // fallback to simple findOne
-    final doc = await coll.findOne(selectorMap);
-    return doc == null ? null : Comment.fromJson(doc);
+    final comment = await coll.findOne(selectorMap);
+    return comment == null ? null : Comment.fromJson(comment);
   }
 
   /// Type-safe findOne by named arguments
@@ -307,9 +307,9 @@ class Comments {
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
-      final doc = await coll.modernFindOne(sort: {'created_at': -1});
-      if (doc == null) return null;
-      return Comment.fromJson(doc.withRefs());
+      final comment = await coll.modernFindOne(sort: {'created_at': -1});
+      if (comment == null) return null;
+      return Comment.fromJson(comment.withRefs());
     }
     if (projections.isNotEmpty) {
       final pipeline = <Map<String, Object>>[];
@@ -342,12 +342,12 @@ class Comments {
       }
       pipeline.add({r'$project': projDoc});
 
-      final docs = await coll.aggregateToStream(pipeline).toList();
-      if (docs.isEmpty) return null;
-      return Comment.fromJson(docs.first.withRefs());
+      final comments = await coll.aggregateToStream(pipeline).toList();
+      if (comments.isEmpty) return null;
+      return Comment.fromJson(comments.first.withRefs());
     }
-    final doc = await coll.findOne(selector);
-    return doc == null ? null : Comment.fromJson(doc.withRefs());
+    final comment = await coll.findOne(selector);
+    return comment == null ? null : Comment.fromJson(comment.withRefs());
   }
 
   /// Type-safe findMany by predicate
@@ -397,15 +397,15 @@ class Comments {
       }
       pipeline.add({r'$project': projDoc});
 
-      final docs = await coll.aggregateToStream(pipeline).toList();
-      if (docs.isEmpty) return [];
-      return docs.map((d) => Comment.fromJson(d.withRefs())).toList();
+      final comments = await coll.aggregateToStream(pipeline).toList();
+      if (comments.isEmpty) return [];
+      return comments.map((d) => Comment.fromJson(d.withRefs())).toList();
     }
-    final docs = await (await MongoConnection.getDb())
+    final comments = await (await MongoConnection.getDb())
         .collection(_collection)
         .find(selectorMap)
         .toList();
-    return docs.map((e) => Comment.fromJson(e.withRefs())).toList();
+    return comments.map((e) => Comment.fromJson(e.withRefs())).toList();
   }
 
   /// Type-safe findMany by named arguments
@@ -432,10 +432,10 @@ class Comments {
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
-      final docs = await coll.modernFind(
+      final comments = await coll.modernFind(
           sort: {'created_at': -1}, limit: limit, skip: skip).toList();
-      if (docs.isEmpty) return [];
-      return docs.map((e) => Comment.fromJson(e.withRefs())).toList();
+      if (comments.isEmpty) return [];
+      return comments.map((e) => Comment.fromJson(e.withRefs())).toList();
     }
     if (projections.isNotEmpty) {
       final pipeline = <Map<String, Object>>[];
@@ -468,14 +468,14 @@ class Comments {
       }
       pipeline.add({r'$project': projDoc});
 
-      final docs = await coll.aggregateToStream(pipeline).toList();
-      if (docs.isEmpty) return [];
-      return docs.map((d) => Comment.fromJson(d.withRefs())).toList();
+      final comments = await coll.aggregateToStream(pipeline).toList();
+      if (comments.isEmpty) return [];
+      return comments.map((d) => Comment.fromJson(d.withRefs())).toList();
     }
-    final docs = await coll
+    final comments = await coll
         .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
         .toList();
-    return docs.map((e) => Comment.fromJson(e.withRefs())).toList();
+    return comments.map((e) => Comment.fromJson(e.withRefs())).toList();
   }
 
   /// Type-safe deleteOne by predicate
