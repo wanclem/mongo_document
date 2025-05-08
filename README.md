@@ -67,13 +67,13 @@ Add to your `pubspec.yaml`:
 ```yaml
 dependencies:
   json_annotation: ^4.9.0
-  mongo_document: ^0.0.1
+  mongo_document_annotation: ^0.0.9
 
 dev_dependencies:
   build_runner: ^2.4.14
   freezed: ">=2.5.8 <4.0.0"
   json_serializable: ^6.9.3
-  mongo_document_generator: ^0.0.1
+  mongo_document: ^0.0.9
 ```
 
 Then:
@@ -102,8 +102,7 @@ Future<void> main() async {
 **⚠️ Requirement:** Every `@MongoDocument` class **must** include an `ObjectId` field in its primary constructor annotated with `@ObjectIdConverter()` and `@JsonKey(name: '_id')`. This ensures a valid MongoDB `_id` is always present.
 
 ```dart
-import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:mongo_document/mongo_document.dart';
+import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 
 part 'post.freezed.dart';
 part 'post.g.dart';
