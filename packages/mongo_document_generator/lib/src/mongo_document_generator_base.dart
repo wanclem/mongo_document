@@ -2,9 +2,9 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:build/build.dart';
 import 'package:dart_style/dart_style.dart';
-import 'package:mongo_document/mongo_document.dart';
-import 'package:mongo_document_generator/mongo_document_generator.dart';
-import 'package:mongo_document_generator/src/utils/templates.dart';
+import 'package:mongo_document/mongo_document_generator.dart';
+import 'package:mongo_document/src/utils/templates.dart';
+import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 import 'package:source_gen/source_gen.dart';
 
 const _jsonKeyChecker = TypeChecker.fromRuntime(JsonKey);

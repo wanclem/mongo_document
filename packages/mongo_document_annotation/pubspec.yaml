@@ -1,4 +1,4 @@
-name: mongo_document
+name: mongo_document_annotation
 description: › Generate MongoDB CRUD code from Dart classes annotated with @MongoDocument.
 version: 0.0.9
 homepage: https://github.com/wannclem/mongo_document

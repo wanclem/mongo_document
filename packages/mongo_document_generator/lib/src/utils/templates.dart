@@ -1,7 +1,7 @@
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:json_annotation/json_annotation.dart';
-import 'package:mongo_document_generator/mongo_document_generator.dart';
+import 'package:mongo_document/mongo_document_generator.dart';
 import 'package:recase/recase.dart';
 import 'package:source_gen/source_gen.dart';
 
@@ -68,7 +68,9 @@ bool _isMapStringDynamic(ParameterElement p) {
   if (t is InterfaceType && t.element.name == 'Map') {
     final args = t.typeArguments;
     return args.length == 2 &&
+        // ignore: deprecated_member_use
         args[0].getDisplayString(withNullability: false) == 'String' &&
+        // ignore: deprecated_member_use
         args[1].getDisplayString(withNullability: false) == 'dynamic';
   }
   return false;

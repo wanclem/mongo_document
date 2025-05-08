@@ -1,5 +1,5 @@
 import 'package:example/models/post.dart';
-import 'package:mongo_document/mongo_document.dart';
+import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 
 part 'comment.freezed.dart';
 

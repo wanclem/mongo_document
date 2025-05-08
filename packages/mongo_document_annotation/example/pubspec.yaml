@@ -10,14 +10,14 @@ environment:
 dependencies:
   json_annotation: ^4.9.0
   dotenv: ^4.2.0
-  mongo_document:
-    path: ../../mongo_document
+  mongo_document_annotation:
+    path: ../../mongo_document_annotation
 
 dev_dependencies:
   build_runner: ^2.4.14
   freezed: ">=2.5.8 <4.0.0"
   json_serializable: ^6.9.3
-  mongo_document_generator:
+  mongo_document:
     path: ../../mongo_document_generator
   lints: ^5.0.0
   test: ^1.24.0

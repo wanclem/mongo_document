@@ -1,4 +1,4 @@
-name: mongo_document_generator
+name: mongo_document
 description: A starting point for Dart libraries or applications.
 version: 0.0.9
 repository: https://github.com/wannclem/mongo_document_generator
@@ -10,8 +10,8 @@ dependencies:
   build: ^2.4.0
   analyzer: '>=5.2.0 <7.0.0'
   source_gen: ^2.0.0
-  mongo_document:
-    path: ../mongo_document
+  mongo_document_annotation:
+    path: ../mongo_document_annotation
   mongo_dart: ^0.10.5
   json_annotation: ^4.9.0
   dart_style: ^2.3.8
