@@ -1,9 +1,11 @@
 import 'package:analyzer/dart/element/element.dart';
-import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:build/build.dart';
 import 'package:dart_style/dart_style.dart';
 import 'package:mongo_document/mongo_document_generator.dart';
+import 'package:mongo_document/src/templates/crud/create/create_template.dart';
+import 'package:mongo_document/src/templates/crud/delete/delete_template.dart';
 import 'package:mongo_document/src/templates/crud/read/query_templates.dart';
+import 'package:mongo_document/src/templates/crud/read/read_templates.dart';
 import 'package:mongo_document/src/templates/object_references/object_references.dart';
 import 'package:mongo_document/src/templates/parameter_template.dart';
 import 'package:mongo_document/src/utils/templates.dart';
@@ -58,130 +60,16 @@ $queryClasses
 extension \$${className}Extension on $className {
   static String get _collection => '$collection';
 
-  Future<$className?> save() async {
-    final db = await MongoConnection.getDb();
-    final coll = db.collection(_collection);
-    final now = DateTime.now().toUtc();
-    final isInsert = id == null;
-
-    final parentMap = toJson()..remove('_id')..removeWhere((key, value) => value == null);
-    parentMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
-    parentMap.update('updated_at', (v) => now,    ifAbsent: () => now);
-
-    var doc = {...parentMap};
-    final nestedUpdates = <Future>[];
-    for (var entry in parentMap.entries) {
-      final root = entry.key;
-      if (_nestedCollections.containsKey(root)) {
-        final collectionName = _nestedCollections[root]!;
-        var nestedColl =db.collection(collectionName);
-        var value = entry.value as Map<String, dynamic>?;
-        if (value == null) continue;
-        value.removeWhere((key, value) => value == null);
-        final nestedId = (value['_id'] ?? value['id']) as ObjectId?;
-        if (nestedId == null) {
-           doc.remove(root);
-        }else{
-           doc[root] = nestedId;
-           final nestedMap = value..remove('_id');
-           if (nestedMap.isNotEmpty) {
-            var mod = modify.set('updated_at', now);
-            nestedMap.forEach((k, v) => mod = mod.set(k, v));
-            nestedUpdates.add(
-              nestedColl.updateOne(where.eq(r'_id', nestedId), mod)
-            );
-          }
-        }
-      }
-    }
-
-    if (isInsert) {
-      final result = await coll.insertOne(doc);
-      if (!result.isSuccess) return null;
-      await Future.wait(nestedUpdates);
-      return copyWith(id: result.id);
-    }
-
-    var parentMod = modify.set('updated_at', now);
-    doc.forEach((k, v) => parentMod = parentMod.set(k, v));
-    final res = await coll.updateOne(where.eq(r'_id', id), parentMod);
-    if (!res.isSuccess) return null;
-    await Future.wait(nestedUpdates);
-    return this;
-  }
-   
-  Future<bool> delete() async {
-    if (id == null) return false;
-    final res = await (await MongoConnection.getDb())
-      .collection(_collection)
-      .deleteOne(where.eq(r'_id', id));
-    return res.isSuccess;
-  }
+  ${CreateTemplates.save(className)}
+  ${DeleteTemplates.delete(className)}
+  
 }
 
 class ${className}s {
   
   static String get _collection => '$collection';
-  
-   /// Type‑safe saveMany
-  static Future<List<$className?>> saveMany(
-    List<$className> docs,
-  ) async {
-    if (docs.isEmpty) return <$className>[];
-    final List<Map<String, dynamic>> raw = docs.map((d) {
-      final json = d.toJson()..remove('_id');
-      return json.map((key, value) {
-        if (_nestedCollections.containsKey(key)) {
-          return MapEntry<String, dynamic>(
-            key,
-            (value['_id'] ?? value['id']) as ObjectId?,
-          );
-        }
-        return MapEntry<String, dynamic>(key, value);
-      });
-    }).toList();
-    final coll = (await MongoConnection.getDb()).collection(_collection);
-    final result = await coll.insertMany(raw);
-    return docs
-        .asMap()
-        .entries
-        .map((e) {
-          final idx = e.key;
-          final doc = e.value;
-          final id = result.isSuccess ? result.ids![idx] : null;
-          return doc.copyWith(id: id);
-        })
-        .toList();
-  }
-
-  /// Type‑safe findById with optional nested‑doc projections
-  static Future<$className?> findById(
-    dynamic id, {
-    List<BaseProjections> projections=const [],
-  }) async {
-    if (id == null) return null;
-    if (id is String) id = ObjectId.fromHexString(id);
-    if (id is! ObjectId) {
-      throw ArgumentError('Invalid id type: \${id.runtimeType}');
-    }
-
-    final db = await MongoConnection.getDb();
-    final coll = db.collection(_collection);
-
-    if (projections.isNotEmpty) {
-       ${buildProjectionFlowTemplate('''{
-          r"\$match": {'_id': id}
-        }''')}
-      final docs = await coll.aggregateToStream(pipeline).toList();
-      if (docs.isEmpty) return null;
-      return $className.fromJson(docs.first.withRefs());
-    }
-
-    // fallback: return entire document
-    final doc = await coll.findOne(where.eq(r'_id', id));
-    return doc == null ? null : $className.fromJson(doc.withRefs());
-  }
-
+  ${CreateTemplates.saveMany(className)}
+  ${ReadTemplates.findById(className)}
   /// Type-safe findOne by predicate
   static Future<$className?> findOne(
   Expression Function(Q$className ${className[0].toLowerCase()})? predicate,
