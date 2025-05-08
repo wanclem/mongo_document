@@ -131,12 +131,23 @@ extension $CommentExtension on Comment {
 class Comments {
   static String get _collection => 'comments';
 
-  /// Type‑safe insertMany
-  static Future<List<Comment?>> insertMany(
+  /// Type‑safe saveMany
+  static Future<List<Comment?>> saveMany(
     List<Comment> docs,
   ) async {
     if (docs.isEmpty) return <Comment>[];
-    final raw = docs.map((d) => d.toJson()..remove('_id')).toList();
+    final List<Map<String, dynamic>> raw = docs.map((d) {
+      final json = d.toJson()..remove('_id');
+      return json.map((key, value) {
+        if (_nestedCollections.containsKey(key)) {
+          return MapEntry<String, dynamic>(
+            key,
+            (value['_id'] ?? value['id']) as ObjectId?,
+          );
+        }
+        return MapEntry<String, dynamic>(key, value);
+      });
+    }).toList();
     final coll = (await MongoConnection.getDb()).collection(_collection);
     final result = await coll.insertMany(raw);
     return docs.asMap().entries.map((e) {
@@ -218,7 +229,8 @@ class Comments {
       return Comment.fromJson(docs.withRefs());
     }
     final selectorBuilder = predicate(QComment()).toSelectorBuilder();
-    final selectorMap = selectorBuilder.map.flatQuery();
+    final selectorMap =
+        selectorBuilder.map.flatQuery().withLookupAwareness(_nestedCollections);
 
     if (projections.isNotEmpty) {
       final pipeline = <Map<String, Object>>[];
@@ -338,7 +350,8 @@ class Comments {
     var selectorBuilder = predicate(QComment()).toSelectorBuilder();
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
     if (limit != null) selectorBuilder = selectorBuilder.limit(limit);
-    final selectorMap = selectorBuilder.map.flatQuery();
+    final selectorMap =
+        selectorBuilder.map.flatQuery().withLookupAwareness(_nestedCollections);
 
     if (projections.isNotEmpty) {
       final pipeline = <Map<String, Object>>[];

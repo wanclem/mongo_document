@@ -22,7 +22,7 @@ class ObjectIdConverter implements JsonConverter<ObjectId?, dynamic> {
   }
 
   @override
-  ObjectId? toJson(ObjectId? object) {
-    return object;
+  ObjectId? toJson(ObjectId? objectId) {
+    return objectId;
   }
 }

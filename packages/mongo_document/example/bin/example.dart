@@ -1,18 +1,6 @@
 import 'package:example/env/dump.dart';
-import 'package:example/models/post.dart';
 import 'package:mongo_document/mongo_document.dart';
 
 Future<void> main() async {
   var env = Environment();
-  String? mongoUri = env.get('MONGO_URI') ?? "";
-
-  /// Initialize the global MongoDB connection once.
-  /// All generated .save(), .findOne(), .findMany(), etc. will reuse this.
-  await MongoConnection.init(mongoUri);
-
-  Post? post = await Posts.findById("", projections: [
-    AuthorProjections([AuthorFields.age]),
-    LastCommentProjections([LastCommentFields.text]),
-  ]);
-  print(post);
 }

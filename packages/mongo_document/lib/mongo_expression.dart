@@ -37,20 +37,111 @@ extension CleanQuery on Map<String, dynamic> {
     });
     return result;
   }
+
+  List<Map<String, dynamic>> withLookupAwareness([
+    Map<String, String> lookups = const {},
+  ]) {
+    if (lookups.isEmpty) return [this];
+    final mainFilter = <String, dynamic>{};
+    final lookupStages = <_LookupStage>[];
+    var remainingEntries = Map<String, dynamic>.from(this);
+
+    // Process each lookup configuration
+    for (final lookup in lookups.entries) {
+      final localField = lookup.key;
+      final from = lookup.value;
+      final joinPrefix = '$localField.';
+      final joinFilter = <String, dynamic>{};
+      final matchedKeys = <String>[];
+
+      // Find all entries that match this lookup's prefix
+      for (final entry in remainingEntries.entries) {
+        if (entry.key.startsWith(joinPrefix)) {
+          joinFilter[entry.key] = entry.value;
+          matchedKeys.add(entry.key);
+        }
+      }
+
+      // Remove matched entries from remaining entries
+      matchedKeys.forEach(remainingEntries.remove);
+
+      lookupStages.add(_LookupStage(
+        localField: localField,
+        from: from,
+        as: localField, // 'as' defaults to localField
+        joinFilter: joinFilter,
+      ));
+    }
+
+    // Remaining entries go into main filter
+    mainFilter.addAll(remainingEntries);
+
+    final pipeline = <Map<String, dynamic>>[];
+
+    // Add main match stage if needed
+    if (mainFilter.isNotEmpty) {
+      pipeline.add({r'$match': mainFilter});
+    }
+
+    // Add lookup stages for each configured lookup
+    for (final stage in lookupStages) {
+      if (stage.joinFilter.isNotEmpty) {
+        pipeline.add({
+          r'$lookup': {
+            'from': stage.from,
+            'localField': stage.localField,
+            'foreignField': '_id',
+            'as': stage.as,
+          }
+        });
+        pipeline.add({r'$unwind': '\$${stage.as}'});
+        pipeline.add({r'$match': stage.joinFilter});
+      }
+    }
+
+    return pipeline;
+  }
+}
+
+class _LookupStage {
+  final String localField;
+  final String from;
+  final String as;
+  final Map<String, dynamic> joinFilter;
+
+  _LookupStage({
+    required this.localField,
+    required this.from,
+    required this.as,
+    required this.joinFilter,
+  });
+}
+
+extension ObjectAware on String {
+  withIdAwareness() {
+    if (contains(".")) {
+      final parts = split(".");
+      final secondPart = parts[1];
+      if (secondPart == "_id" || secondPart == "id") {
+        return parts[0];
+      }
+    }
+    return this;
+  }
 }
 
 mixin MoreExMixin {
   String get _key;
 
-  Expression exists([bool doesExist = true]) => _RawExpression({
+  Expression exists([bool doesExist = true]) => RawExpression({
         _key: {r'$exists': doesExist}
       });
 
-  Expression nin(dynamic value) => _RawExpression({
+  Expression nin(dynamic value) => RawExpression({
         _key: {r'$nin': value}
       });
 
-  Expression containsAll(dynamic value) => _RawExpression({
+  Expression containsAll(dynamic value) => RawExpression({
         _key: {r'$all': value}
       });
 }
@@ -261,24 +352,24 @@ class QList<T> with MoreExMixin {
   String get _key => _prefix;
 
   ///Check if the list contains a value
-  Expression contains(T value) => _RawExpression({
+  Expression contains(T value) => RawExpression({
         _prefix: {
           r'$in': [value],
         },
       });
 
   ///Check if the list contains a value that matches the given expression
-  Expression elemMatch(T value) => _RawExpression({
+  Expression elemMatch(T value) => RawExpression({
         _prefix: {
           r'$elemMatch': value,
         },
       });
 }
 
-class _RawExpression implements Expression {
+class RawExpression implements Expression {
   final Map<String, dynamic> _map;
 
-  _RawExpression(this._map);
+  RawExpression(this._map);
 
   @override
   SelectorBuilder toSelectorBuilder() => SelectorBuilder()..raw(_map);

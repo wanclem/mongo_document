@@ -1,0 +1,18 @@
+version: 2
+updates:
+  # Annotation (mongo_document)
+  - package-ecosystem: "pub"
+    directory: "/packages/mongo_document"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 1
+    labels:
+      - "dependencies"
+  # Code Generator (mongo_document_generator)
+  - package-ecosystem: "pub"
+    directory: "/packages/mongo_document_generator"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 1
+    labels:
+      - "dependencies"

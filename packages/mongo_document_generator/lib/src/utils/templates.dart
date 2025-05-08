@@ -131,12 +131,13 @@ String buildQueryClasses(
 
   final qClass = '''
 class Q$className {
+
 final String _prefix;
   Q$className([this._prefix = '']);
 
   String _key(String field) =>
     _prefix.isEmpty ? field : '\$_prefix.\$field';
-
+    
 $qFields
 }
 ''';
