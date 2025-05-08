@@ -14,7 +14,7 @@ dependencies:
     path: ../mongo_document_annotation
   mongo_dart: ^0.10.5
   json_annotation: ^4.9.0
-  dart_style: ^2.3.8
+  dart_style: ">=2.3.8 <4.0.0"
   path: ^1.9.1
   collection: ^1.19.1
   recase: ^4.1.0
