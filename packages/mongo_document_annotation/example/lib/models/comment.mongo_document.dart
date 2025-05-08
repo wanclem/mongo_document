@@ -171,7 +171,7 @@ class Comments {
     }).toList();
   }
 
-  /// Type‑safe findById with optional nested‑doc projections
+  /// Type-safe findById with optional nested‑doc projections
   static Future<Comment?> findById(
     dynamic id, {
     List<BaseProjections> projections = const [],
@@ -350,7 +350,7 @@ class Comments {
     return doc == null ? null : Comment.fromJson(doc.withRefs());
   }
 
-  /// Type‑safe findMany by predicate
+  /// Type-safe findMany by predicate
   static Future<List<Comment>> findMany(
     Expression Function(QComment c) predicate, {
     int? skip,

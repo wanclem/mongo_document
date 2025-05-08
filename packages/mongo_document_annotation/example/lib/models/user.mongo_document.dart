@@ -131,7 +131,7 @@ class Users {
     }).toList();
   }
 
-  /// Type‑safe findById with optional nested‑doc projections
+  /// Type-safe findById with optional nested‑doc projections
   static Future<User?> findById(
     dynamic id, {
     List<BaseProjections> projections = const [],
@@ -312,7 +312,7 @@ class Users {
     return doc == null ? null : User.fromJson(doc.withRefs());
   }
 
-  /// Type‑safe findMany by predicate
+  /// Type-safe findMany by predicate
   static Future<List<User>> findMany(
     Expression Function(QUser u) predicate, {
     int? skip,

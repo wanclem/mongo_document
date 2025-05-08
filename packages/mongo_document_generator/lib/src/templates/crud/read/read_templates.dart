@@ -1,13 +1,12 @@
 import 'package:analyzer/dart/element/element.dart';
 import 'package:mongo_document/src/templates/parameter_template.dart';
-import 'package:mongo_document/src/utils/templates.dart';
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 import 'package:source_gen/source_gen.dart';
 
 class ReadTemplates {
   static String findById(String className) {
     return '''
-/// Type‑safe findById with optional nested‑doc projections
+/// Type-safe findById with optional nested‑doc projections
   static Future<$className?> findById(
     dynamic id, {
     List<BaseProjections> projections=const [],
@@ -113,7 +112,7 @@ class ReadTemplates {
 
   static String findMany(String className) {
     return '''
-  /// Type‑safe findMany by predicate
+  /// Type-safe findMany by predicate
   static Future<List<$className>> findMany(
     Expression Function(Q$className ${className[0].toLowerCase()}) predicate, {
     int? skip, int? limit,
@@ -195,4 +194,38 @@ class ReadTemplates {
   }
 ''';
   }
+}
+
+String buildProjectionFlowTemplate(String matchQuery) {
+  return '''
+final pipeline = <Map<String, Object>>[];
+     final projDoc = <String, int>{};
+     pipeline.add($matchQuery);
+     for (var p in projections) {
+        final projectedFields = p.fields;
+        final allProjections = p.toProjection();
+        final localField = allProjections.keys.first.split(".").first;
+        final foreignColl = _nestedCollections[localField];
+        if (projectedFields != null && projectedFields.isNotEmpty) {
+          final selected = <String, int>{};
+          for (var f in projectedFields) {
+            final path = p.fieldMappings[(f as Enum).name]!;
+            selected[path] = 1;
+          }
+          projDoc.addAll(selected);
+        } else {
+          projDoc.addAll(allProjections);
+        }
+        pipeline.add({
+          r'\$lookup': {
+            'from': foreignColl,
+            'localField': localField,
+            'foreignField': '_id',
+            'as': localField,
+          }
+        });
+        pipeline.add({r'\$unwind': localField});
+      }
+      pipeline.add({r'\$project': projDoc});
+''';
 }

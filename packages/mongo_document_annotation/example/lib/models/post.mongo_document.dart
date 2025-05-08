@@ -196,7 +196,7 @@ class Posts {
     }).toList();
   }
 
-  /// Type‑safe findById with optional nested‑doc projections
+  /// Type-safe findById with optional nested‑doc projections
   static Future<Post?> findById(
     dynamic id, {
     List<BaseProjections> projections = const [],
@@ -379,7 +379,7 @@ class Posts {
     return doc == null ? null : Post.fromJson(doc.withRefs());
   }
 
-  /// Type‑safe findMany by predicate
+  /// Type-safe findMany by predicate
   static Future<List<Post>> findMany(
     Expression Function(QPost p) predicate, {
     int? skip,
