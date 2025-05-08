@@ -45,15 +45,15 @@ extension $UserExtension on User {
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
-    final parentMap = toJson()
+    final userMap = toJson()
       ..remove('_id')
       ..removeWhere((key, value) => value == null);
-    parentMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
-    parentMap.update('updated_at', (v) => now, ifAbsent: () => now);
+    userMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
+    userMap.update('updated_at', (v) => now, ifAbsent: () => now);
 
-    var doc = {...parentMap};
+    var user = {...userMap};
     final nestedUpdates = <Future>[];
-    for (var entry in parentMap.entries) {
+    for (var entry in userMap.entries) {
       final root = entry.key;
       if (_nestedCollections.containsKey(root)) {
         final collectionName = _nestedCollections[root]!;
@@ -63,9 +63,9 @@ extension $UserExtension on User {
         value.removeWhere((key, value) => value == null);
         final nestedId = (value['_id'] ?? value['id']) as ObjectId?;
         if (nestedId == null) {
-          doc.remove(root);
+          user.remove(root);
         } else {
-          doc[root] = nestedId;
+          user[root] = nestedId;
           final nestedMap = value..remove('_id');
           if (nestedMap.isNotEmpty) {
             var mod = modify.set('updated_at', now);
@@ -78,14 +78,14 @@ extension $UserExtension on User {
     }
 
     if (isInsert) {
-      final result = await coll.insertOne(doc);
+      final result = await coll.insertOne(user);
       if (!result.isSuccess) return null;
       await Future.wait(nestedUpdates);
       return copyWith(id: result.id);
     }
 
     var parentMod = modify.set('updated_at', now);
-    doc.forEach((k, v) => parentMod = parentMod.set(k, v));
+    user.forEach((k, v) => parentMod = parentMod.set(k, v));
     final res = await coll.updateOne(where.eq(r'_id', id), parentMod);
     if (!res.isSuccess) return null;
     await Future.wait(nestedUpdates);
@@ -106,11 +106,11 @@ class Users {
 
   /// Type-safe saveMany
   static Future<List<User?>> saveMany(
-    List<User> docs,
+    List<User> users,
   ) async {
-    if (docs.isEmpty) return <User>[];
-    final List<Map<String, dynamic>> raw = docs.map((d) {
-      final json = d.toJson()..remove('_id');
+    if (users.isEmpty) return <User>[];
+    final List<Map<String, dynamic>> usersMap = users.map((u) {
+      final json = u.toJson()..remove('_id');
       return json.map((key, value) {
         if (_nestedCollections.containsKey(key)) {
           return MapEntry<String, dynamic>(
@@ -122,12 +122,12 @@ class Users {
       });
     }).toList();
     final coll = (await MongoConnection.getDb()).collection(_collection);
-    final result = await coll.insertMany(raw);
-    return docs.asMap().entries.map((e) {
+    final result = await coll.insertMany(usersMap);
+    return users.asMap().entries.map((e) {
       final idx = e.key;
-      final doc = e.value;
+      final user = e.value;
       final id = result.isSuccess ? result.ids![idx] : null;
-      return doc.copyWith(id: id);
+      return user.copyWith(id: id);
     }).toList();
   }
 

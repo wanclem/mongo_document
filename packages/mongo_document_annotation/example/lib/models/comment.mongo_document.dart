@@ -85,15 +85,15 @@ extension $CommentExtension on Comment {
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
-    final parentMap = toJson()
+    final commentMap = toJson()
       ..remove('_id')
       ..removeWhere((key, value) => value == null);
-    parentMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
-    parentMap.update('updated_at', (v) => now, ifAbsent: () => now);
+    commentMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
+    commentMap.update('updated_at', (v) => now, ifAbsent: () => now);
 
-    var doc = {...parentMap};
+    var comment = {...commentMap};
     final nestedUpdates = <Future>[];
-    for (var entry in parentMap.entries) {
+    for (var entry in commentMap.entries) {
       final root = entry.key;
       if (_nestedCollections.containsKey(root)) {
         final collectionName = _nestedCollections[root]!;
@@ -103,9 +103,9 @@ extension $CommentExtension on Comment {
         value.removeWhere((key, value) => value == null);
         final nestedId = (value['_id'] ?? value['id']) as ObjectId?;
         if (nestedId == null) {
-          doc.remove(root);
+          comment.remove(root);
         } else {
-          doc[root] = nestedId;
+          comment[root] = nestedId;
           final nestedMap = value..remove('_id');
           if (nestedMap.isNotEmpty) {
             var mod = modify.set('updated_at', now);
@@ -118,14 +118,14 @@ extension $CommentExtension on Comment {
     }
 
     if (isInsert) {
-      final result = await coll.insertOne(doc);
+      final result = await coll.insertOne(comment);
       if (!result.isSuccess) return null;
       await Future.wait(nestedUpdates);
       return copyWith(id: result.id);
     }
 
     var parentMod = modify.set('updated_at', now);
-    doc.forEach((k, v) => parentMod = parentMod.set(k, v));
+    comment.forEach((k, v) => parentMod = parentMod.set(k, v));
     final res = await coll.updateOne(where.eq(r'_id', id), parentMod);
     if (!res.isSuccess) return null;
     await Future.wait(nestedUpdates);
@@ -146,11 +146,11 @@ class Comments {
 
   /// Type-safe saveMany
   static Future<List<Comment?>> saveMany(
-    List<Comment> docs,
+    List<Comment> comments,
   ) async {
-    if (docs.isEmpty) return <Comment>[];
-    final List<Map<String, dynamic>> raw = docs.map((d) {
-      final json = d.toJson()..remove('_id');
+    if (comments.isEmpty) return <Comment>[];
+    final List<Map<String, dynamic>> commentsMap = comments.map((c) {
+      final json = c.toJson()..remove('_id');
       return json.map((key, value) {
         if (_nestedCollections.containsKey(key)) {
           return MapEntry<String, dynamic>(
@@ -162,12 +162,12 @@ class Comments {
       });
     }).toList();
     final coll = (await MongoConnection.getDb()).collection(_collection);
-    final result = await coll.insertMany(raw);
-    return docs.asMap().entries.map((e) {
+    final result = await coll.insertMany(commentsMap);
+    return comments.asMap().entries.map((e) {
       final idx = e.key;
-      final doc = e.value;
+      final comment = e.value;
       final id = result.isSuccess ? result.ids![idx] : null;
-      return doc.copyWith(id: id);
+      return comment.copyWith(id: id);
     }).toList();
   }
 
