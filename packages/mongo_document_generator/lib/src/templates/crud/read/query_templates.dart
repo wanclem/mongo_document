@@ -5,7 +5,7 @@ import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 import 'package:source_gen/source_gen.dart';
 
 class QueryTemplates {
-  static String buildQueryClasses(
+  static String buildQueryClass(
     TypeChecker jsonKeyChecker,
     String className,
     FieldRename? fieldRename,

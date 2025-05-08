@@ -11,6 +11,8 @@ part of 'comment.dart';
 // MongoDocumentGenerator
 // **************************************************************************
 
+const _nestedCollections = <String, String>{'post': 'posts'};
+
 enum PostFields {
   id,
   author,
@@ -52,8 +54,6 @@ class PostProjections implements BaseProjections {
     };
   }
 }
-
-const _nestedCollections = <String, String>{'post': 'posts'};
 
 class QComment {
   final String _prefix;

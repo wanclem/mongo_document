@@ -34,28 +34,23 @@ class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
     final params = element.unnamedConstructor?.parameters ?? [];
     final nestedCollectionMap =
         ParameterTemplates.getNestedCollectionMap(params);
-    final nestedCollectionProjectionClasses =
-        ObjectReferences.buildNestedCollectionProjectionClasses(
+
+    final template = '''
+${ObjectReferences.buildNestedCollectiontionsMapLiteral(
+      nestedCollectionMap,
+    )}
+${ObjectReferences.buildNestedCollectionProjectionClasses(
       _jsonSerializableChecker,
       _jsonKeyChecker,
       nestedCollectionMap,
       params,
-    );
-    final nestedCollectionMapLiteral =
-        ObjectReferences.buildNestedCollectiontionsMapLiteral(
-      nestedCollectionMap,
-    );
-    final queryClasses = QueryTemplates.buildQueryClasses(
+    )}
+${QueryTemplates.buildQueryClass(
       _jsonKeyChecker,
       className,
       fieldRename,
       params,
-    );
-
-    final template = '''
-$nestedCollectionProjectionClasses
-$nestedCollectionMapLiteral
-$queryClasses
+    )}
 
 extension \$${className}Extension on $className {
   static String get _collection => '$collection';
