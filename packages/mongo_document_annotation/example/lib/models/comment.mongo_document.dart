@@ -11,7 +11,16 @@ part of 'comment.dart';
 // MongoDocumentGenerator
 // **************************************************************************
 
-enum PostFields { id, author, lastComment, tags, body, createdAt, updatedAt }
+enum PostFields {
+  id,
+  author,
+  lastComment,
+  tags,
+  body,
+  name,
+  createdAt,
+  updatedAt
+}
 
 class PostProjections implements BaseProjections {
   @override
@@ -23,6 +32,7 @@ class PostProjections implements BaseProjections {
     "lastComment": "post.last_comment",
     "tags": "post.tags",
     "body": "post.body",
+    "name": "post.name",
     "createdAt": "post.created_at",
     "updatedAt": "post.updated_at"
   };
@@ -36,6 +46,7 @@ class PostProjections implements BaseProjections {
       'post.last_comment': 1,
       'post.tags': 1,
       'post.body': 1,
+      'post.name': 1,
       'post.created_at': 1,
       'post.updated_at': 1
     };

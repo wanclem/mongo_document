@@ -22,6 +22,7 @@ mixin _$Post {
   Comment? get lastComment;
   List<String> get tags;
   String? get body;
+  dynamic get name;
   @DateTimeConverter()
   DateTime? get createdAt;
   @DateTimeConverter()
@@ -48,6 +49,7 @@ mixin _$Post {
                 other.lastComment == lastComment) &&
             const DeepCollectionEquality().equals(other.tags, tags) &&
             (identical(other.body, body) || other.body == body) &&
+            const DeepCollectionEquality().equals(other.name, name) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -56,12 +58,20 @@ mixin _$Post {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, author, lastComment,
-      const DeepCollectionEquality().hash(tags), body, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      author,
+      lastComment,
+      const DeepCollectionEquality().hash(tags),
+      body,
+      const DeepCollectionEquality().hash(name),
+      createdAt,
+      updatedAt);
 
   @override
   String toString() {
-    return 'Post(id: $id, author: $author, lastComment: $lastComment, tags: $tags, body: $body, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'Post(id: $id, author: $author, lastComment: $lastComment, tags: $tags, body: $body, name: $name, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 }
 
@@ -76,6 +86,7 @@ abstract mixin class $PostCopyWith<$Res> {
       Comment? lastComment,
       List<String> tags,
       String? body,
+      dynamic name,
       @DateTimeConverter() DateTime? createdAt,
       @DateTimeConverter() DateTime? updatedAt});
 
@@ -100,6 +111,7 @@ class _$PostCopyWithImpl<$Res> implements $PostCopyWith<$Res> {
     Object? lastComment = freezed,
     Object? tags = null,
     Object? body = freezed,
+    Object? name = freezed,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
   }) {
@@ -124,6 +136,10 @@ class _$PostCopyWithImpl<$Res> implements $PostCopyWith<$Res> {
           ? _self.body
           : body // ignore: cast_nullable_to_non_nullable
               as String?,
+      name: freezed == name
+          ? _self.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as dynamic,
       createdAt: freezed == createdAt
           ? _self.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -174,6 +190,7 @@ class _Post implements Post {
       this.lastComment,
       final List<String> tags = const [],
       this.body,
+      this.name,
       @DateTimeConverter() this.createdAt,
       @DateTimeConverter() this.updatedAt})
       : _tags = tags;
@@ -198,6 +215,8 @@ class _Post implements Post {
 
   @override
   final String? body;
+  @override
+  final dynamic name;
   @override
   @DateTimeConverter()
   final DateTime? createdAt;
@@ -231,6 +250,7 @@ class _Post implements Post {
                 other.lastComment == lastComment) &&
             const DeepCollectionEquality().equals(other._tags, _tags) &&
             (identical(other.body, body) || other.body == body) &&
+            const DeepCollectionEquality().equals(other.name, name) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -239,12 +259,20 @@ class _Post implements Post {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, author, lastComment,
-      const DeepCollectionEquality().hash(_tags), body, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      author,
+      lastComment,
+      const DeepCollectionEquality().hash(_tags),
+      body,
+      const DeepCollectionEquality().hash(name),
+      createdAt,
+      updatedAt);
 
   @override
   String toString() {
-    return 'Post(id: $id, author: $author, lastComment: $lastComment, tags: $tags, body: $body, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'Post(id: $id, author: $author, lastComment: $lastComment, tags: $tags, body: $body, name: $name, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 }
 
@@ -260,6 +288,7 @@ abstract mixin class _$PostCopyWith<$Res> implements $PostCopyWith<$Res> {
       Comment? lastComment,
       List<String> tags,
       String? body,
+      dynamic name,
       @DateTimeConverter() DateTime? createdAt,
       @DateTimeConverter() DateTime? updatedAt});
 
@@ -286,6 +315,7 @@ class __$PostCopyWithImpl<$Res> implements _$PostCopyWith<$Res> {
     Object? lastComment = freezed,
     Object? tags = null,
     Object? body = freezed,
+    Object? name = freezed,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
   }) {
@@ -310,6 +340,10 @@ class __$PostCopyWithImpl<$Res> implements _$PostCopyWith<$Res> {
           ? _self.body
           : body // ignore: cast_nullable_to_non_nullable
               as String?,
+      name: freezed == name
+          ? _self.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as dynamic,
       createdAt: freezed == createdAt
           ? _self.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable

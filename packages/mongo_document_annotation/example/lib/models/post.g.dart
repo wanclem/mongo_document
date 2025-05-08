@@ -18,6 +18,7 @@ _Post _$PostFromJson(Map<String, dynamic> json) => _Post(
           (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
               const [],
       body: json['body'] as String?,
+      name: json['name'],
       createdAt: const DateTimeConverter().fromJson(json['created_at']),
       updatedAt: const DateTimeConverter().fromJson(json['updated_at']),
     );
@@ -28,6 +29,7 @@ Map<String, dynamic> _$PostToJson(_Post instance) => <String, dynamic>{
       'last_comment': instance.lastComment?.toJson(),
       'tags': instance.tags,
       'body': instance.body,
+      'name': instance.name,
       'created_at': const DateTimeConverter().toJson(instance.createdAt),
       'updated_at': const DateTimeConverter().toJson(instance.updatedAt),
     };

@@ -92,6 +92,8 @@ class QPost {
 
   QueryField<String?> get body => QueryField<String?>(_key('body'));
 
+  QueryField<dynamic> get name => QueryField<dynamic>(_key('name'));
+
   QueryField<DateTime?> get createdAt =>
       QueryField<DateTime?>(_key('created_at'));
 
@@ -316,6 +318,7 @@ class Posts {
     Comment? lastComment,
     List<String>? tags,
     String? body,
+    dynamic name,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<BaseProjections> projections = const [],
@@ -329,6 +332,7 @@ class Posts {
     if (lastComment != null) selector['last_comment'] = lastComment;
     if (tags != null) selector['tags'] = tags;
     if (body != null) selector['body'] = body;
+    if (name != null) selector['name'] = name;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
@@ -440,6 +444,7 @@ class Posts {
     Comment? lastComment,
     List<String>? tags,
     String? body,
+    dynamic name,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<BaseProjections> projections = const [],
@@ -456,6 +461,7 @@ class Posts {
     if (lastComment != null) selector['last_comment'] = lastComment;
     if (tags != null) selector['tags'] = tags;
     if (body != null) selector['body'] = body;
+    if (name != null) selector['name'] = name;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
@@ -522,6 +528,7 @@ class Posts {
     Comment? lastComment,
     List<String>? tags,
     String? body,
+    dynamic name,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) async {
@@ -531,6 +538,7 @@ class Posts {
     if (lastComment != null) selector['last_comment'] = lastComment;
     if (tags != null) selector['tags'] = tags;
     if (body != null) selector['body'] = body;
+    if (name != null) selector['name'] = name;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) return false;
@@ -558,6 +566,7 @@ class Posts {
     Comment? lastComment,
     List<String>? tags,
     String? body,
+    dynamic name,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) async {
@@ -567,6 +576,7 @@ class Posts {
       if (lastComment != null) 'last_comment': lastComment,
       'tags': tags,
       if (body != null) 'body': body,
+      'name': name,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -586,6 +596,7 @@ class Posts {
     Comment? lastComment,
     List<String>? tags,
     String? body,
+    dynamic name,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) async {
@@ -595,6 +606,7 @@ class Posts {
       if (lastComment != null) 'last_comment': lastComment,
       'tags': tags,
       if (body != null) 'body': body,
+      'name': name,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });

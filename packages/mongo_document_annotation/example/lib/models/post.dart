@@ -21,6 +21,7 @@ abstract class Post with _$Post {
     Comment? lastComment,
     @Default([]) List<String> tags,
     String? body,
+    dynamic name,
     @DateTimeConverter() DateTime? createdAt,
     @DateTimeConverter() DateTime? updatedAt,
   }) = _Post;

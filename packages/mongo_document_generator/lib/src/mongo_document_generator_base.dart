@@ -3,6 +3,9 @@ import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:build/build.dart';
 import 'package:dart_style/dart_style.dart';
 import 'package:mongo_document/mongo_document_generator.dart';
+import 'package:mongo_document/src/templates/crud/read/query_templates.dart';
+import 'package:mongo_document/src/templates/object_references/object_references.dart';
+import 'package:mongo_document/src/templates/parameter_template.dart';
 import 'package:mongo_document/src/utils/templates.dart';
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 import 'package:source_gen/source_gen.dart';
@@ -12,31 +15,6 @@ const _jsonSerializableChecker = TypeChecker.fromRuntime(JsonSerializable);
 
 class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
   final _formatter = DartFormatter();
-
-  String _buildUpdateParams(List<ParameterElement> params) {
-    return params.map((p) {
-      final base = p.type.getDisplayString();
-      final suffix = (base != 'dynamic' &&
-              p.type.nullabilitySuffix == NullabilitySuffix.none)
-          ? '?'
-          : '';
-      final name = p.name;
-      return '    $base$suffix $name,';
-    }).join('\n');
-  }
-
-  String _buildFindByFieldParams(
-    List<ParameterElement> params,
-    FieldRename? fieldRename,
-  ) {
-    return params.map((p) {
-      final dartType = p.type.getDisplayString();
-      final needsQuestion =
-          p.type.nullabilitySuffix != NullabilitySuffix.question;
-      final typeWithNull = needsQuestion ? '$dartType?' : dartType;
-      return '    $typeWithNull ${p.name},';
-    }).join('\n');
-  }
 
   @override
   Future<String> generateForAnnotatedElement(
@@ -52,18 +30,20 @@ class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
     final className = element.name;
     final collection = annotation.peek('collection')!.stringValue;
     final params = element.unnamedConstructor?.parameters ?? [];
-    final nestedCollectionMap = getNestedCollectionMap(params);
+    final nestedCollectionMap =
+        ParameterTemplates.getNestedCollectionMap(params);
     final nestedCollectionProjectionClasses =
-        buildNestedCollectionProjectionClasses(
+        ObjectReferences.buildNestedCollectionProjectionClasses(
       _jsonSerializableChecker,
       _jsonKeyChecker,
       nestedCollectionMap,
       params,
     );
-    final nestedCollectionMapLiteral = buildNestedCollectiontionsMapLiteral(
+    final nestedCollectionMapLiteral =
+        ObjectReferences.buildNestedCollectiontionsMapLiteral(
       nestedCollectionMap,
     );
-    final queryClasses = buildQueryClasses(
+    final queryClasses = QueryTemplates.buildQueryClasses(
       _jsonKeyChecker,
       className,
       fieldRename,
@@ -234,14 +214,15 @@ class ${className}s {
   }
 
   /// Type-safe findOne by named arguments
-  static Future<$className?> findOneByNamed({${_buildFindByFieldParams(params, fieldRename)}List<BaseProjections> projections=const [],})async{
+  static Future<$className?> findOneByNamed({${ParameterTemplates.buildNullableParams(params, fieldRename)}List<BaseProjections> projections=const [],})async{
     final db = await MongoConnection.getDb();
     final coll = db.collection(_collection);
 
     final selector = <String, dynamic>{};
     ${params.map((p) {
       final paramName = p.name;
-      final key = getParameterKey(_jsonKeyChecker, p, fieldRename);
+      final key =
+          ParameterTemplates.getParameterKey(_jsonKeyChecker, p, fieldRename);
       return '''if ($paramName != null) selector['$key'] = $paramName;''';
     }).join('\n')}
     if (selector.isEmpty) {
@@ -290,14 +271,15 @@ class ${className}s {
  }
 
   /// Type-safe findMany by named arguments
-  static Future<List<$className>> findManyByNamed({${_buildFindByFieldParams(params, fieldRename)}    List<BaseProjections> projections=const [],Map<String,Object>sort=const{},int? skip,int limit=10,})async{
+  static Future<List<$className>> findManyByNamed({${ParameterTemplates.buildNullableParams(params, fieldRename)}    List<BaseProjections> projections=const [],Map<String,Object>sort=const{},int? skip,int limit=10,})async{
     final db = await MongoConnection.getDb();
     final coll = db.collection(_collection);
 
     final selector = <String, dynamic>{};
     ${params.map((p) {
       final paramName = p.name;
-      final key = getParameterKey(_jsonKeyChecker, p, fieldRename);
+      final key =
+          ParameterTemplates.getParameterKey(_jsonKeyChecker, p, fieldRename);
       return '''if ($paramName != null) selector['$key'] = $paramName;''';
     }).join('\n')}
     if (selector.isEmpty) {
@@ -331,12 +313,13 @@ class ${className}s {
 
   /// Type-safe deleteOne by named arguments
   static Future<bool> deleteOneByNamed(
-  {${_buildFindByFieldParams(params, fieldRename)}}
+  {${ParameterTemplates.buildNullableParams(params, fieldRename)}}
   ) async {
   final selector = <String, dynamic>{};
   ${params.map((p) {
       final paramName = p.name;
-      final key = getParameterKey(_jsonKeyChecker, p, fieldRename);
+      final key =
+          ParameterTemplates.getParameterKey(_jsonKeyChecker, p, fieldRename);
       return '''if ($paramName != null) selector['$key'] = $paramName;''';
     }).join('\n')}
     if (selector.isEmpty) return false;
@@ -361,11 +344,12 @@ class ${className}s {
   /// Type-safe updateOne
   static Future<bool> updateOne(
     Expression Function(Q$className ${className[0].toLowerCase()}) predicate, {
-${_buildUpdateParams(params)}
+${ParameterTemplates.buildNullableParams(params, fieldRename)}
   }) async {
     final modifier = _buildModifier({
       ${params.map((p) {
-      final key = getParameterKey(_jsonKeyChecker, p, fieldRename);
+      final key =
+          ParameterTemplates.getParameterKey(_jsonKeyChecker, p, fieldRename);
       final hasDefault =
           _jsonKeyChecker.firstAnnotationOf(p)?.getField('defaultValue') !=
               null;
@@ -388,11 +372,12 @@ ${_buildUpdateParams(params)}
   /// Type-safe updateMany
   static Future<bool> updateMany(
     Expression Function(Q$className ${className[0].toLowerCase()}) predicate, {
-${_buildUpdateParams(params)}
+${ParameterTemplates.buildNullableParams(params, fieldRename)}
   }) async {
     final modifier = _buildModifier({
       ${params.map((p) {
-      final key = getParameterKey(_jsonKeyChecker, p, fieldRename);
+      final key =
+          ParameterTemplates.getParameterKey(_jsonKeyChecker, p, fieldRename);
       final hasDefault =
           _jsonKeyChecker.firstAnnotationOf(p)?.getField('defaultValue') !=
               null;
