@@ -10,17 +10,17 @@
 
 3. [Getting Started](#getting-started)
 
-   * [Prerequisites](#prerequisites)
-   * [Installation](#installation)
-   * [Initialization](#initialization)
+   - [Prerequisites](#prerequisites)
+   - [Installation](#installation)
+   - [Initialization](#initialization)
 
 4. [Usage](#usage)
 
-   * [Defining Models](#defining-models)
-   * [Generating Code](#generating-code)
-   * [CRUD Examples](#crud-examples)
-   * [Advanced Queries](#advanced-queries)
-   * [Named-Argument Queries & Projections](#named-argument-queries--projections)
+   - [Defining Models](#defining-models)
+   - [Generating Code](#generating-code)
+   - [CRUD Examples](#crud-examples)
+   - [Advanced Queries](#advanced-queries)
+   - [Named-Argument Queries & Projections](#named-argument-queries--projections)
 
 5. [Configuration & Conventions](#configuration--conventions)
 
@@ -34,39 +34,39 @@
 
 ## Overview
 
-**mongo\_document** bridges Dart `freezed` models and MongoDB via `mongo_dart`, generating zero‑boilerplate, type‑safe CRUD and query builders that respect your Dart-native naming conventions (e.g. camelCase) while serializing to and from your DB schema (e.g. snake\_case).
+**mongo_document** bridges Dart `freezed` models and MongoDB via `mongo_dart`, generating zero‑boilerplate, type‑safe CRUD and query builders that respect your Dart-native naming conventions (e.g. camelCase) while serializing to and from your DB schema (e.g. snake_case).
 
-> ⚠️ *Work in Progress*: Experimental features may change. Your feedback and contributions are welcome.
+> ⚠️ _Work in Progress_: Experimental features may change. Your feedback and contributions are welcome.
 
 ## Motivation
 
-When your Dart models use camelCase, but your database schema uses a different naming style (e.g. snake\_case or any other convention), manual mapping between the two becomes tedious. **mongo\_document** removes that friction—letting you CRUD and query directly from your Dart model definitions, regardless of how you choose to name fields in MongoDB.
+When your Dart models use camelCase, but your database schema uses a different naming style (e.g. snake_case or any other convention), manual mapping between the two becomes tedious. **mongo_document** removes that friction—letting you CRUD and query directly from your Dart model definitions, regardless of how you choose to name fields in MongoDB.
 
 ## Features
 
-* **Zero‑Boilerplate CRUD & Queries**: `.save()`, `.delete()`, `.saveMany()`, `.findOne()`, `.findMany()`, `.findOneByNamed()`, `.findManyByNamed()`
+- **Zero‑Boilerplate CRUD & Queries**: `.save()`, `.delete()`, `.saveMany()`, `.findOne()`, `.findMany()`, `.findOneByNamed()`, `.findManyByNamed()`
 
-* **Type-Safe DSL & Named Filters**: Choose between lambda-based predicates (`p => p.field.eq(...)`) or simple named arguments matching your model
+- **Type-Safe DSL & Named Filters**: Choose between lambda-based predicates (`p => p.field.eq(...)`) or simple named arguments matching your model
 
-* **Automatic Field Mapping**: Honors `@JsonSerializable(fieldRename)`—camelCase in Dart, snake\_case in MongoDB—and respects explicit `@JsonKey(name)` overrides, transparently mapping between your Dart model and database schema.
+- **Automatic Field Mapping**: Honors `@JsonSerializable(fieldRename)`—camelCase in Dart, snake_case in MongoDB—and respects explicit `@JsonKey(name)` overrides, transparently mapping between your Dart model and database schema.
 
-* **Nested References & Projections** — for each nested `@MongoDocument` type found in your model (e.g. `User? author`), the generator creates a corresponding `*Projections` helper class (named after the parameter) so you can include or exclude its fields in any query.
+- **Nested References & Projections** — for each nested `@MongoDocument` type found in your model (e.g. `User? author`), the generator creates a corresponding `*Projections` helper class (named after the parameter) so you can include or exclude its fields in any query.
 
-* **Joins, Arrays & Maps**: Built-in `$lookup` for references; `QList` and `QMap` support common array/map operations
+- **Joins, Arrays & Maps**: Built-in `$lookup` for references; `QList` and `QMap` support common array/map operations
 
-* **Timestamps & IDs**: Auto-manage `_id`, `created_at`, and `updated_at`
+- **Timestamps & IDs**: Auto-manage `_id`, `created_at`, and `updated_at`
 
 ## Getting Started
 
 ### Prerequisites
 
-* Dart SDK ≥ 2.12 (null safety)
-* A running MongoDB instance (local or remote)
-* **MongoDB server version ≥ 3.6**
+- Dart SDK ≥ 2.12 (null safety)
+- A running MongoDB instance (local or remote)
+- **MongoDB server version ≥ 3.6**
 
 ### Installation
 
-To use **mongo\_document**, you'll need the standard Dart code-generation setup with `build_runner`.
+To use **mongo_document**, you'll need the standard Dart code-generation setup with `build_runner`.
 First, add `build_runner`, `freezed`, `json_serializable`, and `mongo_document_annotation` (and the runtime `mongo_document`) to your `pubspec.yaml` under `dev_dependencies` and `dependencies` as shown below.
 
 Add to your `pubspec.yaml`:
@@ -135,7 +135,7 @@ abstract class Post with _$Post {
 
 ### Generating Code
 
-Run build\_runner to generate `.mongo_document.dart` helpers:
+Run build_runner to generate `.mongo_document.dart` helpers:
 
 ```bash
 dart run build_runner build --delete-conflicting-outputs
@@ -143,9 +143,9 @@ dart run build_runner build --delete-conflicting-outputs
 
 This creates:
 
-* Model instance methods: `.save()`, `.delete()`
-* Static APIs: `Posts.findOne()`, `Posts.findMany()`, etc.
-* Query builder `QPost` with typed fields, lists, maps.
+- Model instance methods: `.save()`, `.delete()`
+- Static APIs: `Posts.findOne()`, `Posts.findMany()`, etc.
+- Query builder `QPost` with typed fields, lists, maps.
 
 ### CRUD Examples
 
@@ -181,7 +181,15 @@ Post? special = await Posts.findOneByNamed(body: "Special Update", author: userA
 List<Post> intros = await Posts.findManyByNamed(body: "Welcome", tags: ["intro"]);
 ```
 
-Use the style that best fits your needs—DSL predicates or named-argument—to retrieve one or multiple documents. In DSL predicates you can combine conditions using `&` (AND) and `|` (OR), for example `(p) => p.body.contains("hot") & p.tags.contains("viral")`.
+Use the style that best fits your needs—DSL predicates or named-argument—to retrieve one or multiple documents. In DSL predicates you can combine conditions using `&` (AND) and `|` (OR), for example:
+
+```dart
+//DSL And Query
+Post? awesomePost = await Posts.findOne((p) => p.body.eq("Hello world") & p.tags.contains("awesome"));
+
+//DSL OR Query
+Post? viralPost = await Posts.findOne((p) => p.body.eq("Viral") | p.tags.contains("viral"));
+```
 
 ### Queries & Projections
 
@@ -205,14 +213,14 @@ List<Post> postsWithoutPasswords = await Posts.findManyByNamed(
 );
 ```
 
-* **projections**: A list of generated `*Projections` instances (e.g. `AuthorProjections`) specifying field inclusions or exclusions.
-* Projection classes are only generated when you have a nested `@MongoDocument` in your model.
-* Works with any query method: standard DSL or named-argument variants.
+- **projections**: A list of generated `*Projections` instances (e.g. `AuthorProjections`) specifying field inclusions or exclusions.
+- Projection classes are only generated when you have a nested `@MongoDocument` in your model.
+- Works with any query method: standard DSL or named-argument variants.
 
 ## Configuration & Conventions
 
-* Customize converters via e.g `@ObjectIdConverter()` and `@DateTimeConverter()`.
-* Collection name comes from `@MongoDocument(collection: ...)`.
+- Customize converters via e.g `@ObjectIdConverter()` and `@DateTimeConverter()`.
+- Collection name comes from `@MongoDocument(collection: ...)`.
 
 ## Troubleshooting
 
