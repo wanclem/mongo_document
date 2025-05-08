@@ -37,97 +37,6 @@ extension CleanQuery on Map<String, dynamic> {
     });
     return result;
   }
-
-  List<Map<String, dynamic>> withLookupAwareness([
-    Map<String, String> lookups = const {},
-  ]) {
-    if (lookups.isEmpty) return [this];
-    final mainFilter = <String, dynamic>{};
-    final lookupStages = <_LookupStage>[];
-    var remainingEntries = Map<String, dynamic>.from(this);
-
-    // Process each lookup configuration
-    for (final lookup in lookups.entries) {
-      final localField = lookup.key;
-      final from = lookup.value;
-      final joinPrefix = '$localField.';
-      final joinFilter = <String, dynamic>{};
-      final matchedKeys = <String>[];
-
-      // Find all entries that match this lookup's prefix
-      for (final entry in remainingEntries.entries) {
-        if (entry.key.startsWith(joinPrefix)) {
-          joinFilter[entry.key] = entry.value;
-          matchedKeys.add(entry.key);
-        }
-      }
-
-      // Remove matched entries from remaining entries
-      matchedKeys.forEach(remainingEntries.remove);
-
-      lookupStages.add(_LookupStage(
-        localField: localField,
-        from: from,
-        as: localField, // 'as' defaults to localField
-        joinFilter: joinFilter,
-      ));
-    }
-
-    // Remaining entries go into main filter
-    mainFilter.addAll(remainingEntries);
-
-    final pipeline = <Map<String, dynamic>>[];
-
-    // Add main match stage if needed
-    if (mainFilter.isNotEmpty) {
-      pipeline.add({r'$match': mainFilter});
-    }
-
-    // Add lookup stages for each configured lookup
-    for (final stage in lookupStages) {
-      if (stage.joinFilter.isNotEmpty) {
-        pipeline.add({
-          r'$lookup': {
-            'from': stage.from,
-            'localField': stage.localField,
-            'foreignField': '_id',
-            'as': stage.as,
-          }
-        });
-        pipeline.add({r'$unwind': '\$${stage.as}'});
-        pipeline.add({r'$match': stage.joinFilter});
-      }
-    }
-
-    return pipeline;
-  }
-}
-
-class _LookupStage {
-  final String localField;
-  final String from;
-  final String as;
-  final Map<String, dynamic> joinFilter;
-
-  _LookupStage({
-    required this.localField,
-    required this.from,
-    required this.as,
-    required this.joinFilter,
-  });
-}
-
-extension ObjectAware on String {
-  withIdAwareness() {
-    if (contains(".")) {
-      final parts = split(".");
-      final secondPart = parts[1];
-      if (secondPart == "_id" || secondPart == "id") {
-        return parts[0];
-      }
-    }
-    return this;
-  }
 }
 
 mixin MoreExMixin {
@@ -262,20 +171,32 @@ class Logical implements Expression {
 
   Logical(this.left, this.op, this.right);
 
+  List<Map<String, dynamic>> _unwrap(String key, Map<String, dynamic> m) {
+    if (m.length == 1 && m.containsKey(key) && m[key] is List) {
+      final rawList = m[key] as List;
+      return rawList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    return [m];
+  }
+
   @override
   SelectorBuilder toSelectorBuilder() {
-    final leftMap = left.toSelectorBuilder().map;
-    final rightMap = right.toSelectorBuilder().map;
+    final leftBuilder = left.toSelectorBuilder();
+    final rightBuilder = right.toSelectorBuilder();
+    final leftMap = leftBuilder.map;
+    final rightMap = rightBuilder.map;
     if (op == '&') {
-      return SelectorBuilder()
-        ..raw({
-          r'$and': [leftMap, rightMap],
-        });
+      final clauses = [
+        ..._unwrap(r'$and', leftMap),
+        ..._unwrap(r'$and', rightMap),
+      ];
+      return SelectorBuilder()..raw({r'$and': clauses});
     } else {
-      return SelectorBuilder()
-        ..raw({
-          r'$or': [leftMap, rightMap],
-        });
+      final clauses = [
+        ..._unwrap(r'$or', leftMap),
+        ..._unwrap(r'$or', rightMap),
+      ];
+      return SelectorBuilder()..raw({r'$or': clauses});
     }
   }
 
@@ -383,7 +304,8 @@ class RawExpression implements Expression {
 
 /// Marker interface for all projections
 abstract class BaseProjections<E> {
-  List<E>? get fields;
+  List<E>? get inclusions;
+  List<E>? get exclusions;
   Map<String, dynamic> get fieldMappings;
   Map<String, int> toProjection();
 }

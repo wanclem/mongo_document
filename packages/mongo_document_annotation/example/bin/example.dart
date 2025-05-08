@@ -1,8 +1,7 @@
-import 'package:example/env/dump.dart';
+import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 
 Future<void> main() async {
-  var env = Environment();
-  // ignore: unused_local_variable
-  String mongoUri = env.get('MONGO_URI') ?? "";
+  // Environment env = Environment();
+  // String mongoUri = env.get('MONGO_URI') ?? "";
+  // await MongoConnection.init(mongoUri);
 }
-

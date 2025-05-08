@@ -41,10 +41,11 @@ enum $enumName { $enumValues }
 
 class $projName implements BaseProjections {
   @override
-  final List<$enumName>? fields;
+  final List<$enumName>? inclusions;
+  final List<$enumName>? exclusions;
   @override
   final Map<String, dynamic> fieldMappings = const {$mappingEntries};
-  const $projName([this.fields]);
+  const $projName({this.inclusions,this.exclusions});
 
   @override
   Map<String,int> toProjection() {

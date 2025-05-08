@@ -26,7 +26,8 @@ enum PostFields {
 
 class PostProjections implements BaseProjections {
   @override
-  final List<PostFields>? fields;
+  final List<PostFields>? inclusions;
+  final List<PostFields>? exclusions;
   @override
   final Map<String, dynamic> fieldMappings = const {
     "id": "post._id",
@@ -38,7 +39,7 @@ class PostProjections implements BaseProjections {
     "createdAt": "post.created_at",
     "updatedAt": "post.updated_at"
   };
-  const PostProjections([this.fields]);
+  const PostProjections({this.inclusions, this.exclusions});
 
   @override
   Map<String, int> toProjection() {
@@ -191,20 +192,30 @@ class Comments {
       pipeline.add({
         r"$match": {'_id': commentId}
       });
+      final selected = <String, int>{};
       for (var p in projections) {
-        final projectedFields = p.fields;
+        final inclusions = p.inclusions ?? [];
+        final exclusions = p.exclusions ?? [];
         final allProjections = p.toProjection();
         final localField = allProjections.keys.first.split(".").first;
         final foreignColl = _nestedCollections[localField];
-        if (projectedFields != null && projectedFields.isNotEmpty) {
-          final selected = <String, int>{};
-          for (var f in projectedFields) {
+        if (inclusions.isNotEmpty) {
+          for (var f in inclusions) {
             final path = p.fieldMappings[(f as Enum).name]!;
             selected[path] = 1;
           }
+        }
+        if (exclusions.isNotEmpty) {
+          for (var f in exclusions) {
+            final path = p.fieldMappings[(f as Enum).name]!;
+            selected[path] = 0;
+          }
+        }
+        if (selected.isEmpty) {
+          selected.addAll(allProjections);
+        }
+        if (selected.isNotEmpty) {
           projDoc.addAll(selected);
-        } else {
-          projDoc.addAll(allProjections);
         }
         pipeline.add({
           r'$lookup': {
@@ -214,7 +225,12 @@ class Comments {
             'as': localField,
           }
         });
-        pipeline.add({r'$unwind': localField});
+        pipeline.add({
+          r'$unwind': {
+            "path": "\$${localField}",
+            "preserveNullAndEmptyArrays": true
+          }
+        });
       }
       pipeline.add({r'$project': projDoc});
 
@@ -242,27 +258,36 @@ class Comments {
       return Comment.fromJson(comment.withRefs());
     }
     final selectorBuilder = predicate(QComment()).toSelectorBuilder();
-    final selectorMap =
-        selectorBuilder.map.flatQuery().withLookupAwareness(_nestedCollections);
+    final selectorMap = selectorBuilder.map.flatQuery();
 
     if (projections.isNotEmpty) {
       final pipeline = <Map<String, Object>>[];
       final projDoc = <String, int>{};
       pipeline.add({r"$match": selectorMap});
+      final selected = <String, int>{};
       for (var p in projections) {
-        final projectedFields = p.fields;
+        final inclusions = p.inclusions ?? [];
+        final exclusions = p.exclusions ?? [];
         final allProjections = p.toProjection();
         final localField = allProjections.keys.first.split(".").first;
         final foreignColl = _nestedCollections[localField];
-        if (projectedFields != null && projectedFields.isNotEmpty) {
-          final selected = <String, int>{};
-          for (var f in projectedFields) {
+        if (inclusions.isNotEmpty) {
+          for (var f in inclusions) {
             final path = p.fieldMappings[(f as Enum).name]!;
             selected[path] = 1;
           }
+        }
+        if (exclusions.isNotEmpty) {
+          for (var f in exclusions) {
+            final path = p.fieldMappings[(f as Enum).name]!;
+            selected[path] = 0;
+          }
+        }
+        if (selected.isEmpty) {
+          selected.addAll(allProjections);
+        }
+        if (selected.isNotEmpty) {
           projDoc.addAll(selected);
-        } else {
-          projDoc.addAll(allProjections);
         }
         pipeline.add({
           r'$lookup': {
@@ -272,7 +297,12 @@ class Comments {
             'as': localField,
           }
         });
-        pipeline.add({r'$unwind': localField});
+        pipeline.add({
+          r'$unwind': {
+            "path": "\$${localField}",
+            "preserveNullAndEmptyArrays": true
+          }
+        });
       }
       pipeline.add({r'$project': projDoc});
 
@@ -315,20 +345,30 @@ class Comments {
       final pipeline = <Map<String, Object>>[];
       final projDoc = <String, int>{};
       pipeline.add({r"$match": selector});
+      final selected = <String, int>{};
       for (var p in projections) {
-        final projectedFields = p.fields;
+        final inclusions = p.inclusions ?? [];
+        final exclusions = p.exclusions ?? [];
         final allProjections = p.toProjection();
         final localField = allProjections.keys.first.split(".").first;
         final foreignColl = _nestedCollections[localField];
-        if (projectedFields != null && projectedFields.isNotEmpty) {
-          final selected = <String, int>{};
-          for (var f in projectedFields) {
+        if (inclusions.isNotEmpty) {
+          for (var f in inclusions) {
             final path = p.fieldMappings[(f as Enum).name]!;
             selected[path] = 1;
           }
+        }
+        if (exclusions.isNotEmpty) {
+          for (var f in exclusions) {
+            final path = p.fieldMappings[(f as Enum).name]!;
+            selected[path] = 0;
+          }
+        }
+        if (selected.isEmpty) {
+          selected.addAll(allProjections);
+        }
+        if (selected.isNotEmpty) {
           projDoc.addAll(selected);
-        } else {
-          projDoc.addAll(allProjections);
         }
         pipeline.add({
           r'$lookup': {
@@ -338,7 +378,12 @@ class Comments {
             'as': localField,
           }
         });
-        pipeline.add({r'$unwind': localField});
+        pipeline.add({
+          r'$unwind': {
+            "path": "\$${localField}",
+            "preserveNullAndEmptyArrays": true
+          }
+        });
       }
       pipeline.add({r'$project': projDoc});
 
@@ -363,27 +408,36 @@ class Comments {
     var selectorBuilder = predicate(QComment()).toSelectorBuilder();
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
     if (limit != null) selectorBuilder = selectorBuilder.limit(limit);
-    final selectorMap =
-        selectorBuilder.map.flatQuery().withLookupAwareness(_nestedCollections);
+    final selectorMap = selectorBuilder.map.flatQuery();
 
     if (projections.isNotEmpty) {
       final pipeline = <Map<String, Object>>[];
       final projDoc = <String, int>{};
       pipeline.add({r"$match": selectorMap});
+      final selected = <String, int>{};
       for (var p in projections) {
-        final projectedFields = p.fields;
+        final inclusions = p.inclusions ?? [];
+        final exclusions = p.exclusions ?? [];
         final allProjections = p.toProjection();
         final localField = allProjections.keys.first.split(".").first;
         final foreignColl = _nestedCollections[localField];
-        if (projectedFields != null && projectedFields.isNotEmpty) {
-          final selected = <String, int>{};
-          for (var f in projectedFields) {
+        if (inclusions.isNotEmpty) {
+          for (var f in inclusions) {
             final path = p.fieldMappings[(f as Enum).name]!;
             selected[path] = 1;
           }
+        }
+        if (exclusions.isNotEmpty) {
+          for (var f in exclusions) {
+            final path = p.fieldMappings[(f as Enum).name]!;
+            selected[path] = 0;
+          }
+        }
+        if (selected.isEmpty) {
+          selected.addAll(allProjections);
+        }
+        if (selected.isNotEmpty) {
           projDoc.addAll(selected);
-        } else {
-          projDoc.addAll(allProjections);
         }
         pipeline.add({
           r'$lookup': {
@@ -393,7 +447,12 @@ class Comments {
             'as': localField,
           }
         });
-        pipeline.add({r'$unwind': localField});
+        pipeline.add({
+          r'$unwind': {
+            "path": "\$${localField}",
+            "preserveNullAndEmptyArrays": true
+          }
+        });
       }
       pipeline.add({r'$project': projDoc});
 
@@ -441,20 +500,30 @@ class Comments {
       final pipeline = <Map<String, Object>>[];
       final projDoc = <String, int>{};
       pipeline.add({r"$match": selector});
+      final selected = <String, int>{};
       for (var p in projections) {
-        final projectedFields = p.fields;
+        final inclusions = p.inclusions ?? [];
+        final exclusions = p.exclusions ?? [];
         final allProjections = p.toProjection();
         final localField = allProjections.keys.first.split(".").first;
         final foreignColl = _nestedCollections[localField];
-        if (projectedFields != null && projectedFields.isNotEmpty) {
-          final selected = <String, int>{};
-          for (var f in projectedFields) {
+        if (inclusions.isNotEmpty) {
+          for (var f in inclusions) {
             final path = p.fieldMappings[(f as Enum).name]!;
             selected[path] = 1;
           }
+        }
+        if (exclusions.isNotEmpty) {
+          for (var f in exclusions) {
+            final path = p.fieldMappings[(f as Enum).name]!;
+            selected[path] = 0;
+          }
+        }
+        if (selected.isEmpty) {
+          selected.addAll(allProjections);
+        }
+        if (selected.isNotEmpty) {
           projDoc.addAll(selected);
-        } else {
-          projDoc.addAll(allProjections);
         }
         pipeline.add({
           r'$lookup': {
@@ -464,7 +533,12 @@ class Comments {
             'as': localField,
           }
         });
-        pipeline.add({r'$unwind': localField});
+        pipeline.add({
+          r'$unwind': {
+            "path": "\$${localField}",
+            "preserveNullAndEmptyArrays": true
+          }
+        });
       }
       pipeline.add({r'$project': projDoc});
 
