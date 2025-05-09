@@ -1,3 +1,8 @@
+## \[1.1.2] - 2025-05-09
+
+### Documentation
+metadata, bug fixes, documentation
+
 ## \[1.1.1] - 2025-05-09
 
 ### Fixed
