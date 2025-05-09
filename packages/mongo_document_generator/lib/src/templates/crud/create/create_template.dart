@@ -22,7 +22,7 @@ class CreateTemplates {
         var value = entry.value as Map<String, dynamic>?;
         if (value == null) continue;
         value.removeWhere((key, value) => value == null);
-        final nestedId = (value['_id'] ?? value['id']) as ObjectId?;
+        final nestedId = value['_id'] as ObjectId?;
         if (nestedId == null) {
            $classNameVar.remove(root);
         }else{
@@ -70,8 +70,7 @@ class CreateTemplates {
       return json.map((key, value) {
         if (_nestedCollections.containsKey(key)) {
           return MapEntry<String, dynamic>(
-            key,
-            (value['_id'] ?? value['id']) as ObjectId?,
+            key, value['_id'] as ObjectId?,
           );
         }
         return MapEntry<String, dynamic>(key, value);

@@ -1,5 +1,4 @@
 import 'package:analyzer/dart/element/element.dart';
-import 'package:mongo_document/mongo_document_generator.dart';
 import 'package:mongo_document/src/templates/parameter_template.dart';
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 import 'package:source_gen/source_gen.dart';
@@ -16,9 +15,9 @@ class UpdateTemplates {
   ''';
   }
 
-  //TODO: Document the Update Commands in the README
   static String updateOne(
     String className,
+    Map<String, dynamic> nestedCollectionMap,
     TypeChecker typeChecker,
     List<ParameterElement> params,
     FieldRename? fieldRename,
@@ -33,11 +32,9 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}
       ${params.map((p) {
       final key =
           ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
-      final hasDefault =
-          typeChecker.firstAnnotationOf(p)?.getField('defaultValue') != null;
       final name = p.name;
-      if (isNonNullable(p) || hasDefault) {
-        return "'$key': $name,";
+      if (nestedCollectionMap.containsKey(name)) {
+        return "if ($name != null) '$key': $name.id,";
       } else {
         return "if ($name != null) '$key': $name,";
       }
@@ -56,6 +53,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}
 
   static String updateMany(
     String className,
+    Map<String, dynamic> nestedCollectionMap,
     TypeChecker typeChecker,
     List<ParameterElement> params,
     FieldRename? fieldRename,
@@ -70,11 +68,9 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}
       ${params.map((p) {
       final key =
           ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
-      final hasDefault =
-          typeChecker.firstAnnotationOf(p)?.getField('defaultValue') != null;
       final name = p.name;
-      if (isNonNullable(p) || hasDefault) {
-        return "'$key': $name,";
+      if (nestedCollectionMap.containsKey(name)) {
+        return "if ($name != null) '$key': $name.id,";
       } else {
         return "if ($name != null) '$key': $name,";
       }

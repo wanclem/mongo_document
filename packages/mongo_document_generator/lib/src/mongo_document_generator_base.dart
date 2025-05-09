@@ -56,7 +56,6 @@ class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
     final params = element.unnamedConstructor?.parameters ?? [];
     final nestedCollectionMap =
         ParameterTemplates.getNestedCollectionMap(params);
-
     final template = '''
 ${ObjectReferences.buildNestedCollectiontionsMapLiteral(
       nestedCollectionMap,
@@ -95,7 +94,8 @@ class ${className}s {
   ${DeleteTemplates.deleteOneByNamed(className, _jsonKeyChecker, params, fieldRename)}
   ${DeleteTemplates.deleteMany(className)}
   ${DeleteTemplates.deleteManyByNamed(className, _jsonKeyChecker, params, fieldRename)}
-  ${UpdateTemplates.updateOne(className, _jsonKeyChecker, params, fieldRename)}
+  ${UpdateTemplates.updateOne(className,nestedCollectionMap, _jsonKeyChecker, params, fieldRename)}
+  ${UpdateTemplates.updateMany(className,nestedCollectionMap, _jsonKeyChecker, params, fieldRename)}
   ${UpdateTemplates.buildModifier()}
   ${UpdateTemplates.updateOneFromMap(className)}
   ${ReadTemplates.count(className)}

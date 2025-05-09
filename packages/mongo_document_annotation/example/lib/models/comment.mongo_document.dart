@@ -102,7 +102,7 @@ extension $CommentExtension on Comment {
         var value = entry.value as Map<String, dynamic>?;
         if (value == null) continue;
         value.removeWhere((key, value) => value == null);
-        final nestedId = (value['_id'] ?? value['id']) as ObjectId?;
+        final nestedId = value['_id'] as ObjectId?;
         if (nestedId == null) {
           comment.remove(root);
         } else {
@@ -156,7 +156,7 @@ class Comments {
         if (_nestedCollections.containsKey(key)) {
           return MapEntry<String, dynamic>(
             key,
-            (value['_id'] ?? value['id']) as ObjectId?,
+            value['_id'] as ObjectId?,
           );
         }
         return MapEntry<String, dynamic>(key, value);
@@ -631,10 +631,10 @@ class Comments {
     DateTime? updatedAt,
   }) async {
     final modifier = _buildModifier({
-      '_id': id,
-      if (post != null) 'post': post,
+      if (id != null) '_id': id,
+      if (post != null) 'post': post.id,
       if (text != null) 'text': text,
-      'age': age,
+      if (age != null) 'age': age,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -643,6 +643,32 @@ class Comments {
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
         .updateOne(selector.map.flatQuery(), modifier);
+    return result.isSuccess;
+  }
+
+  /// Type-safe updateMany
+  static Future<bool> updateMany(
+    Expression Function(QComment c) predicate, {
+    ObjectId? id,
+    Post? post,
+    String? text,
+    int? age,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) async {
+    final modifier = _buildModifier({
+      if (id != null) '_id': id,
+      if (post != null) 'post': post.id,
+      if (text != null) 'text': text,
+      if (age != null) 'age': age,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+    final expr = predicate(QComment());
+    final selector = expr.toSelectorBuilder();
+    final result = await (await MongoConnection.getDb())
+        .collection(_collection)
+        .updateMany(selector.map.flatQuery(), modifier);
     return result.isSuccess;
   }
 

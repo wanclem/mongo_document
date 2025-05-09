@@ -128,7 +128,7 @@ extension $PostExtension on Post {
         var value = entry.value as Map<String, dynamic>?;
         if (value == null) continue;
         value.removeWhere((key, value) => value == null);
-        final nestedId = (value['_id'] ?? value['id']) as ObjectId?;
+        final nestedId = value['_id'] as ObjectId?;
         if (nestedId == null) {
           post.remove(root);
         } else {
@@ -182,7 +182,7 @@ class Posts {
         if (_nestedCollections.containsKey(key)) {
           return MapEntry<String, dynamic>(
             key,
-            (value['_id'] ?? value['id']) as ObjectId?,
+            value['_id'] as ObjectId?,
           );
         }
         return MapEntry<String, dynamic>(key, value);
@@ -673,12 +673,12 @@ class Posts {
     DateTime? updatedAt,
   }) async {
     final modifier = _buildModifier({
-      '_id': id,
-      if (author != null) 'author': author,
-      if (lastComment != null) 'last_comment': lastComment,
-      'tags': tags,
+      if (id != null) '_id': id,
+      if (author != null) 'author': author.id,
+      if (lastComment != null) 'last_comment': lastComment.id,
+      if (tags != null) 'tags': tags,
       if (body != null) 'body': body,
-      'name': name,
+      if (name != null) 'name': name,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -687,6 +687,36 @@ class Posts {
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
         .updateOne(selector.map.flatQuery(), modifier);
+    return result.isSuccess;
+  }
+
+  /// Type-safe updateMany
+  static Future<bool> updateMany(
+    Expression Function(QPost p) predicate, {
+    ObjectId? id,
+    User? author,
+    Comment? lastComment,
+    List<String>? tags,
+    String? body,
+    dynamic name,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) async {
+    final modifier = _buildModifier({
+      if (id != null) '_id': id,
+      if (author != null) 'author': author.id,
+      if (lastComment != null) 'last_comment': lastComment.id,
+      if (tags != null) 'tags': tags,
+      if (body != null) 'body': body,
+      if (name != null) 'name': name,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+    final expr = predicate(QPost());
+    final selector = expr.toSelectorBuilder();
+    final result = await (await MongoConnection.getDb())
+        .collection(_collection)
+        .updateMany(selector.map.flatQuery(), modifier);
     return result.isSuccess;
   }
 

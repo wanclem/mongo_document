@@ -61,7 +61,7 @@ extension $UserExtension on User {
         var value = entry.value as Map<String, dynamic>?;
         if (value == null) continue;
         value.removeWhere((key, value) => value == null);
-        final nestedId = (value['_id'] ?? value['id']) as ObjectId?;
+        final nestedId = value['_id'] as ObjectId?;
         if (nestedId == null) {
           user.remove(root);
         } else {
@@ -115,7 +115,7 @@ class Users {
         if (_nestedCollections.containsKey(key)) {
           return MapEntry<String, dynamic>(
             key,
-            (value['_id'] ?? value['id']) as ObjectId?,
+            value['_id'] as ObjectId?,
           );
         }
         return MapEntry<String, dynamic>(key, value);
@@ -597,11 +597,11 @@ class Users {
     DateTime? updatedAt,
   }) async {
     final modifier = _buildModifier({
-      '_id': id,
+      if (id != null) '_id': id,
       if (firstName != null) 'first_name': firstName,
       if (lastName != null) 'last_name': lastName,
       if (email != null) 'email': email,
-      'age': age,
+      if (age != null) 'age': age,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -610,6 +610,34 @@ class Users {
     final result = await (await MongoConnection.getDb())
         .collection(_collection)
         .updateOne(selector.map.flatQuery(), modifier);
+    return result.isSuccess;
+  }
+
+  /// Type-safe updateMany
+  static Future<bool> updateMany(
+    Expression Function(QUser u) predicate, {
+    ObjectId? id,
+    String? firstName,
+    String? lastName,
+    String? email,
+    int? age,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) async {
+    final modifier = _buildModifier({
+      if (id != null) '_id': id,
+      if (firstName != null) 'first_name': firstName,
+      if (lastName != null) 'last_name': lastName,
+      if (email != null) 'email': email,
+      if (age != null) 'age': age,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+    final expr = predicate(QUser());
+    final selector = expr.toSelectorBuilder();
+    final result = await (await MongoConnection.getDb())
+        .collection(_collection)
+        .updateMany(selector.map.flatQuery(), modifier);
     return result.isSuccess;
   }
 
