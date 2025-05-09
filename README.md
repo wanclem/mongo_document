@@ -250,7 +250,7 @@ final res = await Posts.findManyByNamed(
 }
 ```
 
-Explanation: Because we used an inclusion projection (`inclusions: [AuthorFields.firstName, AuthorFields.lastName]`), only the specified `author` subfields (`firstName`, `lastName`) appear in the result. If you provide an empty inclusion and exclusion arrays you will get back only the `ObjectId` as `{_id:ObjectId("605c5f2e8a7c2e1a4c3d9b7f)}` mapped to the `author` reference.
+Explanation: Because we used an inclusion projection (`inclusions: [AuthorFields.firstName, AuthorFields.lastName]`), only the specified `author` subfields (`firstName`, `lastName`) appeared in the result. If you provide an empty inclusion and exclusion arrays you will get back only the `ObjectId` as `{_id:ObjectId("605c5f2e8a7c2e1a4c3d9b7f)}` mapped to the `author` reference.
 
 ## Configuration & Conventions
 
