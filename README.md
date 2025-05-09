@@ -103,7 +103,6 @@ Future<void> main() async {
 
 ```dart
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
 part 'post.freezed.dart';
 part 'post.g.dart';
 part 'post.mongo_document.dart';
