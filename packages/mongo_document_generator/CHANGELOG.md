@@ -22,8 +22,6 @@ Bug where query via nested object references returns null
 
 * Resolved edge case where empty arrays of references would cause query failures.
 
----
-
 ## \[1.0.3] - 2025-04-01
 
 ### Added
@@ -38,8 +36,6 @@ Bug where query via nested object references returns null
 ### Fixed
 
 * Fixed bug where circular references caused infinite loops during population.
-
----
 
 ## \[1.0.2] - 2025-03-01
 
@@ -56,8 +52,6 @@ Bug where query via nested object references returns null
 
 * Corrected error handling when reference path is invalid or missing.
 
----
-
 ## \[1.0.1] - 2025-02-01
 
 ### Added
@@ -68,8 +62,6 @@ Bug where query via nested object references returns null
 ### Fixed
 
 * Fixed missing imports in generated query helper code.
-
----
 
 ## \[1.0.0] - 2025-01-01
 
