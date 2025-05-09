@@ -319,8 +319,8 @@ class Posts {
 
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
-    if (author != null) selector['author'] = author;
-    if (lastComment != null) selector['last_comment'] = lastComment;
+    if (author != null) selector['author'] = author.id;
+    if (lastComment != null) selector['last_comment'] = lastComment.id;
     if (tags != null) selector['tags'] = tags;
     if (body != null) selector['body'] = body;
     if (name != null) selector['name'] = name;
@@ -441,8 +441,8 @@ class Posts {
 
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
-    if (author != null) selector['author'] = author;
-    if (lastComment != null) selector['last_comment'] = lastComment;
+    if (author != null) selector['author'] = author.id;
+    if (lastComment != null) selector['last_comment'] = lastComment.id;
     if (tags != null) selector['tags'] = tags;
     if (body != null) selector['body'] = body;
     if (name != null) selector['name'] = name;

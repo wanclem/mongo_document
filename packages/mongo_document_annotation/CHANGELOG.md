@@ -1,3 +1,8 @@
+## \[1.1.3] - 2025-05-10
+
+### Fixed
+Bug where findManyByNamed and findOneByNamed queried without nested object reference ids
+
 ## \[1.1.2] - 2025-05-09
 
 ### Documentation
