@@ -21,4 +21,5 @@ Future<void> main() async {
   user = await Users.findOne((p) => p.firstName.eq("John"));
   //Print the user
   print("User Found: ${user?.toJson()}");
+  
 }
