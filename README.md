@@ -145,7 +145,7 @@ This generates:
 // Create & Save
 final post = await Post(body: 'Hello world', tags: ['intro']).save();
 
-// Batch Insert
+// Batch Save
 await Posts.saveMany([
   Post(body: 'Batch A'),
   Post(body: 'Batch B')
