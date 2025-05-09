@@ -5,3 +5,4 @@ environment:
 workspace:
   - packages/mongo_document_annotation
   - packages/mongo_document_generator
+  - packages/mongo_document_annotation/example

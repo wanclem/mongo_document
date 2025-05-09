@@ -182,6 +182,12 @@
       "languageVersion": "3.3"
     },
     {
+      "name": "dotenv",
+      "rootUri": "file:///Users/wan/.pub-cache/hosted/pub.dev/dotenv-4.2.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.16"
+    },
+    {
       "name": "ffi",
       "rootUri": "file:///Users/wan/.pub-cache/hosted/pub.dev/ffi-2.1.4",
       "packageUri": "lib/",
@@ -618,9 +624,15 @@
       "rootUri": "../packages/mongo_document_generator",
       "packageUri": "lib/",
       "languageVersion": "3.7"
+    },
+    {
+      "name": "example",
+      "rootUri": "../packages/mongo_document_annotation/example",
+      "packageUri": "lib/",
+      "languageVersion": "3.7"
     }
   ],
-  "generated": "2025-05-09T22:38:37.047063Z",
+  "generated": "2025-05-09T22:48:54.813646Z",
   "generator": "pub",
   "generatorVersion": "3.7.2",
   "flutterRoot": "file:///Users/wan/Documents/Codes/Sdks/flutter",
