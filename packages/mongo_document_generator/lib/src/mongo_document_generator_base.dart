@@ -92,9 +92,9 @@ class ${className}s {
   ${ReadTemplates.findMany(className)}
   ${ReadTemplates.findManyByNamed(_jsonKeyChecker, fieldRename, params, className, nestedCollectionMap)}
   ${DeleteTemplates.deleteOne(className)}
-  ${DeleteTemplates.deleteOneByNamed(className, _jsonKeyChecker, params, fieldRename)}
+  ${DeleteTemplates.deleteOneByNamed(className, _jsonKeyChecker, params, fieldRename, nestedCollectionMap)}
   ${DeleteTemplates.deleteMany(className)}
-  ${DeleteTemplates.deleteManyByNamed(className, _jsonKeyChecker, params, fieldRename)}
+  ${DeleteTemplates.deleteManyByNamed(className, _jsonKeyChecker, params, fieldRename, nestedCollectionMap)}
   ${UpdateTemplates.updateOne(className, nestedCollectionMap, _jsonKeyChecker, params, fieldRename)}
   ${UpdateTemplates.updateMany(className, nestedCollectionMap, _jsonKeyChecker, params, fieldRename)}
   ${UpdateTemplates.buildModifier()}

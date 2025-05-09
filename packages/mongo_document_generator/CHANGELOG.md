@@ -1,11 +1,21 @@
+## \[1.1.4] - 2025-05-10
+
+### Fixed
+
+fix(delete): ensure nested object references use IDs in deleteByNamed variants
+
+Previously, deletes like `deleteOneByNamed` assigned entire objects (e.g., `selector['author'] = author`), 
+causing incorrect filtering. This fix updates all `deleteOneByNamed` and `deleteManyByNamed` functions 
+to reference the object ID instead (e.g., `selector['author'] = author.id`).
+
 ## \[1.1.3] - 2025-05-10
 
 ### Fixed
 
 fix(query): ensure nested object references use IDs in findByNamed variants
 
-Previously, queries like `findByNamed` assigned entire objects (e.g., `selector['author'] = author`), 
-causing incorrect filtering. This fix updates all `findByOneNamed` and `findByManyNamed` functions 
+Previously, queries like `findByNamed` assigned entire objects (e.g., `selector['author'] = author`),
+causing incorrect filtering. This fix updates all `findByOneNamed` and `findByManyNamed` functions
 to reference the object ID instead (e.g., `selector['author'] = author.id`).
 
 ## \[1.1.2] - 2025-05-09

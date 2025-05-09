@@ -504,7 +504,7 @@ class Comments {
   }) async {
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
-    if (post != null) selector['post'] = post;
+    if (post != null) selector['post'] = post.id;
     if (text != null) selector['text'] = text;
     if (age != null) selector['age'] = age;
     if (createdAt != null) selector['created_at'] = createdAt;
@@ -539,7 +539,7 @@ class Comments {
   }) async {
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
-    if (post != null) selector['post'] = post;
+    if (post != null) selector['post'] = post.id;
     if (text != null) selector['text'] = text;
     if (age != null) selector['age'] = age;
     if (createdAt != null) selector['created_at'] = createdAt;

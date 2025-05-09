@@ -52,6 +52,7 @@ Future<bool> delete() async {
     TypeChecker typeChecker,
     List<ParameterElement> params,
     FieldRename? fieldRename,
+    Map<String, dynamic> nestedCollectionMap,
   ) {
     return '''
   /// Type-safe deleteOne by named arguments
@@ -63,7 +64,7 @@ Future<bool> delete() async {
       final paramName = p.name;
       final key =
           ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
-      return '''if ($paramName != null) selector['$key'] = $paramName;''';
+      return '''if ($paramName != null) selector['$key'] = ${nestedCollectionMap.containsKey(paramName) ? "$paramName.id" : paramName};''';
     }).join('\n')}
     if (selector.isEmpty) return false;
     final result = await (await MongoConnection.getDb())
@@ -79,6 +80,7 @@ Future<bool> delete() async {
     TypeChecker typeChecker,
     List<ParameterElement> params,
     FieldRename? fieldRename,
+    Map<String, dynamic> nestedCollectionMap,
   ) {
     return '''
   /// Type-safe deleteMany by named arguments
@@ -90,7 +92,7 @@ Future<bool> delete() async {
       final paramName = p.name;
       final key =
           ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
-      return '''if ($paramName != null) selector['$key'] = $paramName;''';
+      return '''if ($paramName != null) selector['$key'] = ${nestedCollectionMap.containsKey(paramName) ? "$paramName.id" : paramName};''';
     }).join('\n')}
     if (selector.isEmpty) return false;
     final result = await (await MongoConnection.getDb())
