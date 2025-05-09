@@ -56,7 +56,7 @@ When your Dart models use camelCase, but your database schema uses a different n
 
 ### Prerequisites
 
-- Dart SDK ≥ 2.12 (null safety)
+- Dart SDK ≥ 3.0
 - A running MongoDB instance (local or remote)
 - **MongoDB server version ≥ 3.6**
 

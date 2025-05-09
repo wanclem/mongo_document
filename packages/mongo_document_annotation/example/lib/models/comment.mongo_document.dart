@@ -260,60 +260,22 @@ class Comments {
     final selectorBuilder = predicate(QComment()).toSelectorBuilder();
     final selectorMap = selectorBuilder.map.flatQuery();
 
-    if (projections.isNotEmpty) {
-      final pipeline = <Map<String, Object>>[];
-      final projDoc = <String, int>{};
-      pipeline.add({r"$match": selectorMap});
-      final selected = <String, int>{};
-      for (var p in projections) {
-        final inclusions = p.inclusions ?? [];
-        final exclusions = p.exclusions ?? [];
-        final allProjections = p.toProjection();
-        final localField = allProjections.keys.first.split(".").first;
-        final foreignColl = _nestedCollections[localField];
-        if (inclusions.isNotEmpty) {
-          for (var f in inclusions) {
-            final path = p.fieldMappings[(f as Enum).name]!;
-            selected[path] = 1;
-          }
-        }
-        if (exclusions.isNotEmpty) {
-          for (var f in exclusions) {
-            final path = p.fieldMappings[(f as Enum).name]!;
-            selected[path] = 0;
-          }
-        }
-        if (selected.isEmpty) {
-          selected.addAll(allProjections);
-        }
-        if (selected.isNotEmpty) {
-          projDoc.addAll(selected);
-        }
-        pipeline.add({
-          r'$lookup': {
-            'from': foreignColl,
-            'localField': localField,
-            'foreignField': '_id',
-            'as': localField,
-          }
-        });
-        pipeline.add({
-          r'$unwind': {
-            "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true
-          }
-        });
-      }
-      pipeline.add({r'$project': projDoc});
+    final projDoc =
+        projections.isNotEmpty ? buildProjectionDoc(projections) : null;
+    final (foundLookups, pipeline) = selectorMap.toAggregationPipelineWithMap(
+      lookupRef: _nestedCollections,
+      projections: projDoc,
+    );
 
-      final comments = await coll.aggregateToStream(pipeline).toList();
-      if (comments.isEmpty) return null;
-      return Comment.fromJson(comments.first.withRefs());
+    if (foundLookups || projDoc != null) {
+      final results = await coll.aggregateToStream(pipeline).toList();
+      if (results.isEmpty) return null;
+      return Comment.fromJson(results.first.withRefs());
     }
 
     // fallback to simple findOne
     final comment = await coll.findOne(selectorMap);
-    return comment == null ? null : Comment.fromJson(comment);
+    return comment == null ? null : Comment.fromJson(comment.withRefs());
   }
 
   /// Type-safe findOne by named arguments
@@ -410,56 +372,19 @@ class Comments {
     if (limit != null) selectorBuilder = selectorBuilder.limit(limit);
     final selectorMap = selectorBuilder.map.flatQuery();
 
-    if (projections.isNotEmpty) {
-      final pipeline = <Map<String, Object>>[];
-      final projDoc = <String, int>{};
-      pipeline.add({r"$match": selectorMap});
-      final selected = <String, int>{};
-      for (var p in projections) {
-        final inclusions = p.inclusions ?? [];
-        final exclusions = p.exclusions ?? [];
-        final allProjections = p.toProjection();
-        final localField = allProjections.keys.first.split(".").first;
-        final foreignColl = _nestedCollections[localField];
-        if (inclusions.isNotEmpty) {
-          for (var f in inclusions) {
-            final path = p.fieldMappings[(f as Enum).name]!;
-            selected[path] = 1;
-          }
-        }
-        if (exclusions.isNotEmpty) {
-          for (var f in exclusions) {
-            final path = p.fieldMappings[(f as Enum).name]!;
-            selected[path] = 0;
-          }
-        }
-        if (selected.isEmpty) {
-          selected.addAll(allProjections);
-        }
-        if (selected.isNotEmpty) {
-          projDoc.addAll(selected);
-        }
-        pipeline.add({
-          r'$lookup': {
-            'from': foreignColl,
-            'localField': localField,
-            'foreignField': '_id',
-            'as': localField,
-          }
-        });
-        pipeline.add({
-          r'$unwind': {
-            "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true
-          }
-        });
-      }
-      pipeline.add({r'$project': projDoc});
+    final projDoc =
+        projections.isNotEmpty ? buildProjectionDoc(projections) : null;
+    final (foundLookups, pipeline) = selectorMap.toAggregationPipelineWithMap(
+      lookupRef: _nestedCollections,
+      projections: projDoc,
+    );
 
+    if (foundLookups || projDoc != null) {
       final comments = await coll.aggregateToStream(pipeline).toList();
       if (comments.isEmpty) return [];
       return comments.map((d) => Comment.fromJson(d.withRefs())).toList();
     }
+
     final comments = await (await MongoConnection.getDb())
         .collection(_collection)
         .find(selectorMap)
@@ -695,8 +620,29 @@ class Comments {
 
   static Future<int> count(Expression Function(QComment c)? predicate) async {
     final selectorMap = predicate == null
-        ? {}
+        ? <String, dynamic>{}
         : predicate(QComment()).toSelectorBuilder().map.flatQuery();
+
+    final (foundLookups, pipelineWithoutCount) =
+        selectorMap.toAggregationPipelineWithMap(
+      lookupRef: _nestedCollections,
+    );
+
+    if (foundLookups) {
+      final pipeline = [
+        ...pipelineWithoutCount,
+        {r'$count': 'count'}
+      ];
+
+      final result = await (await MongoConnection.getDb())
+          .collection(_collection)
+          .aggregateToStream(pipeline)
+          .toList();
+
+      if (result.isEmpty) return 0;
+      return result.first['count'] as int;
+    }
+
     return (await MongoConnection.getDb())
         .collection(_collection)
         .count(selectorMap);

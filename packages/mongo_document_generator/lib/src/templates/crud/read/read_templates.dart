@@ -58,18 +58,22 @@ class ReadTemplates {
     final selectorBuilder = predicate(Q$className()).toSelectorBuilder();
     final selectorMap = selectorBuilder.map.flatQuery();
 
-    if (projections.isNotEmpty) {
-       ${buildAggregationPipeline('''{
-          r"\$match": selectorMap
-        }''')}
-      final ${classNameVar}s = await coll.aggregateToStream(pipeline).toList();
-      if (${classNameVar}s.isEmpty) return null;
-      return $className.fromJson(${classNameVar}s.first.withRefs());
+    final projDoc =
+        projections.isNotEmpty ? buildProjectionDoc(projections) : null;
+    final (foundLookups, pipeline) = selectorMap.toAggregationPipelineWithMap(
+      lookupRef: _nestedCollections,
+      projections: projDoc,
+    );
+
+    if (foundLookups || projDoc != null) {
+      final results = await coll.aggregateToStream(pipeline).toList();
+      if (results.isEmpty) return null;
+      return $className.fromJson(results.first.withRefs());
     }
 
     // fallback to simple findOne
     final $classNameVar = await coll.findOne(selectorMap);
-    return $classNameVar == null ? null : $className.fromJson($classNameVar);
+    return $classNameVar == null ? null : $className.fromJson($classNameVar.withRefs());
   }
 ''';
   }
@@ -130,14 +134,19 @@ class ReadTemplates {
     if (limit != null) selectorBuilder = selectorBuilder.limit(limit);
     final selectorMap = selectorBuilder.map.flatQuery();
 
-    if (projections.isNotEmpty) {
-       ${buildAggregationPipeline('''{
-          r"\$match": selectorMap
-        }''')}
+    final projDoc =
+        projections.isNotEmpty ? buildProjectionDoc(projections) : null;
+    final (foundLookups, pipeline) = selectorMap.toAggregationPipelineWithMap(
+      lookupRef: _nestedCollections,
+      projections: projDoc,
+    );
+
+    if (foundLookups || projDoc != null) {
       final ${classNameVar}s = await coll.aggregateToStream(pipeline).toList();
       if (${classNameVar}s.isEmpty) return [];
       return ${classNameVar}s.map((d)=>$className.fromJson(d.withRefs())).toList();
     }
+
     final ${classNameVar}s = await (await MongoConnection.getDb())
       .collection(_collection)
       .find(selectorMap).toList();
@@ -188,15 +197,39 @@ class ReadTemplates {
   static String count(String className) {
     return '''
   static Future<int> count(
-    Expression Function(Q$className ${className[0].toLowerCase()})? predicate
-  ) async {
-    final selectorMap =predicate==null? {}: predicate(Q$className())
-        .toSelectorBuilder()
-        .map.flatQuery();
-    return (await MongoConnection.getDb())
+  Expression Function(Q$className ${className[0].toLowerCase()})? predicate
+) async {
+  final selectorMap = predicate == null
+      ? <String, dynamic>{}
+      : predicate(Q$className())
+          .toSelectorBuilder()
+          .map
+          .flatQuery();
+
+  final (foundLookups, pipelineWithoutCount) =
+      selectorMap.toAggregationPipelineWithMap(
+        lookupRef: _nestedCollections,
+      );
+
+  if (foundLookups) {
+    final pipeline = [
+      ...pipelineWithoutCount,
+      { r'\$count': 'count' }                     
+    ];
+
+    final result = await (await MongoConnection.getDb())
         .collection(_collection)
-        .count(selectorMap);
+        .aggregateToStream(pipeline)             
+        .toList();
+
+    if (result.isEmpty) return 0;
+    return result.first['count'] as int;
   }
+
+  return (await MongoConnection.getDb())
+      .collection(_collection)
+      .count(selectorMap);                       
+}
 ''';
   }
 }
