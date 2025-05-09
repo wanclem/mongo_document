@@ -1,6 +1,6 @@
 name: mongo_document
 description: The MongoDb Document Code Generator
-version: 1.0.2
+version: 1.0.3
 repository: https://github.com/wanclem/mongo_document
 homepage: https://github.com/wanclem/mongo_document
 
