@@ -72,8 +72,8 @@ class ReadTemplates {
     }
 
     // fallback to simple findOne
-    final $classNameVar = await coll.findOne(selectorMap);
-    return $classNameVar == null ? null : $className.fromJson($classNameVar.withRefs());
+    final ${classNameVar}Result = await coll.findOne(selectorMap);
+    return ${classNameVar}Result == null ? null : $className.fromJson(${classNameVar}Result);
   }
 ''';
   }
@@ -111,8 +111,8 @@ class ReadTemplates {
       if (${classNameVar}s.isEmpty) return null;
       return $className.fromJson(${classNameVar}s.first.withRefs());
     }
-    final $classNameVar = await coll.findOne(selector);
-    return $classNameVar == null ? null : $className.fromJson($classNameVar.withRefs());
+    final ${classNameVar}Result = await coll.findOne(selector);
+    return ${classNameVar}Result == null ? null : $className.fromJson(${classNameVar}Result.withRefs());
   }
 ''';
   }
