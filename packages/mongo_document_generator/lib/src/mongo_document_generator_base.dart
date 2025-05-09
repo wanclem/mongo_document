@@ -13,12 +13,13 @@ import 'package:mongo_document/src/templates/object_references/object_references
 import 'package:mongo_document/src/templates/parameter_template.dart';
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 import 'package:source_gen/source_gen.dart';
+import 'package:pub_semver/pub_semver.dart';
 
 const _jsonKeyChecker = TypeChecker.fromRuntime(JsonKey);
 const _jsonSerializableChecker = TypeChecker.fromRuntime(JsonSerializable);
 
 class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
-  final _formatter = DartFormatter();
+  final _formatter = DartFormatter(languageVersion: Version.parse('3.0.0'));
   final AnnotationChecker checker;
 
   MongoDocumentGenerator({
@@ -94,8 +95,8 @@ class ${className}s {
   ${DeleteTemplates.deleteOneByNamed(className, _jsonKeyChecker, params, fieldRename)}
   ${DeleteTemplates.deleteMany(className)}
   ${DeleteTemplates.deleteManyByNamed(className, _jsonKeyChecker, params, fieldRename)}
-  ${UpdateTemplates.updateOne(className,nestedCollectionMap, _jsonKeyChecker, params, fieldRename)}
-  ${UpdateTemplates.updateMany(className,nestedCollectionMap, _jsonKeyChecker, params, fieldRename)}
+  ${UpdateTemplates.updateOne(className, nestedCollectionMap, _jsonKeyChecker, params, fieldRename)}
+  ${UpdateTemplates.updateMany(className, nestedCollectionMap, _jsonKeyChecker, params, fieldRename)}
   ${UpdateTemplates.buildModifier()}
   ${UpdateTemplates.updateOneFromMap(className)}
   ${ReadTemplates.count(className)}

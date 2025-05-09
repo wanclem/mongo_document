@@ -1,4 +1,4 @@
-[![pub package](https://img.shields.io/pub/v/mongo_document.svg)](https://pub.dev/packages/mongo_document_annotation) [![build status](https://github.com/wanclem/mongo_document_annotation/actions/workflows/dart.yml/badge.svg)](https://github.com/wanclem/mongo_document/actions) [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![pub package](https://img.shields.io/pub/v/mongo_document.svg)](https://pub.dev/packages/mongo_document_annotation) [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 <!-- TOC -->
 
