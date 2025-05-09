@@ -170,7 +170,7 @@ await Posts.updateOne(
 await post?.delete();
 ```
 
-### Advanced Queries
+### Queries
 
 ```dart
 // DSL filter many
@@ -192,7 +192,7 @@ Post? viralPost = await Posts.findOne((p) => p.body.eq("Viral") | p.tags.contain
 
 ```
 
-### Named-Argument Queries & Projections
+### Advanced Queries & Projections
 
 All query methods—including `.findOne()`, `.findMany()`, `.findOneByNamed()`, `.findManyByNamed()`, and `.findOne()` supports an optional `projections` parameter. Projection helper classes are generated for each nested `@MongoDocument` type in your model (e.g. for a `User? author` field you get `AuthorProjections`). Use these with the corresponding `*Fields` enums to include or exclude fields.
 
