@@ -211,11 +211,11 @@ await Posts.deleteManyByNamed(body:"Hello World");
 
 ### Advanced Queries & Projections
 
-All query methods—including `.findOne()`, `.findMany()`, `.findOneByNamed()` and  `.findManyByNamed()` supports an optional `projections` parameter. Projection helper classes are generated for each nested `@MongoDocument` type in your model (e.g. for a `User? author` field you get `AuthorProjections`). Use these with the corresponding `*Fields` enums to include or exclude fields.
+All query methods—including `.findOne()`, `.findMany()`, `.findOneByNamed()` and `.findManyByNamed()` supports an optional `projections` parameter. Projection helper classes are generated for each nested `@MongoDocument` type in your model (e.g. for a `User? author` field you get `AuthorProjections`). Use these with the corresponding `*Fields` enums to include or exclude fields.
 
 ```dart
-// Named-argument query with exclusions
-await Posts.findManyByNamed(
+// Named-argument single query with exclusions
+final result = await Posts.findOneByNamed(
   body: 'Secret Post',
   projections: [
     AuthorProjections(exclusions: [AuthorFields.password])
@@ -230,7 +230,8 @@ Post? postWithAuthorNames = await Posts.findOne(
   ]
 );
 
-await Posts.findManyByNamed(
+// Named-argument many query with exclusions
+final res = await Posts.findManyByNamed(
   body: 'Secret Post',
   projections: [
     AuthorProjections(exclusions: [AuthorFields.password])
