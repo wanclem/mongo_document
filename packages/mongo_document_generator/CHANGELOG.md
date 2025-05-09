@@ -1,3 +1,8 @@
+## \[1.0.5] - 2025-05-09
+
+### Fixed
+
+Bug where query via nested object references returns null
 
 ## \[1.0.4] - 2025-05-09
 
