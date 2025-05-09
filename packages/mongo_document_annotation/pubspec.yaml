@@ -9,6 +9,8 @@ documentation: https://github.com/wanclem/mongo_document#readme
 environment:
   sdk: ^3.7.2
 
+resolution: workspace
+
 dependencies:
   json_annotation: ^4.9.0
   freezed_annotation: ">=2.4.4 <4.0.0"

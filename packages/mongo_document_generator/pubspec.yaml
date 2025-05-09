@@ -9,6 +9,8 @@ documentation: https://github.com/wanclem/mongo_document#readme
 environment:
   sdk: ^3.7.2
 
+resolution: workspace
+
 dependencies:
   source_gen: ^2.0.0
   build: ^2.4.0
