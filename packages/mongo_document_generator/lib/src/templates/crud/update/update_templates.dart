@@ -16,6 +16,7 @@ class UpdateTemplates {
   ''';
   }
 
+  //TODO: Document the Update Commands in the README
   static String updateOne(
     String className,
     TypeChecker typeChecker,
@@ -91,8 +92,8 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}
 
   static String updateOneFromMap(String className) {
     return '''
-/// Use `updateOne` directly whenever possible for better performance and clarity.
-  /// This method is a fallback for cases requiring additional logic or dynamic update maps.
+   /// Prioritize `updateOne` whenever possible to avoid type mismatch.
+  /// This method is a fallback for cases where you just had to use a map.
   static Future<$className?> updateOneFromMap(
     ObjectId id, 
     Map<String, dynamic> updateMap,

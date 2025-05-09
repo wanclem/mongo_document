@@ -40,20 +40,16 @@
 
 ## Motivation
 
-When your Dart models use camelCase, but your database schema uses a different naming style (e.g. snake_case or any other convention), manual mapping between the two becomes tedious. **mongo_document** removes that friction—letting you CRUD and query directly from your Dart model definitions, regardless of how you choose to name fields in MongoDB.
+When your Dart models use camelCase, but your database schema uses a different naming style (e.g. snake_case or any other convention), manual mapping between the two becomes tedious and error-prone. **mongo_document** removes that friction—letting you CRUD and query directly from your Dart model definitions, regardless of how you choose to name fields in MongoDB.
 
 ## Features
 
-- **Zero‑Boilerplate CRUD & Queries**: `.save()`, `.delete()`, `.saveMany()`, `.findOne()`, `.findMany()`, `.findOneByNamed()`, `.findManyByNamed()`
-
-- **Type-Safe DSL & Named Filters**: Choose between lambda-based predicates (`p => p.field.eq(...)`) or simple named arguments matching your model
-
-- **Automatic Field Mapping**: Honors `@JsonSerializable(fieldRename)`—camelCase in Dart, snake_case in MongoDB—and respects explicit `@JsonKey(name)` overrides, transparently mapping between your Dart model and database schema.
-
-- **Nested References & Projections** — for each nested `@MongoDocument` type found in your model (e.g. `User? author`), the generator creates a corresponding `*Projections` helper class (named after the parameter) so you can include or exclude its fields in any query.
-
-- **Joins, Arrays & Maps**: Built-in `$lookup` for references; `QList` and `QMap` support common array/map operations
-
+- **Zero‑Boilerplate CRUD & Queries**: `.save()`, `.delete()`, `.findOne()`, `.findMany()`, `.findOneByNamed()`, `.findManyByNamed()`, `.findById()`
+- **Batch Operations**: `.saveMany(List<T> documents)` for bulk inserts; `.updateOne(predicate, namedArgumentsOfUpdates)` for targeted updates
+- **Type-Safe DSL & Named Filters**: Lambda-based predicates (`p => p.field.eq(...)`) or named-argument filters matching your model
+- **Automatic Field Mapping**: Honors `@JsonSerializable(fieldRename)`—camelCase in Dart, snake_case in MongoDB—and respects explicit `@JsonKey(name)` overrides
+- **Nested References & Projections**: Generates `*Projections` helper classes for each nested `@MongoDocument` type
+- **Joins, Arrays & Maps**: Built-in `$lookup` for references; `QList` and `QMap` support array/map operations
 - **Timestamps & IDs**: Auto-manage `_id`, `created_at`, and `updated_at`
 
 ## Getting Started
@@ -66,10 +62,7 @@ When your Dart models use camelCase, but your database schema uses a different n
 
 ### Installation
 
-To use **mongo_document**, you'll need the standard Dart code-generation setup with `build_runner`.
-First, add `build_runner`, `freezed`, `json_serializable`, and `mongo_document_annotation` (and the runtime `mongo_document`) to your `pubspec.yaml` under `dev_dependencies` and `dependencies` as shown below.
-
-Add to your `pubspec.yaml`:
+Add to `pubspec.yaml`:
 
 ```yaml
 dependencies:
@@ -94,7 +87,7 @@ dart pub get
 In your application entrypoint (e.g. `main()`), configure the MongoDB connection once:
 
 ```dart
-import 'package:mongo_document/mongo_connection.dart';
+import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 
 Future<void> main() async {
   await MongoConnection.init('mongodb://localhost:27017/mydb');
@@ -110,13 +103,13 @@ Future<void> main() async {
 
 ```dart
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
-
+import 'package:freezed_annotation/freezed_annotation.dart';
 part 'post.freezed.dart';
 part 'post.g.dart';
 part 'post.mongo_document.dart';
 
-@freezed
 @MongoDocument(collection: 'posts')
+@freezed
 abstract class Post with _$Post {
   @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
   const factory Post({
@@ -135,96 +128,121 @@ abstract class Post with _$Post {
 
 ### Generating Code
 
-Run build_runner to generate `.mongo_document.dart` helpers:
+Run build_runner:
 
 ```bash
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-This creates:
+This generates:
 
-- Model instance methods: `.save()`, `.delete()`
-- Static APIs: `Posts.findOne()`, `Posts.findMany()`, etc.
-- Query builder `QPost` with typed fields, lists, maps.
+- Instance methods: `.save()`, `.delete()`, `.saveMany()`, `.updateOne(...)`
+- Static APIs: `Posts.findOne()`, `Posts.findMany()`, `Posts.findById()`, `Posts.findOneByNamed()`, `Posts.findManyByNamed()`
+- Query builder `QPost` with typed fields `QPost` with typed fields
 
 ### CRUD Examples
 
 ```dart
-// Create & save
+// Create & Save
 final newPost = await Post(body: 'Hello world', tags: ['intro']).save();
 
-// Read
+// Batch Insert
+await Posts.saveMany([
+  Post(body: 'Batch A'),
+  Post(body: 'Batch B')
+]);
+
+// Read by filter
 final post = await Posts.findOne((p) => p.body.eq('Hello world'));
 
-// Update
-post = await post?.copyWith(body: 'Updated').save();
+// Read by ID
+final samePost = await Posts.findById(post?.id);
+
+// Update via save()
+await post?.copyWith(body: 'Updated').save();
+
+// Targeted updateOne
+await Posts.updateOne(
+  (p) => p.body.eq('Hello world'),
+  body: 'Updated via updateOne'
+);
 
 // Delete
 await post?.delete();
 ```
 
-### Queries
-
-Examples of each query method:
+### Advanced Queries
 
 ```dart
-// 1) DSL filter: findOne
-Post? helloPost = await Posts.findOne((p) => p.body.eq("Hello world"));
+// DSL filter many
+List<Post> viralPosts = await Posts.findMany((p) => p.tags.contains('viral'));
 
-// 2) DSL filter many: findMany
-List<Post> viralPosts = await Posts.findMany((p) => p.tags.contains("viral"));
+// Named-argument single
+Post? special = await Posts.findOneByNamed(body: 'Special Update', author: userAuthor);
 
-// 3) Named-argument single: findOneByNamed
-Post? special = await Posts.findOneByNamed(body: "Special Update", author: userAuthor);
+// Named-argument many
+List<Post> intros = await Posts.findManyByNamed(body: 'Welcome', tags: ['intro']);
 
-// 4) Named-argument many: findManyByNamed
-List<Post> intros = await Posts.findManyByNamed(body: "Welcome", tags: ["intro"]);
-```
+//// Compound DSL queries ///
 
-Use the style that best fits your needs—DSL predicates or named-argument—to retrieve one or multiple documents. In DSL predicates you can combine conditions using `&` (AND) and `|` (OR), for example:
-
-```dart
 // AND Query
 Post? awesomePost = await Posts.findOne((p) => p.body.eq("Hello world") & p.tags.contains("awesome"));
 
 // OR Query
 Post? viralPost = await Posts.findOne((p) => p.body.eq("Viral") | p.tags.contains("viral"));
+
 ```
 
-### Queries & Projections
+### Named-Argument Queries & Projections
 
-All query methods—including `.findOne()`, `.findMany()`, `.findOneByNamed()`, and `.findManyByNamed()`—support an optional `projections` parameter. Projection helper classes are generated only for nested `@MongoDocument` types in your model (e.g. for a `User? author` field you get `AuthorProjections`). Use these `*Projections` helper classes with the corresponding `*Fields` enums to include or exclude nested fields on any query.
+All query methods—including `.findOne()`, `.findMany()`, `.findOneByNamed()`, `.findManyByNamed()`, and `.findOne()` supports an optional `projections` parameter. Projection helper classes are generated for each nested `@MongoDocument` type in your model (e.g. for a `User? author` field you get `AuthorProjections`). Use these with the corresponding `*Fields` enums to include or exclude fields.
 
 ```dart
-// Standard query with projections
+// Named-argument query with exclusions
+await Posts.findManyByNamed(
+  body: 'Secret Post',
+  projections: [
+    AuthorProjections(exclusions: [AuthorFields.password])
+  ]
+);
+
+// DSL query with inclusions
 Post? postWithAuthorNames = await Posts.findOne(
-  (p) => p.body.eq("Hello"),
+  (p) => p.body.eq('Hello'),
   projections: [
     AuthorProjections(inclusions: [AuthorFields.firstName, AuthorFields.lastName])
   ]
 );
 
-// Named-argument query with exclusions
-List<Post> postsWithoutPasswords = await Posts.findManyByNamed(
-  body: "Secret Post",
+await Posts.findManyByNamed(
+  body: 'Secret Post',
   projections: [
     AuthorProjections(exclusions: [AuthorFields.password])
   ]
 );
 ```
 
-- **projections**: A list of generated `*Projections` instances (e.g. `AuthorProjections`) specifying field inclusions or exclusions.
-- Projection classes are only generated when you have a nested `@MongoDocument` in your model.
-- Works with any query method: standard DSL or named-argument variants.
+## Sample Projection Result
+
+```json
+{
+  "_id": "605c5f2e8a7c2e1a4c3d9b7f",
+  "body": "Hello",
+  "tags": ["intro"],
+  "author": { "first_name": "Jane", "last_name": "Doe" }
+}
+```
+
+Explanation: Because we used an inclusion projection (`inclusions: [AuthorFields.firstName, AuthorFields.lastName]`), only the specified `author` subfields (`firstName`, `lastName`) appear in the result. If you provide an empty inclusion and exclusion arrays you will get back only the `ObjectId` as `{_id:ObjectId("605c5f2e8a7c2e1a4c3d9b7f)}` mapped to the `author` reference.
 
 ## Configuration & Conventions
 
-- Customize converters via e.g `@ObjectIdConverter()` and `@DateTimeConverter()`.
-- Collection name comes from `@MongoDocument(collection: ...)`.
+- Converters: `@ObjectIdConverter()`, `@DateTimeConverter()`
+- Collection name from `@MongoDocument(collection: ...)`
 
 ## Troubleshooting
 
-**Warning**: `@JsonSerializable can only be used on classes` — Add to your `analysis_options.yaml`:
+Add to `analysis_options.yaml`:
 
 ```yaml
 analyzer:
@@ -234,7 +252,7 @@ analyzer:
 
 ## Contributing
 
-Contributions, issues, and feature requests are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
