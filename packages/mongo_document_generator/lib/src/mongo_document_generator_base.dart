@@ -94,6 +94,7 @@ class ${className}s {
   ${DeleteTemplates.deleteOne(className)}
   ${DeleteTemplates.deleteOneByNamed(className, _jsonKeyChecker, params, fieldRename)}
   ${DeleteTemplates.deleteMany(className)}
+  ${DeleteTemplates.deleteManyByNamed(className, _jsonKeyChecker, params, fieldRename)}
   ${UpdateTemplates.updateOne(className, _jsonKeyChecker, params, fieldRename)}
   ${UpdateTemplates.buildModifier()}
   ${UpdateTemplates.updateOneFromMap(className)}

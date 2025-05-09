@@ -139,11 +139,11 @@ This generates:
 - Static APIs: `Posts.findOne()`, `Posts.findMany()`, `Posts.findById()`, `Posts.findOneByNamed()`, `Posts.findManyByNamed()`
 - Query builder `QPost` with typed fields `QPost` with typed fields
 
-### CRUD Examples
+### Create|Update
 
 ```dart
 // Create & Save
-final newPost = await Post(body: 'Hello world', tags: ['intro']).save();
+final post = await Post(body: 'Hello world', tags: ['intro']).save();
 
 // Batch Insert
 await Posts.saveMany([
@@ -151,13 +151,7 @@ await Posts.saveMany([
   Post(body: 'Batch B')
 ]);
 
-// Read by filter
-final post = await Posts.findOne((p) => p.body.eq('Hello world'));
-
-// Read by ID
-final samePost = await Posts.findById(post?.id);
-
-// Update via save()
+// Update via copyWith and finally save()
 await post?.copyWith(body: 'Updated').save();
 
 // Targeted updateOne
@@ -166,13 +160,14 @@ await Posts.updateOne(
   body: 'Updated via updateOne'
 );
 
-// Delete
-await post?.delete();
 ```
 
 ### Queries
 
 ```dart
+// DSL filter single
+final post = await Posts.findOne((p) => p.body.eq('Hello world'));
+
 // DSL filter many
 List<Post> viralPosts = await Posts.findMany((p) => p.tags.contains('viral'));
 
@@ -182,6 +177,9 @@ Post? special = await Posts.findOneByNamed(body: 'Special Update', author: userA
 // Named-argument many
 List<Post> intros = await Posts.findManyByNamed(body: 'Welcome', tags: ['intro']);
 
+// Read by ID
+final samePost = await Posts.findById(post?.id);
+
 //// Compound DSL queries ///
 
 // AND Query
@@ -190,6 +188,25 @@ Post? awesomePost = await Posts.findOne((p) => p.body.eq("Hello world") & p.tags
 // OR Query
 Post? viralPost = await Posts.findOne((p) => p.body.eq("Viral") | p.tags.contains("viral"));
 
+```
+
+### Delete
+
+```dart
+// Delete
+await viralPost?.delete();
+
+// Targeted deleteOne
+await Posts.deleteOne((p) => p.body.eq('Hello world'));
+
+// Targetd deleteOneByNamed
+await Posts.deleteOneByNamed(body:"Hello World");
+
+// Targeted deleteMany
+await Posts.deleteMany((p) => p.body.startsWith('Hello'));
+
+// Targeted deleteManyByNamed
+await Posts.deleteManyByNamed(body:"Hello World");
 ```
 
 ### Advanced Queries & Projections

@@ -597,6 +597,29 @@ class Comments {
     return result.isSuccess;
   }
 
+  /// Type-safe deleteMany by named arguments
+  static Future<bool> deleteManyByNamed({
+    ObjectId? id,
+    Post? post,
+    String? text,
+    int? age,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) async {
+    final selector = <String, dynamic>{};
+    if (id != null) selector['_id'] = id;
+    if (post != null) selector['post'] = post;
+    if (text != null) selector['text'] = text;
+    if (age != null) selector['age'] = age;
+    if (createdAt != null) selector['created_at'] = createdAt;
+    if (updatedAt != null) selector['updated_at'] = updatedAt;
+    if (selector.isEmpty) return false;
+    final result = await (await MongoConnection.getDb())
+        .collection(_collection)
+        .deleteMany(selector);
+    return result.isSuccess;
+  }
+
   /// Type-safe updateOne
   static Future<bool> updateOne(
     Expression Function(QComment c) predicate, {
@@ -630,8 +653,8 @@ class Comments {
     return modifier;
   }
 
-  /// Use `updateOne` directly whenever possible for better performance and clarity.
-  /// This method is a fallback for cases requiring additional logic or dynamic update maps.
+  /// Prioritize `updateOne` whenever possible to avoid type mismatch.
+  /// This method is a fallback for cases where you just had to use a map.
   static Future<Comment?> updateOneFromMap(
     ObjectId id,
     Map<String, dynamic> updateMap,
