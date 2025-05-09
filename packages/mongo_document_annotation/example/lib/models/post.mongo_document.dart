@@ -300,8 +300,8 @@ class Posts {
     }
 
     // fallback to simple findOne
-    final post = await coll.findOne(selectorMap);
-    return post == null ? null : Post.fromJson(post.withRefs());
+    final postResult = await coll.findOne(selectorMap);
+    return postResult == null ? null : Post.fromJson(postResult);
   }
 
   /// Type-safe findOne by named arguments
@@ -383,8 +383,8 @@ class Posts {
       if (posts.isEmpty) return null;
       return Post.fromJson(posts.first.withRefs());
     }
-    final post = await coll.findOne(selector);
-    return post == null ? null : Post.fromJson(post.withRefs());
+    final postResult = await coll.findOne(selector);
+    return postResult == null ? null : Post.fromJson(postResult.withRefs());
   }
 
   /// Type-safe findMany by predicate

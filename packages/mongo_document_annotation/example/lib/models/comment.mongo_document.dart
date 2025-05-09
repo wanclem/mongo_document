@@ -274,8 +274,8 @@ class Comments {
     }
 
     // fallback to simple findOne
-    final comment = await coll.findOne(selectorMap);
-    return comment == null ? null : Comment.fromJson(comment.withRefs());
+    final commentResult = await coll.findOne(selectorMap);
+    return commentResult == null ? null : Comment.fromJson(commentResult);
   }
 
   /// Type-safe findOne by named arguments
@@ -353,8 +353,10 @@ class Comments {
       if (comments.isEmpty) return null;
       return Comment.fromJson(comments.first.withRefs());
     }
-    final comment = await coll.findOne(selector);
-    return comment == null ? null : Comment.fromJson(comment.withRefs());
+    final commentResult = await coll.findOne(selector);
+    return commentResult == null
+        ? null
+        : Comment.fromJson(commentResult.withRefs());
   }
 
   /// Type-safe findMany by predicate

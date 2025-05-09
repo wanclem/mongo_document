@@ -233,8 +233,8 @@ class Users {
     }
 
     // fallback to simple findOne
-    final user = await coll.findOne(selectorMap);
-    return user == null ? null : User.fromJson(user.withRefs());
+    final userResult = await coll.findOne(selectorMap);
+    return userResult == null ? null : User.fromJson(userResult);
   }
 
   /// Type-safe findOne by named arguments
@@ -314,8 +314,8 @@ class Users {
       if (users.isEmpty) return null;
       return User.fromJson(users.first.withRefs());
     }
-    final user = await coll.findOne(selector);
-    return user == null ? null : User.fromJson(user.withRefs());
+    final userResult = await coll.findOne(selector);
+    return userResult == null ? null : User.fromJson(userResult.withRefs());
   }
 
   /// Type-safe findMany by predicate

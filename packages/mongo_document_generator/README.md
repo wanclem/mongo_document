@@ -1,4 +1,4 @@
-[![pub package](https://img.shields.io/pub/v/mongo_document.svg)](https://pub.dev/packages/mongo_document_annotation) [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![pub package](https://img.shields.io/pub/v/mongo_document.svg)](https://pub.dev/packages/mongo_document) [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 <!-- TOC -->
 
@@ -67,13 +67,13 @@ Add to `pubspec.yaml`:
 ```yaml
 dependencies:
   json_annotation: ^4.9.0
-  mongo_document_annotation: ^1.0.3
+  mongo_document_annotation: ^1.1.1
 
 dev_dependencies:
   build_runner: ^2.4.14
   freezed: ">=2.5.8 <4.0.0"
   json_serializable: ^6.9.3
-  mongo_document: ^1.0.3
+  mongo_document: ^1.1.1
 ```
 
 Then:
@@ -137,7 +137,7 @@ This generates:
 
 - Instance methods: `.save()`, `.delete()`, `.saveMany()`, `.updateOne(...)`
 - Static APIs: `Posts.findOne()`, `Posts.findMany()`, `Posts.findById()`, `Posts.findOneByNamed()`, `Posts.findManyByNamed()`
-- Query builder `QPost` with typed fields `QPost` with typed fields
+- Query builder `QPost` with typed fields
 
 ### Create|Update
 
