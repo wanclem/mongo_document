@@ -238,7 +238,7 @@ await Posts.findManyByNamed(
 );
 ```
 
-## Sample Projection Result
+### Sample Projection Result
 
 ```json
 {
