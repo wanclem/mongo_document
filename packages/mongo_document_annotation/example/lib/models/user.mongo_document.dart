@@ -45,9 +45,10 @@ extension $UserExtension on User {
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
-    final userMap = toJson()
-      ..remove('_id')
-      ..removeWhere((key, value) => value == null);
+    final userMap =
+        toJson()
+          ..remove('_id')
+          ..removeWhere((key, value) => value == null);
     userMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
     userMap.update('updated_at', (v) => now, ifAbsent: () => now);
 
@@ -70,8 +71,9 @@ extension $UserExtension on User {
           if (nestedMap.isNotEmpty) {
             var mod = modify.set('updated_at', now);
             nestedMap.forEach((k, v) => mod = mod.set(k, v));
-            nestedUpdates
-                .add(nestedColl.updateOne(where.eq(r'_id', nestedId), mod));
+            nestedUpdates.add(
+              nestedColl.updateOne(where.eq(r'_id', nestedId), mod),
+            );
           }
         }
       }
@@ -105,22 +107,18 @@ class Users {
   static String get _collection => 'users';
 
   /// Type-safe saveMany
-  static Future<List<User?>> saveMany(
-    List<User> users,
-  ) async {
+  static Future<List<User?>> saveMany(List<User> users) async {
     if (users.isEmpty) return <User>[];
-    final List<Map<String, dynamic>> usersMap = users.map((u) {
-      final json = u.toJson()..remove('_id');
-      return json.map((key, value) {
-        if (_nestedCollections.containsKey(key)) {
-          return MapEntry<String, dynamic>(
-            key,
-            value['_id'] as ObjectId?,
-          );
-        }
-        return MapEntry<String, dynamic>(key, value);
-      });
-    }).toList();
+    final List<Map<String, dynamic>> usersMap =
+        users.map((u) {
+          final json = u.toJson()..remove('_id');
+          return json.map((key, value) {
+            if (_nestedCollections.containsKey(key)) {
+              return MapEntry<String, dynamic>(key, value['_id'] as ObjectId?);
+            }
+            return MapEntry<String, dynamic>(key, value);
+          });
+        }).toList();
     final coll = (await MongoConnection.getDb()).collection(_collection);
     final result = await coll.insertMany(usersMap);
     return users.asMap().entries.map((e) {
@@ -149,7 +147,7 @@ class Users {
       final pipeline = <Map<String, Object>>[];
       final projDoc = <String, int>{};
       pipeline.add({
-        r"$match": {'_id': userId}
+        r"$match": {'_id': userId},
       });
       final selected = <String, int>{};
       for (var p in projections) {
@@ -182,13 +180,13 @@ class Users {
             'localField': localField,
             'foreignField': '_id',
             'as': localField,
-          }
+          },
         });
         pipeline.add({
           r'$unwind': {
             "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true
-          }
+            "preserveNullAndEmptyArrays": true,
+          },
         });
       }
       pipeline.add({r'$project': projDoc});
@@ -299,13 +297,13 @@ class Users {
             'localField': localField,
             'foreignField': '_id',
             'as': localField,
-          }
+          },
         });
         pipeline.add({
           r'$unwind': {
             "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true
-          }
+            "preserveNullAndEmptyArrays": true,
+          },
         });
       }
       pipeline.add({r'$project': projDoc});
@@ -346,10 +344,11 @@ class Users {
       return users.map((d) => User.fromJson(d.withRefs())).toList();
     }
 
-    final users = await (await MongoConnection.getDb())
-        .collection(_collection)
-        .find(selectorMap)
-        .toList();
+    final users =
+        await (await MongoConnection.getDb())
+            .collection(_collection)
+            .find(selectorMap)
+            .toList();
     return users.map((e) => User.fromJson(e.withRefs())).toList();
   }
 
@@ -379,8 +378,10 @@ class Users {
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
-      final users = await coll.modernFind(
-          sort: {'created_at': -1}, limit: limit, skip: skip).toList();
+      final users =
+          await coll
+              .modernFind(sort: {'created_at': -1}, limit: limit, skip: skip)
+              .toList();
       if (users.isEmpty) return [];
       return users.map((e) => User.fromJson(e.withRefs())).toList();
     }
@@ -419,13 +420,13 @@ class Users {
             'localField': localField,
             'foreignField': '_id',
             'as': localField,
-          }
+          },
         });
         pipeline.add({
           r'$unwind': {
             "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true
-          }
+            "preserveNullAndEmptyArrays": true,
+          },
         });
       }
       pipeline.add({r'$project': projDoc});
@@ -434,9 +435,10 @@ class Users {
       if (users.isEmpty) return [];
       return users.map((d) => User.fromJson(d.withRefs())).toList();
     }
-    final users = await coll
-        .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
-        .toList();
+    final users =
+        await coll
+            .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
+            .toList();
     return users.map((e) => User.fromJson(e.withRefs())).toList();
   }
 
@@ -588,25 +590,25 @@ class Users {
   }
 
   static Future<int> count(Expression Function(QUser u)? predicate) async {
-    final selectorMap = predicate == null
-        ? <String, dynamic>{}
-        : predicate(QUser()).toSelectorBuilder().map.flatQuery();
+    final selectorMap =
+        predicate == null
+            ? <String, dynamic>{}
+            : predicate(QUser()).toSelectorBuilder().map.flatQuery();
 
-    final (foundLookups, pipelineWithoutCount) =
-        selectorMap.toAggregationPipelineWithMap(
-      lookupRef: _nestedCollections,
-    );
+    final (foundLookups, pipelineWithoutCount) = selectorMap
+        .toAggregationPipelineWithMap(lookupRef: _nestedCollections);
 
     if (foundLookups) {
       final pipeline = [
         ...pipelineWithoutCount,
-        {r'$count': 'count'}
+        {r'$count': 'count'},
       ];
 
-      final result = await (await MongoConnection.getDb())
-          .collection(_collection)
-          .aggregateToStream(pipeline)
-          .toList();
+      final result =
+          await (await MongoConnection.getDb())
+              .collection(_collection)
+              .aggregateToStream(pipeline)
+              .toList();
 
       if (result.isEmpty) return 0;
       return result.first['count'] as int;

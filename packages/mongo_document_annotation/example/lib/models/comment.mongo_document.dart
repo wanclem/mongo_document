@@ -21,7 +21,7 @@ enum PostFields {
   body,
   name,
   createdAt,
-  updatedAt
+  updatedAt,
 }
 
 class PostProjections implements BaseProjections {
@@ -37,7 +37,7 @@ class PostProjections implements BaseProjections {
     "body": "post.body",
     "name": "post.name",
     "createdAt": "post.created_at",
-    "updatedAt": "post.updated_at"
+    "updatedAt": "post.updated_at",
   };
   const PostProjections({this.inclusions, this.exclusions});
 
@@ -51,7 +51,7 @@ class PostProjections implements BaseProjections {
       'post.body': 1,
       'post.name': 1,
       'post.created_at': 1,
-      'post.updated_at': 1
+      'post.updated_at': 1,
     };
   }
 }
@@ -86,9 +86,10 @@ extension $CommentExtension on Comment {
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
-    final commentMap = toJson()
-      ..remove('_id')
-      ..removeWhere((key, value) => value == null);
+    final commentMap =
+        toJson()
+          ..remove('_id')
+          ..removeWhere((key, value) => value == null);
     commentMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
     commentMap.update('updated_at', (v) => now, ifAbsent: () => now);
 
@@ -111,8 +112,9 @@ extension $CommentExtension on Comment {
           if (nestedMap.isNotEmpty) {
             var mod = modify.set('updated_at', now);
             nestedMap.forEach((k, v) => mod = mod.set(k, v));
-            nestedUpdates
-                .add(nestedColl.updateOne(where.eq(r'_id', nestedId), mod));
+            nestedUpdates.add(
+              nestedColl.updateOne(where.eq(r'_id', nestedId), mod),
+            );
           }
         }
       }
@@ -146,22 +148,18 @@ class Comments {
   static String get _collection => 'comments';
 
   /// Type-safe saveMany
-  static Future<List<Comment?>> saveMany(
-    List<Comment> comments,
-  ) async {
+  static Future<List<Comment?>> saveMany(List<Comment> comments) async {
     if (comments.isEmpty) return <Comment>[];
-    final List<Map<String, dynamic>> commentsMap = comments.map((c) {
-      final json = c.toJson()..remove('_id');
-      return json.map((key, value) {
-        if (_nestedCollections.containsKey(key)) {
-          return MapEntry<String, dynamic>(
-            key,
-            value['_id'] as ObjectId?,
-          );
-        }
-        return MapEntry<String, dynamic>(key, value);
-      });
-    }).toList();
+    final List<Map<String, dynamic>> commentsMap =
+        comments.map((c) {
+          final json = c.toJson()..remove('_id');
+          return json.map((key, value) {
+            if (_nestedCollections.containsKey(key)) {
+              return MapEntry<String, dynamic>(key, value['_id'] as ObjectId?);
+            }
+            return MapEntry<String, dynamic>(key, value);
+          });
+        }).toList();
     final coll = (await MongoConnection.getDb()).collection(_collection);
     final result = await coll.insertMany(commentsMap);
     return comments.asMap().entries.map((e) {
@@ -190,7 +188,7 @@ class Comments {
       final pipeline = <Map<String, Object>>[];
       final projDoc = <String, int>{};
       pipeline.add({
-        r"$match": {'_id': commentId}
+        r"$match": {'_id': commentId},
       });
       final selected = <String, int>{};
       for (var p in projections) {
@@ -223,13 +221,13 @@ class Comments {
             'localField': localField,
             'foreignField': '_id',
             'as': localField,
-          }
+          },
         });
         pipeline.add({
           r'$unwind': {
             "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true
-          }
+            "preserveNullAndEmptyArrays": true,
+          },
         });
       }
       pipeline.add({r'$project': projDoc});
@@ -338,13 +336,13 @@ class Comments {
             'localField': localField,
             'foreignField': '_id',
             'as': localField,
-          }
+          },
         });
         pipeline.add({
           r'$unwind': {
             "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true
-          }
+            "preserveNullAndEmptyArrays": true,
+          },
         });
       }
       pipeline.add({r'$project': projDoc});
@@ -387,10 +385,11 @@ class Comments {
       return comments.map((d) => Comment.fromJson(d.withRefs())).toList();
     }
 
-    final comments = await (await MongoConnection.getDb())
-        .collection(_collection)
-        .find(selectorMap)
-        .toList();
+    final comments =
+        await (await MongoConnection.getDb())
+            .collection(_collection)
+            .find(selectorMap)
+            .toList();
     return comments.map((e) => Comment.fromJson(e.withRefs())).toList();
   }
 
@@ -418,8 +417,10 @@ class Comments {
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
-      final comments = await coll.modernFind(
-          sort: {'created_at': -1}, limit: limit, skip: skip).toList();
+      final comments =
+          await coll
+              .modernFind(sort: {'created_at': -1}, limit: limit, skip: skip)
+              .toList();
       if (comments.isEmpty) return [];
       return comments.map((e) => Comment.fromJson(e.withRefs())).toList();
     }
@@ -458,13 +459,13 @@ class Comments {
             'localField': localField,
             'foreignField': '_id',
             'as': localField,
-          }
+          },
         });
         pipeline.add({
           r'$unwind': {
             "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true
-          }
+            "preserveNullAndEmptyArrays": true,
+          },
         });
       }
       pipeline.add({r'$project': projDoc});
@@ -473,15 +474,17 @@ class Comments {
       if (comments.isEmpty) return [];
       return comments.map((d) => Comment.fromJson(d.withRefs())).toList();
     }
-    final comments = await coll
-        .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
-        .toList();
+    final comments =
+        await coll
+            .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
+            .toList();
     return comments.map((e) => Comment.fromJson(e.withRefs())).toList();
   }
 
   /// Type-safe deleteOne by predicate
   static Future<bool> deleteOne(
-      Expression Function(QComment c) predicate) async {
+    Expression Function(QComment c) predicate,
+  ) async {
     final expr = predicate(QComment());
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
@@ -515,7 +518,8 @@ class Comments {
 
   /// Type-safe deleteMany
   static Future<bool> deleteMany(
-      Expression Function(QComment c) predicate) async {
+    Expression Function(QComment c) predicate,
+  ) async {
     final expr = predicate(QComment());
     final selector = expr.toSelectorBuilder();
     final result = await (await MongoConnection.getDb())
@@ -621,25 +625,25 @@ class Comments {
   }
 
   static Future<int> count(Expression Function(QComment c)? predicate) async {
-    final selectorMap = predicate == null
-        ? <String, dynamic>{}
-        : predicate(QComment()).toSelectorBuilder().map.flatQuery();
+    final selectorMap =
+        predicate == null
+            ? <String, dynamic>{}
+            : predicate(QComment()).toSelectorBuilder().map.flatQuery();
 
-    final (foundLookups, pipelineWithoutCount) =
-        selectorMap.toAggregationPipelineWithMap(
-      lookupRef: _nestedCollections,
-    );
+    final (foundLookups, pipelineWithoutCount) = selectorMap
+        .toAggregationPipelineWithMap(lookupRef: _nestedCollections);
 
     if (foundLookups) {
       final pipeline = [
         ...pipelineWithoutCount,
-        {r'$count': 'count'}
+        {r'$count': 'count'},
       ];
 
-      final result = await (await MongoConnection.getDb())
-          .collection(_collection)
-          .aggregateToStream(pipeline)
-          .toList();
+      final result =
+          await (await MongoConnection.getDb())
+              .collection(_collection)
+              .aggregateToStream(pipeline)
+              .toList();
 
       if (result.isEmpty) return 0;
       return result.first['count'] as int;

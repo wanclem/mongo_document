@@ -13,7 +13,7 @@ part of 'post.dart';
 
 const _nestedCollections = <String, String>{
   'author': 'users',
-  'lastComment': 'comments'
+  'lastComment': 'comments',
 };
 
 enum AuthorFields { id, firstName, lastName, email, age, createdAt, updatedAt }
@@ -30,7 +30,7 @@ class AuthorProjections implements BaseProjections {
     "email": "author.email",
     "age": "author.age",
     "createdAt": "author.created_at",
-    "updatedAt": "author.updated_at"
+    "updatedAt": "author.updated_at",
   };
   const AuthorProjections({this.inclusions, this.exclusions});
 
@@ -43,7 +43,7 @@ class AuthorProjections implements BaseProjections {
       'author.email': 1,
       'author.age': 1,
       'author.created_at': 1,
-      'author.updated_at': 1
+      'author.updated_at': 1,
     };
   }
 }
@@ -61,7 +61,7 @@ class LastCommentProjections implements BaseProjections {
     "text": "lastComment.text",
     "age": "lastComment.age",
     "createdAt": "lastComment.created_at",
-    "updatedAt": "lastComment.updated_at"
+    "updatedAt": "lastComment.updated_at",
   };
   const LastCommentProjections({this.inclusions, this.exclusions});
 
@@ -73,7 +73,7 @@ class LastCommentProjections implements BaseProjections {
       'lastComment.text': 1,
       'lastComment.age': 1,
       'lastComment.created_at': 1,
-      'lastComment.updated_at': 1
+      'lastComment.updated_at': 1,
     };
   }
 }
@@ -112,9 +112,10 @@ extension $PostExtension on Post {
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
-    final postMap = toJson()
-      ..remove('_id')
-      ..removeWhere((key, value) => value == null);
+    final postMap =
+        toJson()
+          ..remove('_id')
+          ..removeWhere((key, value) => value == null);
     postMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
     postMap.update('updated_at', (v) => now, ifAbsent: () => now);
 
@@ -137,8 +138,9 @@ extension $PostExtension on Post {
           if (nestedMap.isNotEmpty) {
             var mod = modify.set('updated_at', now);
             nestedMap.forEach((k, v) => mod = mod.set(k, v));
-            nestedUpdates
-                .add(nestedColl.updateOne(where.eq(r'_id', nestedId), mod));
+            nestedUpdates.add(
+              nestedColl.updateOne(where.eq(r'_id', nestedId), mod),
+            );
           }
         }
       }
@@ -172,22 +174,18 @@ class Posts {
   static String get _collection => 'posts';
 
   /// Type-safe saveMany
-  static Future<List<Post?>> saveMany(
-    List<Post> posts,
-  ) async {
+  static Future<List<Post?>> saveMany(List<Post> posts) async {
     if (posts.isEmpty) return <Post>[];
-    final List<Map<String, dynamic>> postsMap = posts.map((p) {
-      final json = p.toJson()..remove('_id');
-      return json.map((key, value) {
-        if (_nestedCollections.containsKey(key)) {
-          return MapEntry<String, dynamic>(
-            key,
-            value['_id'] as ObjectId?,
-          );
-        }
-        return MapEntry<String, dynamic>(key, value);
-      });
-    }).toList();
+    final List<Map<String, dynamic>> postsMap =
+        posts.map((p) {
+          final json = p.toJson()..remove('_id');
+          return json.map((key, value) {
+            if (_nestedCollections.containsKey(key)) {
+              return MapEntry<String, dynamic>(key, value['_id'] as ObjectId?);
+            }
+            return MapEntry<String, dynamic>(key, value);
+          });
+        }).toList();
     final coll = (await MongoConnection.getDb()).collection(_collection);
     final result = await coll.insertMany(postsMap);
     return posts.asMap().entries.map((e) {
@@ -216,7 +214,7 @@ class Posts {
       final pipeline = <Map<String, Object>>[];
       final projDoc = <String, int>{};
       pipeline.add({
-        r"$match": {'_id': postId}
+        r"$match": {'_id': postId},
       });
       final selected = <String, int>{};
       for (var p in projections) {
@@ -249,13 +247,13 @@ class Posts {
             'localField': localField,
             'foreignField': '_id',
             'as': localField,
-          }
+          },
         });
         pipeline.add({
           r'$unwind': {
             "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true
-          }
+            "preserveNullAndEmptyArrays": true,
+          },
         });
       }
       pipeline.add({r'$project': projDoc});
@@ -368,13 +366,13 @@ class Posts {
             'localField': localField,
             'foreignField': '_id',
             'as': localField,
-          }
+          },
         });
         pipeline.add({
           r'$unwind': {
             "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true
-          }
+            "preserveNullAndEmptyArrays": true,
+          },
         });
       }
       pipeline.add({r'$project': projDoc});
@@ -415,10 +413,11 @@ class Posts {
       return posts.map((d) => Post.fromJson(d.withRefs())).toList();
     }
 
-    final posts = await (await MongoConnection.getDb())
-        .collection(_collection)
-        .find(selectorMap)
-        .toList();
+    final posts =
+        await (await MongoConnection.getDb())
+            .collection(_collection)
+            .find(selectorMap)
+            .toList();
     return posts.map((e) => Post.fromJson(e.withRefs())).toList();
   }
 
@@ -450,8 +449,10 @@ class Posts {
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
-      final posts = await coll.modernFind(
-          sort: {'created_at': -1}, limit: limit, skip: skip).toList();
+      final posts =
+          await coll
+              .modernFind(sort: {'created_at': -1}, limit: limit, skip: skip)
+              .toList();
       if (posts.isEmpty) return [];
       return posts.map((e) => Post.fromJson(e.withRefs())).toList();
     }
@@ -490,13 +491,13 @@ class Posts {
             'localField': localField,
             'foreignField': '_id',
             'as': localField,
-          }
+          },
         });
         pipeline.add({
           r'$unwind': {
             "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true
-          }
+            "preserveNullAndEmptyArrays": true,
+          },
         });
       }
       pipeline.add({r'$project': projDoc});
@@ -505,9 +506,10 @@ class Posts {
       if (posts.isEmpty) return [];
       return posts.map((d) => Post.fromJson(d.withRefs())).toList();
     }
-    final posts = await coll
-        .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
-        .toList();
+    final posts =
+        await coll
+            .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
+            .toList();
     return posts.map((e) => Post.fromJson(e.withRefs())).toList();
   }
 
@@ -667,25 +669,25 @@ class Posts {
   }
 
   static Future<int> count(Expression Function(QPost p)? predicate) async {
-    final selectorMap = predicate == null
-        ? <String, dynamic>{}
-        : predicate(QPost()).toSelectorBuilder().map.flatQuery();
+    final selectorMap =
+        predicate == null
+            ? <String, dynamic>{}
+            : predicate(QPost()).toSelectorBuilder().map.flatQuery();
 
-    final (foundLookups, pipelineWithoutCount) =
-        selectorMap.toAggregationPipelineWithMap(
-      lookupRef: _nestedCollections,
-    );
+    final (foundLookups, pipelineWithoutCount) = selectorMap
+        .toAggregationPipelineWithMap(lookupRef: _nestedCollections);
 
     if (foundLookups) {
       final pipeline = [
         ...pipelineWithoutCount,
-        {r'$count': 'count'}
+        {r'$count': 'count'},
       ];
 
-      final result = await (await MongoConnection.getDb())
-          .collection(_collection)
-          .aggregateToStream(pipeline)
-          .toList();
+      final result =
+          await (await MongoConnection.getDb())
+              .collection(_collection)
+              .aggregateToStream(pipeline)
+              .toList();
 
       if (result.isEmpty) return 0;
       return result.first['count'] as int;
