@@ -1,3 +1,4 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 
 part 'user.freezed.dart';

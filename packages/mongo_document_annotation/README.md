@@ -66,6 +66,7 @@ Add to `pubspec.yaml`:
 
 ```yaml
 dependencies:
+  freezed_annotation: ">=2.4.4 <4.0.0"
   json_annotation: ^4.9.0
   mongo_document_annotation: ^1.1.4
 
@@ -102,6 +103,7 @@ Future<void> main() async {
 **⚠️ Requirement:** Every `@MongoDocument` class **must** include an `ObjectId` field in its primary constructor annotated with `@ObjectIdConverter()` and `@JsonKey(name: '_id')`. This ensures a valid MongoDB `_id` is always present.
 
 ```dart
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 part 'post.freezed.dart';
 part 'post.g.dart';

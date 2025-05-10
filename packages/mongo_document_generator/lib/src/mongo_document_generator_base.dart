@@ -1,6 +1,7 @@
 import 'package:analyzer/dart/element/element.dart';
 import 'package:build/build.dart';
 import 'package:dart_style/dart_style.dart';
+import 'package:json_annotation/json_annotation.dart';
 import 'package:mongo_document/mongo_document_generator.dart';
 import 'package:mongo_document/src/checkers/annotation_checker.dart';
 import 'package:mongo_document/src/checkers/default_annotation_checker.dart';

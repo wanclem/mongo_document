@@ -1,8 +1,8 @@
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
+import 'package:json_annotation/json_annotation.dart';
 import 'package:mongo_document/src/templates/parameter_template.dart';
 import 'package:mongo_document/src/utils/field_manipulators.dart';
-import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 import 'package:recase/recase.dart';
 import 'package:source_gen/source_gen.dart';
 

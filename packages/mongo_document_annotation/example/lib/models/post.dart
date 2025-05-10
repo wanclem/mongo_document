@@ -1,8 +1,6 @@
-import 'dart:convert';
-import 'dart:math';
-
 import 'package:example/models/comment.dart';
 import 'package:example/models/user.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 
 part 'post.freezed.dart';

@@ -6,4 +6,3 @@ export 'src/converters/object_id_converter.dart';
 export 'src/converters/date_time_converter.dart';
 export 'dart:async';
 export 'package:mongo_dart/mongo_dart.dart';
-export 'package:freezed_annotation/freezed_annotation.dart';
