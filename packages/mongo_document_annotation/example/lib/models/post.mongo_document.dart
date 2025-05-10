@@ -16,12 +16,20 @@ const _nestedCollections = <String, String>{
   'lastComment': 'comments',
 };
 
-enum AuthorFields { id, firstName, lastName, email, age, createdAt, updatedAt }
+enum PostAuthorFields {
+  id,
+  firstName,
+  lastName,
+  email,
+  age,
+  createdAt,
+  updatedAt,
+}
 
-class AuthorProjections implements BaseProjections {
+class PostAuthorProjections implements BaseProjections {
   @override
-  final List<AuthorFields>? inclusions;
-  final List<AuthorFields>? exclusions;
+  final List<PostAuthorFields>? inclusions;
+  final List<PostAuthorFields>? exclusions;
   @override
   final Map<String, dynamic> fieldMappings = const {
     "id": "author._id",
@@ -32,7 +40,7 @@ class AuthorProjections implements BaseProjections {
     "createdAt": "author.created_at",
     "updatedAt": "author.updated_at",
   };
-  const AuthorProjections({this.inclusions, this.exclusions});
+  const PostAuthorProjections({this.inclusions, this.exclusions});
 
   @override
   Map<String, int> toProjection() {
@@ -48,12 +56,12 @@ class AuthorProjections implements BaseProjections {
   }
 }
 
-enum LastCommentFields { id, post, text, age, createdAt, updatedAt }
+enum PostLastCommentFields { id, post, text, age, createdAt, updatedAt }
 
-class LastCommentProjections implements BaseProjections {
+class PostLastCommentProjections implements BaseProjections {
   @override
-  final List<LastCommentFields>? inclusions;
-  final List<LastCommentFields>? exclusions;
+  final List<PostLastCommentFields>? inclusions;
+  final List<PostLastCommentFields>? exclusions;
   @override
   final Map<String, dynamic> fieldMappings = const {
     "id": "lastComment._id",
@@ -63,7 +71,7 @@ class LastCommentProjections implements BaseProjections {
     "createdAt": "lastComment.created_at",
     "updatedAt": "lastComment.updated_at",
   };
-  const LastCommentProjections({this.inclusions, this.exclusions});
+  const PostLastCommentProjections({this.inclusions, this.exclusions});
 
   @override
   Map<String, int> toProjection() {

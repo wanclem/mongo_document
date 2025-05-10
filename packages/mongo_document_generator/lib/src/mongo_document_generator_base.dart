@@ -63,6 +63,7 @@ ${ObjectReferences.buildNestedCollectiontionsMapLiteral(
       nestedCollectionMap,
     )}
 ${ObjectReferences.buildNestedCollectionProjectionClasses(
+      className,
       _jsonSerializableChecker,
       _jsonKeyChecker,
       nestedCollectionMap,

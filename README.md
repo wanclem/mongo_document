@@ -68,13 +68,13 @@ Add to `pubspec.yaml`:
 dependencies:
   freezed_annotation: ">=2.4.4 <4.0.0"
   json_annotation: ^4.9.0
-  mongo_document_annotation: ^1.1.5
+  mongo_document_annotation: ^1.1.6
 
 dev_dependencies:
   build_runner: ^2.4.14
   freezed: ">=2.5.8 <4.0.0"
   json_serializable: ^6.9.3
-  mongo_document: ^1.1.5
+  mongo_document: ^1.1.6
 ```
 
 Then:
@@ -213,14 +213,14 @@ await Posts.deleteManyByNamed(body:"Hello World");
 
 ### Advanced Queries & Projections
 
-All query methods—including `.findOne()`, `.findMany()`, `.findOneByNamed()` and `.findManyByNamed()` supports an optional `projections` parameter. Projection helper classes are generated for each nested `@MongoDocument` type in your model (e.g. for a `User? author` field you get `AuthorProjections`). Use these with the corresponding `*Fields` enums to include or exclude fields.
+All query methods—including `.findOne()`, `.findMany()`, `.findOneByNamed()` and `.findManyByNamed()` supports an optional `projections` parameter. Projection helper classes are generated for each nested `@MongoDocument` type in your model (e.g. for a `User? author` field you get `PostAuthorProjections`). Use these with the corresponding `*Fields` enums to include or exclude fields.
 
 ```dart
 // Named-argument single query with exclusions
 final result = await Posts.findOneByNamed(
   body: 'Secret Post',
   projections: [
-    AuthorProjections(exclusions: [AuthorFields.password])
+    PostAuthorProjections(exclusions: [PostAuthorFields.password])
   ]
 );
 
@@ -228,7 +228,7 @@ final result = await Posts.findOneByNamed(
 Post? postWithAuthorNames = await Posts.findOne(
   (p) => p.body.eq('Hello'),
   projections: [
-    AuthorProjections(inclusions: [AuthorFields.firstName, AuthorFields.lastName])
+    PostAuthorProjections(inclusions: [PostAuthorFields.firstName, PostAuthorFields.lastName])
   ]
 );
 
@@ -236,7 +236,7 @@ Post? postWithAuthorNames = await Posts.findOne(
 final res = await Posts.findManyByNamed(
   body: 'Secret Post',
   projections: [
-    AuthorProjections(exclusions: [AuthorFields.password])
+    PostAuthorProjections(exclusions: [PostAuthorFields.password])
   ]
 );
 ```
@@ -252,7 +252,7 @@ final res = await Posts.findManyByNamed(
 }
 ```
 
-Explanation: Because we used an inclusion projection (`inclusions: [AuthorFields.firstName, AuthorFields.lastName]`), only the specified `author` subfields (`firstName`, `lastName`) appeared in the result. If you provide an empty inclusion and exclusion arrays you will get back only the `ObjectId` as `{_id:ObjectId("605c5f2e8a7c2e1a4c3d9b7f)}` mapped to the `author` reference.
+Explanation: Because we used an inclusion projection (`inclusions: [PostAuthorFields.firstName, PostAuthorFields.lastName]`), only the specified `author` subfields (`firstName`, `lastName`) appeared in the result. If you provide an empty inclusion and exclusion arrays you will get back only the `ObjectId` as `{_id:ObjectId("605c5f2e8a7c2e1a4c3d9b7f)}` mapped to the `author` reference.
 
 ## Configuration & Conventions
 

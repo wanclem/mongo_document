@@ -8,6 +8,7 @@ import 'package:source_gen/source_gen.dart';
 
 class ObjectReferences {
   static String buildNestedCollectionProjectionClasses(
+    String className,
     TypeChecker jsonSerializableChecker,
     TypeChecker jsonKeyChecker,
     Map<String, String> nestedCollectionMap,
@@ -16,8 +17,9 @@ class ObjectReferences {
     final projectionTemplate = '''
 ${nestedCollectionMap.keys.map((root) {
       final param = params.firstWhere((p) => p.name == root);
-      final rc = ReCase(param.name);
-      final typeName = rc.pascalCase;
+      final paramRC = ReCase(param.name).pascalCase;
+      final classRC = ReCase(className).pascalCase;
+      final typeName = "$classRC$paramRC";
       final enumName = '${typeName}Fields';
       final projName = '${typeName}Projections';
       final nestedClass = (param.type as InterfaceType).element as ClassElement;

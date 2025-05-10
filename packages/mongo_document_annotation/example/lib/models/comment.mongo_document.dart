@@ -13,7 +13,7 @@ part of 'comment.dart';
 
 const _nestedCollections = <String, String>{'post': 'posts'};
 
-enum PostFields {
+enum CommentPostFields {
   id,
   author,
   lastComment,
@@ -24,10 +24,10 @@ enum PostFields {
   updatedAt,
 }
 
-class PostProjections implements BaseProjections {
+class CommentPostProjections implements BaseProjections {
   @override
-  final List<PostFields>? inclusions;
-  final List<PostFields>? exclusions;
+  final List<CommentPostFields>? inclusions;
+  final List<CommentPostFields>? exclusions;
   @override
   final Map<String, dynamic> fieldMappings = const {
     "id": "post._id",
@@ -39,7 +39,7 @@ class PostProjections implements BaseProjections {
     "createdAt": "post.created_at",
     "updatedAt": "post.updated_at",
   };
-  const PostProjections({this.inclusions, this.exclusions});
+  const CommentPostProjections({this.inclusions, this.exclusions});
 
   @override
   Map<String, int> toProjection() {
