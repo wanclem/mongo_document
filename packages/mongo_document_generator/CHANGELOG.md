@@ -1,3 +1,9 @@
+## \[1.2.2] - 2025-05-11
+
+### Fixed
+
+Bug fixes in map transformers
+
 ## \[1.2.1] - 2025-05-11
 
 ### Fixed

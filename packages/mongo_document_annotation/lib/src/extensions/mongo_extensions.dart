@@ -44,7 +44,7 @@ extension QueryExtensions on Map<String, dynamic> {
   Map<String, dynamic> withRefs() {
     final result = <String, dynamic>{...this};
     forEach((key, value) {
-      if (value is ObjectId) {
+      if (value is ObjectId && key != '_id') {
         result[key] = <String, dynamic>{
           '_id': value,
         };
