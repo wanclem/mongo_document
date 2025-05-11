@@ -41,13 +41,25 @@ extension QueryExtensions on Map<String, dynamic> {
     return node;
   }
 
+  /// Recursively wrap every ObjectId (except under '_id') in {'_id': …}.
   Map<String, dynamic> withRefs() {
-    final result = <String, dynamic>{...this};
+    final result = <String, dynamic>{};
     forEach((key, value) {
       if (value is ObjectId && key != '_id') {
-        result[key] = <String, dynamic>{
-          '_id': value,
-        };
+        result[key] = {'_id': value};
+      } else if (value is Map<String, dynamic>) {
+        result[key] = value.withRefs();
+      } else if (value is List) {
+        result[key] = value.map((item) {
+          if (item is ObjectId) {
+            return {'_id': item};
+          } else if (item is Map<String, dynamic>) {
+            return item.withRefs();
+          }
+          return item;
+        }).toList();
+      } else {
+        result[key] = value;
       }
     });
     return result;

@@ -5,6 +5,7 @@ import 'package:json_annotation/json_annotation.dart';
 import 'package:mongo_document/mongo_document_generator.dart';
 import 'package:mongo_document/src/checkers/annotation_checker.dart';
 import 'package:mongo_document/src/checkers/default_annotation_checker.dart';
+import 'package:mongo_document/src/templates/class_projection/class_projection.dart';
 import 'package:mongo_document/src/templates/crud/create/create_template.dart';
 import 'package:mongo_document/src/templates/crud/delete/delete_template.dart';
 import 'package:mongo_document/src/templates/crud/read/query_templates.dart';
@@ -62,6 +63,14 @@ class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
       fieldRename,
     );
     final template = '''
+${ClassProjection.buildClassProjection(
+      className,
+      _jsonSerializableChecker,
+      _jsonKeyChecker,
+      params,
+      fieldRename,
+      nestedCollectionMap,
+    )}
 ${ObjectReferences.buildNestedCollectiontionsMapLiteral(
       nestedCollectionMap,
     )}

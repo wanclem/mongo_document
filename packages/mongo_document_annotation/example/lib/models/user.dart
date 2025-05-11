@@ -4,7 +4,7 @@ part 'user.freezed.dart';
 part 'user.g.dart';
 part 'user.mongo_document.dart';
 
-@MongoDocument(collection: 'users')
+@MongoDocument(collection: 'accounts')
 @freezed
 abstract class User with _$User {
   @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)

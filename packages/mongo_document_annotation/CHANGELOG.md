@@ -1,3 +1,8 @@
+## \[1.2.3] - 2025-05-11
+
+### Fixed
+Bug fixes in Projection Classes
+
 ## \[1.2.2] - 2025-05-11
 
 ### Fixed

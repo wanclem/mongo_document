@@ -5,45 +5,58 @@
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 // Author: Wan Clem <wannclem@gmail.com>
 
-part of 'post.dart';
+part of 'organization.dart';
 
 // **************************************************************************
 // MongoDocumentGenerator
 // **************************************************************************
 
-enum PostFields { id, body, postNote, tags, createdAt, updatedAt }
+enum OrganizationFields {
+  id,
+  tempId,
+  name,
+  avatar,
+  ephemeralData,
+  active,
+  createdAt,
+  updatedAt,
+}
 
-class PostProjections implements BaseProjections {
+class OrganizationProjections implements BaseProjections {
   @override
-  final List<PostFields>? inclusions;
-  final List<PostFields>? exclusions;
+  final List<OrganizationFields>? inclusions;
+  final List<OrganizationFields>? exclusions;
   @override
   final Map<String, dynamic> fieldMappings = const {
     "id": "_id",
-    "body": "body",
-    "postNote": "post_note",
-    "tags": "tags",
+    "tempId": "temp_id",
+    "name": "name",
+    "avatar": "avatar",
+    "ephemeralData": "ephemeral_data",
+    "active": "active",
     "createdAt": "created_at",
     "updatedAt": "updated_at",
   };
-  const PostProjections({this.inclusions, this.exclusions});
+  const OrganizationProjections({this.inclusions, this.exclusions});
 
   @override
   Map<String, int> toProjection() {
     return {
       '_id': 1,
-      'body': 1,
-      'post_note': 1,
-      'tags': 1,
+      'temp_id': 1,
+      'name': 1,
+      'avatar': 1,
+      'ephemeral_data': 1,
+      'active': 1,
       'created_at': 1,
       'updated_at': 1,
     };
   }
 }
 
-const _nestedCollections = <String, String>{'author_id': 'accounts'};
+const _nestedCollections = <String, String>{'owner': 'accounts'};
 
-enum PostAuthorFields {
+enum OrganizationOwnerFields {
   id,
   firstName,
   lastName,
@@ -53,51 +66,55 @@ enum PostAuthorFields {
   updatedAt,
 }
 
-class PostAuthorProjections implements BaseProjections {
+class OrganizationOwnerProjections implements BaseProjections {
   @override
-  final List<PostAuthorFields>? inclusions;
-  final List<PostAuthorFields>? exclusions;
+  final List<OrganizationOwnerFields>? inclusions;
+  final List<OrganizationOwnerFields>? exclusions;
   @override
   final Map<String, dynamic> fieldMappings = const {
-    "id": "author_id._id",
-    "firstName": "author_id.first_name",
-    "lastName": "author_id.last_name",
-    "email": "author_id.email",
-    "password": "author_id.password",
-    "createdAt": "author_id.created_at",
-    "updatedAt": "author_id.updated_at",
+    "id": "owner._id",
+    "firstName": "owner.first_name",
+    "lastName": "owner.last_name",
+    "email": "owner.email",
+    "password": "owner.password",
+    "createdAt": "owner.created_at",
+    "updatedAt": "owner.updated_at",
   };
-  const PostAuthorProjections({this.inclusions, this.exclusions});
+  const OrganizationOwnerProjections({this.inclusions, this.exclusions});
 
   @override
   Map<String, int> toProjection() {
     return {
-      'author_id._id': 1,
-      'author_id.first_name': 1,
-      'author_id.last_name': 1,
-      'author_id.email': 1,
-      'author_id.password': 1,
-      'author_id.created_at': 1,
-      'author_id.updated_at': 1,
+      'owner._id': 1,
+      'owner.first_name': 1,
+      'owner.last_name': 1,
+      'owner.email': 1,
+      'owner.password': 1,
+      'owner.created_at': 1,
+      'owner.updated_at': 1,
     };
   }
 }
 
-class QPost {
+class QOrganization {
   final String _prefix;
-  QPost([this._prefix = '']);
+  QOrganization([this._prefix = '']);
 
   String _key(String field) => _prefix.isEmpty ? field : '$_prefix.$field';
 
   QueryField<ObjectId?> get id => QueryField<ObjectId?>(_key('_id'));
 
-  QueryField<String?> get body => QueryField<String?>(_key('body'));
+  QueryField<String?> get tempId => QueryField<String?>(_key('temp_id'));
 
-  QueryField<String?> get postNote => QueryField<String?>(_key('post_note'));
+  QUser get owner => QUser(_key('owner'));
 
-  QUser get author => QUser(_key('author_id'));
+  QueryField<String?> get name => QueryField<String?>(_key('name'));
 
-  QList<String> get tags => QList<String>(_key('tags'));
+  QueryField<dynamic> get avatar => QueryField<dynamic>(_key('avatar'));
+
+  QMap<dynamic> get ephemeralData => QMap<dynamic>(_key('ephemeral_data'));
+
+  QueryField<bool> get active => QueryField<bool>(_key('active'));
 
   QueryField<DateTime?> get createdAt =>
       QueryField<DateTime?>(_key('created_at'));
@@ -106,24 +123,24 @@ class QPost {
       QueryField<DateTime?>(_key('updated_at'));
 }
 
-extension $PostExtension on Post {
-  static String get _collection => 'posts';
+extension $OrganizationExtension on Organization {
+  static String get _collection => 'organizations';
 
-  Future<Post?> save() async {
+  Future<Organization?> save() async {
     final coll = await MongoDbConnection.getCollection(_collection);
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
-    final postMap =
+    final organizationMap =
         toJson()
           ..remove('_id')
           ..removeWhere((key, value) => value == null);
-    postMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
-    postMap.update('updated_at', (v) => now, ifAbsent: () => now);
+    organizationMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
+    organizationMap.update('updated_at', (v) => now, ifAbsent: () => now);
 
-    var post = {...postMap};
+    var organization = {...organizationMap};
     final nestedUpdates = <Future>[];
-    for (var entry in postMap.entries) {
+    for (var entry in organizationMap.entries) {
       final root = entry.key;
       if (_nestedCollections.containsKey(root)) {
         final collectionName = _nestedCollections[root]!;
@@ -133,9 +150,9 @@ extension $PostExtension on Post {
         value.removeWhere((key, value) => value == null);
         final nestedId = value['_id'] as ObjectId?;
         if (nestedId == null) {
-          post.remove(root);
+          organization.remove(root);
         } else {
-          post[root] = nestedId;
+          organization[root] = nestedId;
           final nestedMap = value..remove('_id');
           if (nestedMap.isNotEmpty) {
             var mod = modify.set('updated_at', now);
@@ -149,14 +166,14 @@ extension $PostExtension on Post {
     }
 
     if (isInsert) {
-      final result = await coll.insertOne(post);
+      final result = await coll.insertOne(organization);
       if (!result.isSuccess) return null;
       await Future.wait(nestedUpdates);
       return copyWith(id: result.id);
     }
 
     var parentMod = modify.set('updated_at', now);
-    post.forEach((k, v) => parentMod = parentMod.set(k, v));
+    organization.forEach((k, v) => parentMod = parentMod.set(k, v));
     final res = await coll.updateOne(where.eq(r'_id', id), parentMod);
     if (!res.isSuccess) return null;
     await Future.wait(nestedUpdates);
@@ -171,15 +188,17 @@ extension $PostExtension on Post {
   }
 }
 
-class Posts {
-  static String get _collection => 'posts';
+class Organizations {
+  static String get _collection => 'organizations';
 
   /// Type-safe saveMany
-  static Future<List<Post?>> saveMany(List<Post> posts) async {
-    if (posts.isEmpty) return <Post>[];
-    final List<Map<String, dynamic>> postsMap =
-        posts.map((p) {
-          final json = p.toJson()..remove('_id');
+  static Future<List<Organization?>> saveMany(
+    List<Organization> organizations,
+  ) async {
+    if (organizations.isEmpty) return <Organization>[];
+    final List<Map<String, dynamic>> organizationsMap =
+        organizations.map((o) {
+          final json = o.toJson()..remove('_id');
           return json.map((key, value) {
             if (_nestedCollections.containsKey(key)) {
               return MapEntry<String, dynamic>(key, value['_id'] as ObjectId?);
@@ -188,24 +207,27 @@ class Posts {
           });
         }).toList();
     final coll = await MongoDbConnection.getCollection(_collection);
-    final result = await coll.insertMany(postsMap);
-    return posts.asMap().entries.map((e) {
+    final result = await coll.insertMany(organizationsMap);
+    return organizations.asMap().entries.map((e) {
       final idx = e.key;
-      final post = e.value;
+      final organization = e.value;
       final id = result.isSuccess ? result.ids![idx] : null;
-      return post.copyWith(id: id);
+      return organization.copyWith(id: id);
     }).toList();
   }
 
-  /// Find a Post by its _id with optional nested-doc projections
-  static Future<Post?> findById(
-    dynamic postId, {
+  /// Find a Organization by its _id with optional nested-doc projections
+  static Future<Organization?> findById(
+    dynamic organizationId, {
     List<BaseProjections> projections = const [],
   }) async {
-    if (postId == null) return null;
-    if (postId is String) postId = ObjectId.fromHexString(postId);
-    if (postId is! ObjectId) {
-      throw ArgumentError('Invalid postId type: ${postId.runtimeType}');
+    if (organizationId == null) return null;
+    if (organizationId is String)
+      organizationId = ObjectId.fromHexString(organizationId);
+    if (organizationId is! ObjectId) {
+      throw ArgumentError(
+        'Invalid organizationId type: ${organizationId.runtimeType}',
+      );
     }
 
     final coll = await MongoDbConnection.getCollection(_collection);
@@ -214,7 +236,7 @@ class Posts {
       final pipeline = <Map<String, Object>>[];
       final projDoc = <String, int>{};
       pipeline.add({
-        r"$match": {'_id': postId},
+        r"$match": {'_id': organizationId},
       });
       final selected = <String, int>{};
       for (var p in projections) {
@@ -258,29 +280,31 @@ class Posts {
       }
       pipeline.add({r'$project': projDoc});
 
-      final posts = await coll.aggregateToStream(pipeline).toList();
-      if (posts.isEmpty) return null;
-      return Post.fromJson(posts.first.withRefs());
+      final organizations = await coll.aggregateToStream(pipeline).toList();
+      if (organizations.isEmpty) return null;
+      return Organization.fromJson(organizations.first.withRefs());
     }
 
-    // fallback: return entire post
-    final post = await coll.findOne(where.eq(r'_id', postId));
-    return post == null ? null : Post.fromJson(post.withRefs());
+    // fallback: return entire organization
+    final organization = await coll.findOne(where.eq(r'_id', organizationId));
+    return organization == null
+        ? null
+        : Organization.fromJson(organization.withRefs());
   }
 
   /// Type-safe findOne by predicate
-  static Future<Post?> findOne(
-    Expression Function(QPost p)? predicate, {
+  static Future<Organization?> findOne(
+    Expression Function(QOrganization o)? predicate, {
     List<BaseProjections> projections = const [],
   }) async {
     final coll = await MongoDbConnection.getCollection(_collection);
 
     if (predicate == null) {
-      final post = await coll.modernFindOne(sort: {'created_at': -1});
-      if (post == null) return null;
-      return Post.fromJson(post.withRefs());
+      final organization = await coll.modernFindOne(sort: {'created_at': -1});
+      if (organization == null) return null;
+      return Organization.fromJson(organization.withRefs());
     }
-    final selectorBuilder = predicate(QPost()).toSelectorBuilder();
+    final selectorBuilder = predicate(QOrganization()).toSelectorBuilder();
     final selectorMap = selectorBuilder.map;
 
     final projDoc =
@@ -295,21 +319,25 @@ class Posts {
     if (foundLookups || projDoc != null) {
       final results = await coll.aggregateToStream(pipeline).toList();
       if (results.isEmpty) return null;
-      return Post.fromJson(results.first.withRefs());
+      return Organization.fromJson(results.first.withRefs());
     }
 
     // fallback to simple findOne
-    final postResult = await coll.findOne(selectorMap.cleaned());
-    return postResult == null ? null : Post.fromJson(postResult);
+    final organizationResult = await coll.findOne(selectorMap.cleaned());
+    return organizationResult == null
+        ? null
+        : Organization.fromJson(organizationResult);
   }
 
   /// Type-safe findOne by named arguments
-  static Future<Post?> findOneByNamed({
+  static Future<Organization?> findOneByNamed({
     ObjectId? id,
-    String? body,
-    String? postNote,
-    User? author,
-    List<String>? tags,
+    String? tempId,
+    User? owner,
+    String? name,
+    dynamic avatar,
+    Map<String, dynamic>? ephemeralData,
+    bool? active,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<BaseProjections> projections = const [],
@@ -318,16 +346,18 @@ class Posts {
 
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
-    if (body != null) selector['body'] = body;
-    if (postNote != null) selector['post_note'] = postNote;
-    if (author != null) selector['author_id'] = author.id;
-    if (tags != null) selector['tags'] = tags;
+    if (tempId != null) selector['temp_id'] = tempId;
+    if (owner != null) selector['owner'] = owner.id;
+    if (name != null) selector['name'] = name;
+    if (avatar != null) selector['avatar'] = avatar;
+    if (ephemeralData != null) selector['ephemeral_data'] = ephemeralData;
+    if (active != null) selector['active'] = active;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
-      final post = await coll.modernFindOne(sort: {'created_at': -1});
-      if (post == null) return null;
-      return Post.fromJson(post.withRefs());
+      final organization = await coll.modernFindOne(sort: {'created_at': -1});
+      if (organization == null) return null;
+      return Organization.fromJson(organization.withRefs());
     }
     if (projections.isNotEmpty) {
       final pipeline = <Map<String, Object>>[];
@@ -375,24 +405,26 @@ class Posts {
       }
       pipeline.add({r'$project': projDoc});
 
-      final posts = await coll.aggregateToStream(pipeline).toList();
-      if (posts.isEmpty) return null;
-      return Post.fromJson(posts.first.withRefs());
+      final organizations = await coll.aggregateToStream(pipeline).toList();
+      if (organizations.isEmpty) return null;
+      return Organization.fromJson(organizations.first.withRefs());
     }
-    final postResult = await coll.findOne(selector);
-    return postResult == null ? null : Post.fromJson(postResult.withRefs());
+    final organizationResult = await coll.findOne(selector);
+    return organizationResult == null
+        ? null
+        : Organization.fromJson(organizationResult.withRefs());
   }
 
   /// Type-safe findMany by predicate
-  static Future<List<Post>> findMany(
-    Expression Function(QPost p) predicate, {
+  static Future<List<Organization>> findMany(
+    Expression Function(QOrganization o) predicate, {
     int? skip,
     int? limit,
     List<BaseProjections> projections = const [],
   }) async {
     final coll = await MongoDbConnection.getCollection(_collection);
 
-    var selectorBuilder = predicate(QPost()).toSelectorBuilder();
+    var selectorBuilder = predicate(QOrganization()).toSelectorBuilder();
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
     if (limit != null) selectorBuilder = selectorBuilder.limit(limit);
     final selectorMap = selectorBuilder.map;
@@ -407,22 +439,28 @@ class Posts {
     );
 
     if (foundLookups || projDoc != null) {
-      final posts = await coll.aggregateToStream(pipeline).toList();
-      if (posts.isEmpty) return [];
-      return posts.map((d) => Post.fromJson(d.withRefs())).toList();
+      final organizations = await coll.aggregateToStream(pipeline).toList();
+      if (organizations.isEmpty) return [];
+      return organizations
+          .map((d) => Organization.fromJson(d.withRefs()))
+          .toList();
     }
 
-    final posts = await coll.find(selectorMap.cleaned()).toList();
-    return posts.map((e) => Post.fromJson(e.withRefs())).toList();
+    final organizations = await coll.find(selectorMap.cleaned()).toList();
+    return organizations
+        .map((e) => Organization.fromJson(e.withRefs()))
+        .toList();
   }
 
   /// Type-safe findMany by named arguments
-  static Future<List<Post>> findManyByNamed({
+  static Future<List<Organization>> findManyByNamed({
     ObjectId? id,
-    String? body,
-    String? postNote,
-    User? author,
-    List<String>? tags,
+    String? tempId,
+    User? owner,
+    String? name,
+    dynamic avatar,
+    Map<String, dynamic>? ephemeralData,
+    bool? active,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<BaseProjections> projections = const [],
@@ -434,19 +472,23 @@ class Posts {
 
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
-    if (body != null) selector['body'] = body;
-    if (postNote != null) selector['post_note'] = postNote;
-    if (author != null) selector['author_id'] = author.id;
-    if (tags != null) selector['tags'] = tags;
+    if (tempId != null) selector['temp_id'] = tempId;
+    if (owner != null) selector['owner'] = owner.id;
+    if (name != null) selector['name'] = name;
+    if (avatar != null) selector['avatar'] = avatar;
+    if (ephemeralData != null) selector['ephemeral_data'] = ephemeralData;
+    if (active != null) selector['active'] = active;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
-      final posts =
+      final organizations =
           await coll
               .modernFind(sort: {'created_at': -1}, limit: limit, skip: skip)
               .toList();
-      if (posts.isEmpty) return [];
-      return posts.map((e) => Post.fromJson(e.withRefs())).toList();
+      if (organizations.isEmpty) return [];
+      return organizations
+          .map((e) => Organization.fromJson(e.withRefs()))
+          .toList();
     }
     if (projections.isNotEmpty) {
       final pipeline = <Map<String, Object>>[];
@@ -494,20 +536,26 @@ class Posts {
       }
       pipeline.add({r'$project': projDoc});
 
-      final posts = await coll.aggregateToStream(pipeline).toList();
-      if (posts.isEmpty) return [];
-      return posts.map((d) => Post.fromJson(d.withRefs())).toList();
+      final organizations = await coll.aggregateToStream(pipeline).toList();
+      if (organizations.isEmpty) return [];
+      return organizations
+          .map((d) => Organization.fromJson(d.withRefs()))
+          .toList();
     }
-    final posts =
+    final organizations =
         await coll
             .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
             .toList();
-    return posts.map((e) => Post.fromJson(e.withRefs())).toList();
+    return organizations
+        .map((e) => Organization.fromJson(e.withRefs()))
+        .toList();
   }
 
   /// Type-safe deleteOne by predicate
-  static Future<bool> deleteOne(Expression Function(QPost p) predicate) async {
-    final expr = predicate(QPost());
+  static Future<bool> deleteOne(
+    Expression Function(QOrganization o) predicate,
+  ) async {
+    final expr = predicate(QOrganization());
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
     final result = await coll.deleteOne(selector.map.cleaned());
@@ -517,19 +565,23 @@ class Posts {
   /// Type-safe deleteOne by named arguments
   static Future<bool> deleteOneByNamed({
     ObjectId? id,
-    String? body,
-    String? postNote,
-    User? author,
-    List<String>? tags,
+    String? tempId,
+    User? owner,
+    String? name,
+    dynamic avatar,
+    Map<String, dynamic>? ephemeralData,
+    bool? active,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) async {
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
-    if (body != null) selector['body'] = body;
-    if (postNote != null) selector['post_note'] = postNote;
-    if (author != null) selector['author_id'] = author.id;
-    if (tags != null) selector['tags'] = tags;
+    if (tempId != null) selector['temp_id'] = tempId;
+    if (owner != null) selector['owner'] = owner.id;
+    if (name != null) selector['name'] = name;
+    if (avatar != null) selector['avatar'] = avatar;
+    if (ephemeralData != null) selector['ephemeral_data'] = ephemeralData;
+    if (active != null) selector['active'] = active;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) return false;
@@ -539,8 +591,10 @@ class Posts {
   }
 
   /// Type-safe deleteMany
-  static Future<bool> deleteMany(Expression Function(QPost p) predicate) async {
-    final expr = predicate(QPost());
+  static Future<bool> deleteMany(
+    Expression Function(QOrganization o) predicate,
+  ) async {
+    final expr = predicate(QOrganization());
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
     final result = await coll.deleteMany(selector.map.cleaned());
@@ -550,19 +604,23 @@ class Posts {
   /// Type-safe deleteMany by named arguments
   static Future<bool> deleteManyByNamed({
     ObjectId? id,
-    String? body,
-    String? postNote,
-    User? author,
-    List<String>? tags,
+    String? tempId,
+    User? owner,
+    String? name,
+    dynamic avatar,
+    Map<String, dynamic>? ephemeralData,
+    bool? active,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) async {
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
-    if (body != null) selector['body'] = body;
-    if (postNote != null) selector['post_note'] = postNote;
-    if (author != null) selector['author_id'] = author.id;
-    if (tags != null) selector['tags'] = tags;
+    if (tempId != null) selector['temp_id'] = tempId;
+    if (owner != null) selector['owner'] = owner.id;
+    if (name != null) selector['name'] = name;
+    if (avatar != null) selector['avatar'] = avatar;
+    if (ephemeralData != null) selector['ephemeral_data'] = ephemeralData;
+    if (active != null) selector['active'] = active;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) return false;
@@ -573,25 +631,29 @@ class Posts {
 
   /// Type-safe updateOne
   static Future<bool> updateOne(
-    Expression Function(QPost p) predicate, {
+    Expression Function(QOrganization o) predicate, {
     ObjectId? id,
-    String? body,
-    String? postNote,
-    User? author,
-    List<String>? tags,
+    String? tempId,
+    User? owner,
+    String? name,
+    dynamic avatar,
+    Map<String, dynamic>? ephemeralData,
+    bool? active,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) async {
     final modifier = _buildModifier({
       if (id != null) '_id': id,
-      if (body != null) 'body': body,
-      if (postNote != null) 'post_note': postNote,
-      if (author != null) 'author_id': author.id,
-      if (tags != null) 'tags': tags,
+      if (tempId != null) 'temp_id': tempId,
+      if (owner != null) 'owner': owner.id,
+      if (name != null) 'name': name,
+      if (avatar != null) 'avatar': avatar,
+      if (ephemeralData != null) 'ephemeral_data': ephemeralData,
+      if (active != null) 'active': active,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
-    final expr = predicate(QPost());
+    final expr = predicate(QOrganization());
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
     final result = await coll.updateOne(selector.map.cleaned(), modifier);
@@ -600,25 +662,29 @@ class Posts {
 
   /// Type-safe updateMany
   static Future<bool> updateMany(
-    Expression Function(QPost p) predicate, {
+    Expression Function(QOrganization o) predicate, {
     ObjectId? id,
-    String? body,
-    String? postNote,
-    User? author,
-    List<String>? tags,
+    String? tempId,
+    User? owner,
+    String? name,
+    dynamic avatar,
+    Map<String, dynamic>? ephemeralData,
+    bool? active,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) async {
     final modifier = _buildModifier({
       if (id != null) '_id': id,
-      if (body != null) 'body': body,
-      if (postNote != null) 'post_note': postNote,
-      if (author != null) 'author_id': author.id,
-      if (tags != null) 'tags': tags,
+      if (tempId != null) 'temp_id': tempId,
+      if (owner != null) 'owner': owner.id,
+      if (name != null) 'name': name,
+      if (avatar != null) 'avatar': avatar,
+      if (ephemeralData != null) 'ephemeral_data': ephemeralData,
+      if (active != null) 'active': active,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
-    final expr = predicate(QPost());
+    final expr = predicate(QOrganization());
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
     final result = await coll.updateMany(selector.map.cleaned(), modifier);
@@ -634,7 +700,7 @@ class Posts {
 
   /// Prioritize `updateOne` whenever possible to avoid type mismatch.
   /// This method is a fallback for cases where you just had to use a map.
-  static Future<Post?> updateOneFromMap(
+  static Future<Organization?> updateOneFromMap(
     ObjectId id,
     Map<String, dynamic> updateMap,
   ) async {
@@ -642,16 +708,18 @@ class Posts {
     final result = await coll.updateOne({'_id': id}, {'\$set': updateMap});
     if (!result.isSuccess) return null;
     final updatedDoc = await coll.findOne({'_id': id});
-    return updatedDoc == null ? null : Post.fromJson(updatedDoc);
+    return updatedDoc == null ? null : Organization.fromJson(updatedDoc);
   }
 
-  static Future<int> count(Expression Function(QPost p)? predicate) async {
+  static Future<int> count(
+    Expression Function(QOrganization o)? predicate,
+  ) async {
     final coll = await MongoDbConnection.getCollection(_collection);
 
     final selectorMap =
         predicate == null
             ? <String, dynamic>{}
-            : predicate(QPost()).toSelectorBuilder().map;
+            : predicate(QOrganization()).toSelectorBuilder().map;
 
     final (foundLookups, pipelineWithoutCount) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,

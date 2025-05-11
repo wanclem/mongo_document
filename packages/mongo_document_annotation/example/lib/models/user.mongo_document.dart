@@ -11,6 +11,46 @@ part of 'user.dart';
 // MongoDocumentGenerator
 // **************************************************************************
 
+enum UserFields {
+  id,
+  firstName,
+  lastName,
+  email,
+  password,
+  createdAt,
+  updatedAt,
+}
+
+class UserProjections implements BaseProjections {
+  @override
+  final List<UserFields>? inclusions;
+  final List<UserFields>? exclusions;
+  @override
+  final Map<String, dynamic> fieldMappings = const {
+    "id": "_id",
+    "firstName": "first_name",
+    "lastName": "last_name",
+    "email": "email",
+    "password": "password",
+    "createdAt": "created_at",
+    "updatedAt": "updated_at",
+  };
+  const UserProjections({this.inclusions, this.exclusions});
+
+  @override
+  Map<String, int> toProjection() {
+    return {
+      '_id': 1,
+      'first_name': 1,
+      'last_name': 1,
+      'email': 1,
+      'password': 1,
+      'created_at': 1,
+      'updated_at': 1,
+    };
+  }
+}
+
 const _nestedCollections = <String, String>{};
 
 class QUser {
@@ -37,7 +77,7 @@ class QUser {
 }
 
 extension $UserExtension on User {
-  static String get _collection => 'users';
+  static String get _collection => 'accounts';
 
   Future<User?> save() async {
     final coll = await MongoDbConnection.getCollection(_collection);
@@ -102,7 +142,7 @@ extension $UserExtension on User {
 }
 
 class Users {
-  static String get _collection => 'users';
+  static String get _collection => 'accounts';
 
   /// Type-safe saveMany
   static Future<List<User?>> saveMany(List<User> users) async {
