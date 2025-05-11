@@ -1,46 +1,5 @@
 import 'package:mongo_dart/mongo_dart.dart';
 
-extension CleanQuery on Map<String, dynamic> {
-  Map<String, dynamic> flatQuery() {
-    final cleaned = <String, dynamic>{};
-    forEach((rawKey, value) {
-      final key = rawKey.replaceAll(RegExp(r'\._id$'), '');
-      if (key == r'$query' && value is Map<String, dynamic>) {
-        value.forEach((innerKey, innerVal) {
-          final normalizedInnerKey = innerKey.replaceAll(RegExp(r'\._id$'), '');
-          cleaned[normalizedInnerKey] = _cleanNode(innerVal);
-        });
-      } else {
-        cleaned[key] = _cleanNode(value);
-      }
-    });
-    return cleaned;
-  }
-
-  dynamic _cleanNode(dynamic node) {
-    if (node is Map<String, dynamic>) {
-      return node.flatQuery();
-    }
-    if (node is List) {
-      return node.map((e) => _cleanNode(e)).toList();
-    }
-    return node;
-  }
-
-  Map<String, dynamic> withRefs() {
-    final result = <String, dynamic>{...this};
-    forEach((key, value) {
-      if (value is ObjectId && key != '_id' && key != 'id') {
-        result[key] = <String, dynamic>{
-          '_id': value,
-          'id': value,
-        };
-      }
-    });
-    return result;
-  }
-}
-
 mixin MoreExMixin {
   String get _key;
 

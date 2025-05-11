@@ -1,3 +1,9 @@
+## \[1.1.9] - 2025-05-11
+
+### Fixed
+
+Aggregation Pipelines should be able to infer lookups from projections
+
 ## \[1.1.8] - 2025-05-11
 
 ### Fixed

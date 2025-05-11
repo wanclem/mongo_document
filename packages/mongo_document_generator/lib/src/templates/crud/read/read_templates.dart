@@ -54,13 +54,15 @@ class ReadTemplates {
       return $className.fromJson($classNameVar.withRefs());
     }
     final selectorBuilder = predicate(Q$className()).toSelectorBuilder();
-    final selectorMap = selectorBuilder.map.flatQuery();
+    final selectorMap = selectorBuilder.map;
 
     final projDoc =
         projections.isNotEmpty ? buildProjectionDoc(projections) : null;
-    final (foundLookups, pipeline) = selectorMap.toAggregationPipelineWithMap(
+    final (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
       projections: projDoc,
+      raw: selectorMap.raw(),
+      cleaned: selectorMap.cleaned(),
     );
 
     if (foundLookups || projDoc != null) {
@@ -70,7 +72,7 @@ class ReadTemplates {
     }
 
     // fallback to simple findOne
-    final ${classNameVar}Result = await coll.findOne(selectorMap);
+    final ${classNameVar}Result = await coll.findOne(selectorMap.cleaned());
     return ${classNameVar}Result == null ? null : $className.fromJson(${classNameVar}Result);
   }
 ''';
@@ -130,13 +132,15 @@ class ReadTemplates {
     var selectorBuilder = predicate(Q$className()).toSelectorBuilder();
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
     if (limit != null) selectorBuilder = selectorBuilder.limit(limit);
-    final selectorMap = selectorBuilder.map.flatQuery();
+    final selectorMap = selectorBuilder.map;
 
     final projDoc =
         projections.isNotEmpty ? buildProjectionDoc(projections) : null;
-    final (foundLookups, pipeline) = selectorMap.toAggregationPipelineWithMap(
+    final (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
       projections: projDoc,
+      raw: selectorMap.raw(),
+      cleaned: selectorMap.cleaned(),
     );
 
     if (foundLookups || projDoc != null) {
@@ -145,7 +149,7 @@ class ReadTemplates {
       return ${classNameVar}s.map((d)=>$className.fromJson(d.withRefs())).toList();
     }
 
-    final ${classNameVar}s = await coll.find(selectorMap).toList();
+    final ${classNameVar}s = await coll.find(selectorMap.cleaned()).toList();
     return ${classNameVar}s.map((e) => $className.fromJson(e.withRefs())).toList();
  }
 ''';
@@ -201,12 +205,13 @@ class ReadTemplates {
       ? <String, dynamic>{}
       : predicate(Q$className())
           .toSelectorBuilder()
-          .map
-          .flatQuery();
+          .map;
 
   final (foundLookups, pipelineWithoutCount) =
-      selectorMap.toAggregationPipelineWithMap(
+      toAggregationPipelineWithMap(
         lookupRef: _nestedCollections,
+        raw: selectorMap.raw(),
+        cleaned: selectorMap.cleaned()
       );
 
   if (foundLookups) {
@@ -220,7 +225,7 @@ class ReadTemplates {
     return result.first['count'] as int;
   }
 
-  return await coll.count(selectorMap);                       
+  return await coll.count(selectorMap.cleaned());                       
 }
 ''';
   }

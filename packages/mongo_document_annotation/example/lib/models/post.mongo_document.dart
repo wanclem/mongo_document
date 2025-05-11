@@ -251,13 +251,15 @@ class Posts {
       return Post.fromJson(post.withRefs());
     }
     final selectorBuilder = predicate(QPost()).toSelectorBuilder();
-    final selectorMap = selectorBuilder.map.flatQuery();
+    final selectorMap = selectorBuilder.map;
 
     final projDoc =
         projections.isNotEmpty ? buildProjectionDoc(projections) : null;
-    final (foundLookups, pipeline) = selectorMap.toAggregationPipelineWithMap(
+    final (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
       projections: projDoc,
+      raw: selectorMap.raw(),
+      cleaned: selectorMap.cleaned(),
     );
 
     if (foundLookups || projDoc != null) {
@@ -267,7 +269,7 @@ class Posts {
     }
 
     // fallback to simple findOne
-    final postResult = await coll.findOne(selectorMap);
+    final postResult = await coll.findOne(selectorMap.cleaned());
     return postResult == null ? null : Post.fromJson(postResult);
   }
 
@@ -363,13 +365,15 @@ class Posts {
     var selectorBuilder = predicate(QPost()).toSelectorBuilder();
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
     if (limit != null) selectorBuilder = selectorBuilder.limit(limit);
-    final selectorMap = selectorBuilder.map.flatQuery();
+    final selectorMap = selectorBuilder.map;
 
     final projDoc =
         projections.isNotEmpty ? buildProjectionDoc(projections) : null;
-    final (foundLookups, pipeline) = selectorMap.toAggregationPipelineWithMap(
+    final (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
       projections: projDoc,
+      raw: selectorMap.raw(),
+      cleaned: selectorMap.cleaned(),
     );
 
     if (foundLookups || projDoc != null) {
@@ -378,7 +382,7 @@ class Posts {
       return posts.map((d) => Post.fromJson(d.withRefs())).toList();
     }
 
-    final posts = await coll.find(selectorMap).toList();
+    final posts = await coll.find(selectorMap.cleaned()).toList();
     return posts.map((e) => Post.fromJson(e.withRefs())).toList();
   }
 
@@ -476,7 +480,7 @@ class Posts {
     final expr = predicate(QPost());
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
-    final result = await coll.deleteOne(selector.map.flatQuery());
+    final result = await coll.deleteOne(selector.map.cleaned());
     return result.isSuccess;
   }
 
@@ -509,7 +513,7 @@ class Posts {
     final expr = predicate(QPost());
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
-    final result = await coll.deleteMany(selector.map.flatQuery());
+    final result = await coll.deleteMany(selector.map.cleaned());
     return result.isSuccess;
   }
 
@@ -560,7 +564,7 @@ class Posts {
     final expr = predicate(QPost());
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
-    final result = await coll.updateOne(selector.map.flatQuery(), modifier);
+    final result = await coll.updateOne(selector.map.cleaned(), modifier);
     return result.isSuccess;
   }
 
@@ -587,7 +591,7 @@ class Posts {
     final expr = predicate(QPost());
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
-    final result = await coll.updateMany(selector.map.flatQuery(), modifier);
+    final result = await coll.updateMany(selector.map.cleaned(), modifier);
     return result.isSuccess;
   }
 
@@ -617,10 +621,13 @@ class Posts {
     final selectorMap =
         predicate == null
             ? <String, dynamic>{}
-            : predicate(QPost()).toSelectorBuilder().map.flatQuery();
+            : predicate(QPost()).toSelectorBuilder().map;
 
-    final (foundLookups, pipelineWithoutCount) = selectorMap
-        .toAggregationPipelineWithMap(lookupRef: _nestedCollections);
+    final (foundLookups, pipelineWithoutCount) = toAggregationPipelineWithMap(
+      lookupRef: _nestedCollections,
+      raw: selectorMap.raw(),
+      cleaned: selectorMap.cleaned(),
+    );
 
     if (foundLookups) {
       final pipeline = [
@@ -633,6 +640,6 @@ class Posts {
       return result.first['count'] as int;
     }
 
-    return await coll.count(selectorMap);
+    return await coll.count(selectorMap.cleaned());
   }
 }

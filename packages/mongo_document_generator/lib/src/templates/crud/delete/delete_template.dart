@@ -24,7 +24,7 @@ Future<bool> delete() async {
     final expr = predicate(Q$className());
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
-    final result = await coll.deleteOne(selector.map.flatQuery());
+    final result = await coll.deleteOne(selector.map.cleaned());
     return result.isSuccess;
   }''';
   }
@@ -38,7 +38,7 @@ Future<bool> delete() async {
     final expr = predicate(Q$className());
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
-    final result = await coll.deleteMany(selector.map.flatQuery());
+    final result = await coll.deleteMany(selector.map.cleaned());
     return result.isSuccess;
   }
 ''';

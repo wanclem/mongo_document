@@ -68,13 +68,13 @@ Add to `pubspec.yaml`:
 dependencies:
   freezed_annotation: ">=2.4.4 <4.0.0"
   json_annotation: ^4.9.0
-  mongo_document_annotation: ^1.1.8
+  mongo_document_annotation: ^1.1.9
 
 dev_dependencies:
   build_runner: ^2.4.14
   freezed: ">=2.5.8 <4.0.0"
   json_serializable: ^6.9.3
-  mongo_document: ^1.1.8
+  mongo_document: ^1.1.9
 ```
 
 Then:

@@ -211,13 +211,15 @@ class Users {
       return User.fromJson(user.withRefs());
     }
     final selectorBuilder = predicate(QUser()).toSelectorBuilder();
-    final selectorMap = selectorBuilder.map.flatQuery();
+    final selectorMap = selectorBuilder.map;
 
     final projDoc =
         projections.isNotEmpty ? buildProjectionDoc(projections) : null;
-    final (foundLookups, pipeline) = selectorMap.toAggregationPipelineWithMap(
+    final (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
       projections: projDoc,
+      raw: selectorMap.raw(),
+      cleaned: selectorMap.cleaned(),
     );
 
     if (foundLookups || projDoc != null) {
@@ -227,7 +229,7 @@ class Users {
     }
 
     // fallback to simple findOne
-    final userResult = await coll.findOne(selectorMap);
+    final userResult = await coll.findOne(selectorMap.cleaned());
     return userResult == null ? null : User.fromJson(userResult);
   }
 
@@ -323,13 +325,15 @@ class Users {
     var selectorBuilder = predicate(QUser()).toSelectorBuilder();
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
     if (limit != null) selectorBuilder = selectorBuilder.limit(limit);
-    final selectorMap = selectorBuilder.map.flatQuery();
+    final selectorMap = selectorBuilder.map;
 
     final projDoc =
         projections.isNotEmpty ? buildProjectionDoc(projections) : null;
-    final (foundLookups, pipeline) = selectorMap.toAggregationPipelineWithMap(
+    final (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
       projections: projDoc,
+      raw: selectorMap.raw(),
+      cleaned: selectorMap.cleaned(),
     );
 
     if (foundLookups || projDoc != null) {
@@ -338,7 +342,7 @@ class Users {
       return users.map((d) => User.fromJson(d.withRefs())).toList();
     }
 
-    final users = await coll.find(selectorMap).toList();
+    final users = await coll.find(selectorMap.cleaned()).toList();
     return users.map((e) => User.fromJson(e.withRefs())).toList();
   }
 
@@ -436,7 +440,7 @@ class Users {
     final expr = predicate(QUser());
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
-    final result = await coll.deleteOne(selector.map.flatQuery());
+    final result = await coll.deleteOne(selector.map.cleaned());
     return result.isSuccess;
   }
 
@@ -469,7 +473,7 @@ class Users {
     final expr = predicate(QUser());
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
-    final result = await coll.deleteMany(selector.map.flatQuery());
+    final result = await coll.deleteMany(selector.map.cleaned());
     return result.isSuccess;
   }
 
@@ -520,7 +524,7 @@ class Users {
     final expr = predicate(QUser());
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
-    final result = await coll.updateOne(selector.map.flatQuery(), modifier);
+    final result = await coll.updateOne(selector.map.cleaned(), modifier);
     return result.isSuccess;
   }
 
@@ -547,7 +551,7 @@ class Users {
     final expr = predicate(QUser());
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
-    final result = await coll.updateMany(selector.map.flatQuery(), modifier);
+    final result = await coll.updateMany(selector.map.cleaned(), modifier);
     return result.isSuccess;
   }
 
@@ -577,10 +581,13 @@ class Users {
     final selectorMap =
         predicate == null
             ? <String, dynamic>{}
-            : predicate(QUser()).toSelectorBuilder().map.flatQuery();
+            : predicate(QUser()).toSelectorBuilder().map;
 
-    final (foundLookups, pipelineWithoutCount) = selectorMap
-        .toAggregationPipelineWithMap(lookupRef: _nestedCollections);
+    final (foundLookups, pipelineWithoutCount) = toAggregationPipelineWithMap(
+      lookupRef: _nestedCollections,
+      raw: selectorMap.raw(),
+      cleaned: selectorMap.cleaned(),
+    );
 
     if (foundLookups) {
       final pipeline = [
@@ -593,6 +600,6 @@ class Users {
       return result.first['count'] as int;
     }
 
-    return await coll.count(selectorMap);
+    return await coll.count(selectorMap.cleaned());
   }
 }

@@ -43,7 +43,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}
     final expr = predicate(Q$className());
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
-    final result = await coll.updateOne(selector.map.flatQuery(), modifier);
+    final result = await coll.updateOne(selector.map.cleaned(), modifier);
     return result.isSuccess;
   }
 
@@ -78,7 +78,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}
     final expr = predicate(Q$className());
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
-    final result = await coll.updateMany(selector.map.flatQuery(), modifier);
+    final result = await coll.updateMany(selector.map.cleaned(), modifier);
     return result.isSuccess;
   }
 ''';
