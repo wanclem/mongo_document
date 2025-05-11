@@ -597,7 +597,7 @@
     },
     {
       "name": "webkit_inspection_protocol",
-      "rootUri": "file:///Users/wan/.pub-cache/hosted/pub.dev/webkit_inspection_protocol-1.2.2",
+      "rootUri": "file:///Users/wan/.pub-cache/hosted/pub.dev/webkit_inspection_protocol-1.2.1",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -632,7 +632,7 @@
       "languageVersion": "3.7"
     }
   ],
-  "generated": "2025-05-11T13:28:05.697242Z",
+  "generated": "2025-05-11T14:40:21.433661Z",
   "generator": "pub",
   "generatorVersion": "3.7.2",
   "flutterRoot": "file:///Users/wan/Documents/Codes/Sdks/flutter",
