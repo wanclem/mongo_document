@@ -2,6 +2,12 @@
 
 ### Fixed
 
+Fixed a bug in projection-classes code generation where the typecheckers ignored the JsonKey names of nested collections, and also within the `nestedCollectionMap` literals
+
+## \[1.1.7] - 2025-05-11
+
+### Fixed
+
 Prevent unnecessary MongoDB reconnections by reusing single instance
 
 ## \[1.1.6] - 2025-05-10
