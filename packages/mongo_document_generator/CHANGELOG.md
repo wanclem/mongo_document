@@ -1,3 +1,9 @@
+## \[1.1.7] - 2025-05-11
+
+### Fixed
+
+Prevent unnecessary MongoDB reconnections by reusing single instance
+
 ## \[1.1.6] - 2025-05-10
 
 ### Fixed
