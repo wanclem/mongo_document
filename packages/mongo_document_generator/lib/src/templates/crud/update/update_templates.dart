@@ -42,9 +42,8 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}
     });
     final expr = predicate(Q$className());
     final selector = expr.toSelectorBuilder();
-    final result = await (await MongoConnection.getDb())
-      .collection(_collection)
-      .updateOne(selector.map.flatQuery(), modifier);
+    final coll = await MongoDbConnection.getCollection(_collection);
+    final result = await coll.updateOne(selector.map.flatQuery(), modifier);
     return result.isSuccess;
   }
 
@@ -78,9 +77,8 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}
     });
     final expr = predicate(Q$className());
     final selector = expr.toSelectorBuilder();
-    final result = await (await MongoConnection.getDb())
-      .collection(_collection)
-      .updateMany(selector.map.flatQuery(), modifier);
+    final coll = await MongoDbConnection.getCollection(_collection);
+    final result = await coll.updateMany(selector.map.flatQuery(), modifier);
     return result.isSuccess;
   }
 ''';
@@ -94,8 +92,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}
     ObjectId id, 
     Map<String, dynamic> updateMap,
   ) async {
-    final conn = await MongoConnection.getDb();
-    final coll = conn.collection(_collection);
+    final coll = await MongoDbConnection.getCollection(_collection);
     final result = await coll.updateOne({'_id':id},{'\\\$set':updateMap});
     if(!result.isSuccess) return null;
     final updatedDoc = await coll.findOne({

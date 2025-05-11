@@ -8,9 +8,8 @@ class DeleteTemplates {
     return '''
 Future<bool> delete() async {
     if (id == null) return false;
-    final res = await (await MongoConnection.getDb())
-      .collection(_collection)
-      .deleteOne(where.eq(r'_id', id));
+    final coll = await MongoDbConnection.getCollection(_collection);
+    final res = await coll.deleteOne(where.eq(r'_id', id));
     return res.isSuccess;
   }
 ''';
@@ -24,9 +23,8 @@ Future<bool> delete() async {
   ) async {
     final expr = predicate(Q$className());
     final selector = expr.toSelectorBuilder();
-    final result = await (await MongoConnection.getDb())
-      .collection(_collection)
-      .deleteOne(selector.map.flatQuery());
+    final coll = await MongoDbConnection.getCollection(_collection);
+    final result = await coll.deleteOne(selector.map.flatQuery());
     return result.isSuccess;
   }''';
   }
@@ -39,9 +37,8 @@ Future<bool> delete() async {
   ) async {
     final expr = predicate(Q$className());
     final selector = expr.toSelectorBuilder();
-    final result = await (await MongoConnection.getDb())
-      .collection(_collection)
-      .deleteMany(selector.map.flatQuery());
+    final coll = await MongoDbConnection.getCollection(_collection);
+    final result = await coll.deleteMany(selector.map.flatQuery());
     return result.isSuccess;
   }
 ''';
@@ -67,9 +64,8 @@ Future<bool> delete() async {
       return '''if ($paramName != null) selector['$key'] = ${nestedCollectionMap.containsKey(paramName) ? "$paramName.id" : paramName};''';
     }).join('\n')}
     if (selector.isEmpty) return false;
-    final result = await (await MongoConnection.getDb())
-      .collection(_collection)
-      .deleteOne(selector);
+    final coll = await MongoDbConnection.getCollection(_collection);
+    final result = await coll.deleteOne(selector);
     return result.isSuccess;
   }
 ''';
@@ -95,9 +91,8 @@ Future<bool> delete() async {
       return '''if ($paramName != null) selector['$key'] = ${nestedCollectionMap.containsKey(paramName) ? "$paramName.id" : paramName};''';
     }).join('\n')}
     if (selector.isEmpty) return false;
-    final result = await (await MongoConnection.getDb())
-      .collection(_collection)
-      .deleteMany(selector);
+    final coll = await MongoDbConnection.getCollection(_collection);
+    final result = await coll.deleteMany(selector);
     return result.isSuccess;
   }
 ''';

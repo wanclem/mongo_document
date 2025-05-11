@@ -18,8 +18,7 @@ class ReadTemplates {
       throw ArgumentError('Invalid ${classNameVar}Id type: \${${classNameVar}Id.runtimeType}');
     }
 
-    final db = await MongoConnection.getDb();
-    final coll = db.collection(_collection);
+    final coll = await MongoDbConnection.getCollection(_collection);
 
     if (projections.isNotEmpty) {
        ${buildAggregationPipeline('''{
@@ -47,8 +46,7 @@ class ReadTemplates {
   {List<BaseProjections> projections=const [],}
   ) async {
 
-    final db = await MongoConnection.getDb();
-    final coll = db.collection(_collection);
+    final coll = await MongoDbConnection.getCollection(_collection);
 
     if (predicate == null) {
       final $classNameVar = await coll.modernFindOne(sort: {'created_at': -1});
@@ -89,8 +87,8 @@ class ReadTemplates {
     return '''
 /// Type-safe findOne by named arguments
   static Future<$className?> findOneByNamed({${ParameterTemplates.buildNullableParams(params, fieldRename)}List<BaseProjections> projections=const [],})async{
-    final db = await MongoConnection.getDb();
-    final coll = db.collection(_collection);
+
+    final coll = await MongoDbConnection.getCollection(_collection);
 
     final selector = <String, dynamic>{};
     ${params.map((p) {
@@ -127,8 +125,7 @@ class ReadTemplates {
     int? skip, int? limit,
     List<BaseProjections> projections=const [],
   }) async {
-    final db = await MongoConnection.getDb();
-    final coll = db.collection(_collection);
+    final coll = await MongoDbConnection.getCollection(_collection);
 
     var selectorBuilder = predicate(Q$className()).toSelectorBuilder();
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
@@ -148,9 +145,7 @@ class ReadTemplates {
       return ${classNameVar}s.map((d)=>$className.fromJson(d.withRefs())).toList();
     }
 
-    final ${classNameVar}s = await (await MongoConnection.getDb())
-      .collection(_collection)
-      .find(selectorMap).toList();
+    final ${classNameVar}s = await coll.find(selectorMap).toList();
     return ${classNameVar}s.map((e) => $className.fromJson(e.withRefs())).toList();
  }
 ''';
@@ -167,8 +162,7 @@ class ReadTemplates {
     return '''
 /// Type-safe findMany by named arguments
   static Future<List<$className>> findManyByNamed({${ParameterTemplates.buildNullableParams(params, fieldRename)}    List<BaseProjections> projections=const [],Map<String,Object>sort=const{},int? skip,int limit=10,})async{
-    final db = await MongoConnection.getDb();
-    final coll = db.collection(_collection);
+    final coll = await MongoDbConnection.getCollection(_collection);
 
     final selector = <String, dynamic>{};
     ${params.map((p) {
@@ -201,6 +195,8 @@ class ReadTemplates {
   static Future<int> count(
   Expression Function(Q$className ${className[0].toLowerCase()})? predicate
 ) async {
+  final coll = await MongoDbConnection.getCollection(_collection);
+
   final selectorMap = predicate == null
       ? <String, dynamic>{}
       : predicate(Q$className())
@@ -219,18 +215,12 @@ class ReadTemplates {
       { r'\$count': 'count' }                     
     ];
 
-    final result = await (await MongoConnection.getDb())
-        .collection(_collection)
-        .aggregateToStream(pipeline)             
-        .toList();
-
+    final result = await coll.aggregateToStream(pipeline).toList();
     if (result.isEmpty) return 0;
     return result.first['count'] as int;
   }
 
-  return (await MongoConnection.getDb())
-      .collection(_collection)
-      .count(selectorMap);                       
+  return await coll.count(selectorMap);                       
 }
 ''';
   }

@@ -3,8 +3,7 @@ class CreateTemplates {
     String classNameVar = className.toLowerCase();
     return '''
   Future<$className?> save() async {
-    final db = await MongoConnection.getDb();
-    final coll = db.collection(_collection);
+    final coll = await MongoDbConnection.getCollection(_collection);
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
@@ -18,7 +17,7 @@ class CreateTemplates {
       final root = entry.key;
       if (_nestedCollections.containsKey(root)) {
         final collectionName = _nestedCollections[root]!;
-        var nestedColl =db.collection(collectionName);
+        var nestedColl = await MongoDbConnection.getCollection(collectionName);
         var value = entry.value as Map<String, dynamic>?;
         if (value == null) continue;
         value.removeWhere((key, value) => value == null);
@@ -76,7 +75,7 @@ class CreateTemplates {
         return MapEntry<String, dynamic>(key, value);
       });
     }).toList();
-    final coll = (await MongoConnection.getDb()).collection(_collection);
+    final coll = await MongoDbConnection.getCollection(_collection);
     final result = await coll.insertMany(${classNameVar}sMap);
     return ${classNameVar}s
         .asMap()

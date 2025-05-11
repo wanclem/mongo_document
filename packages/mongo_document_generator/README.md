@@ -68,13 +68,13 @@ Add to `pubspec.yaml`:
 dependencies:
   freezed_annotation: ">=2.4.4 <4.0.0"
   json_annotation: ^4.9.0
-  mongo_document_annotation: ^1.1.6
+  mongo_document_annotation: ^1.1.7
 
 dev_dependencies:
   build_runner: ^2.4.14
   freezed: ">=2.5.8 <4.0.0"
   json_serializable: ^6.9.3
-  mongo_document: ^1.1.6
+  mongo_document: ^1.1.7
 ```
 
 Then:
@@ -91,8 +91,21 @@ In your application entrypoint (e.g. `main()`), configure the MongoDB connection
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 
 Future<void> main() async {
-  await MongoConnection.init('mongodb://localhost:27017/mydb');
+  await MongoConnection.initialize('mongodb://localhost:27017/mydb');
   // Now you can use generated .save(), .findOne(), etc.
+
+  // Handle graceful shutdown
+  ProcessSignal.sigint.watch().listen((_) async {
+    print('SIGINT received. Shutting down gracefully...');
+    await MongoDbConnection.shutdown();
+    exit(0);
+  });
+
+  ProcessSignal.sigterm.watch().listen((_) async {
+    print('SIGTERM received. Shutting down gracefully...');
+    await MongoDbConnection.shutdown();
+    exit(0);
+  });
 }
 ```
 
