@@ -61,7 +61,7 @@ Future<bool> delete() async {
       final paramName = p.name;
       final key =
           ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
-      return '''if ($paramName != null) selector['$key'] = ${nestedCollectionMap.containsKey(paramName) ? "$paramName.id" : paramName};''';
+      return '''if ($paramName != null) selector['$key'] = ${nestedCollectionMap.containsKey(key) ? "$paramName.id" : paramName};''';
     }).join('\n')}
     if (selector.isEmpty) return false;
     final coll = await MongoDbConnection.getCollection(_collection);
@@ -88,7 +88,7 @@ Future<bool> delete() async {
       final paramName = p.name;
       final key =
           ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
-      return '''if ($paramName != null) selector['$key'] = ${nestedCollectionMap.containsKey(paramName) ? "$paramName.id" : paramName};''';
+      return '''if ($paramName != null) selector['$key'] = ${nestedCollectionMap.containsKey(key) ? "$paramName.id" : paramName};''';
     }).join('\n')}
     if (selector.isEmpty) return false;
     final coll = await MongoDbConnection.getCollection(_collection);

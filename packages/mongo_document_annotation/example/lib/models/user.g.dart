@@ -1,27 +1,27 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'post.dart';
+part of 'user.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
-_Post _$PostFromJson(Map<String, dynamic> json) => _Post(
+_User _$UserFromJson(Map<String, dynamic> json) => _User(
   id: const ObjectIdConverter().fromJson(json['_id']),
-  body: json['body'] as String?,
-  postNote: json['post_note'] as String?,
-  tags:
-      (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
-      const <String>[],
+  firstName: json['first_name'] as String?,
+  lastName: json['last_name'] as String?,
+  email: json['email'] as String?,
+  password: json['password'] as String?,
   createdAt: const DateTimeConverter().fromJson(json['created_at']),
   updatedAt: const DateTimeConverter().fromJson(json['updated_at']),
 );
 
-Map<String, dynamic> _$PostToJson(_Post instance) => <String, dynamic>{
+Map<String, dynamic> _$UserToJson(_User instance) => <String, dynamic>{
   '_id': const ObjectIdConverter().toJson(instance.id),
-  'body': instance.body,
-  'post_note': instance.postNote,
-  'tags': instance.tags,
+  'first_name': instance.firstName,
+  'last_name': instance.lastName,
+  'email': instance.email,
+  'password': instance.password,
   'created_at': const DateTimeConverter().toJson(instance.createdAt),
   'updated_at': const DateTimeConverter().toJson(instance.updatedAt),
 };

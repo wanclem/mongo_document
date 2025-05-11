@@ -3,10 +3,12 @@ import 'package:mongo_dart/mongo_dart.dart';
 extension CleanQuery on Map<String, dynamic> {
   Map<String, dynamic> flatQuery() {
     final cleaned = <String, dynamic>{};
-    forEach((key, value) {
+    forEach((rawKey, value) {
+      final key = rawKey.replaceAll(RegExp(r'\._id$'), '');
       if (key == r'$query' && value is Map<String, dynamic>) {
         value.forEach((innerKey, innerVal) {
-          cleaned[innerKey] = _cleanNode(innerVal);
+          final normalizedInnerKey = innerKey.replaceAll(RegExp(r'\._id$'), '');
+          cleaned[normalizedInnerKey] = _cleanNode(innerVal);
         });
       } else {
         cleaned[key] = _cleanNode(value);

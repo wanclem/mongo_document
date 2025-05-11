@@ -33,7 +33,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}
       final key =
           ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
       final name = p.name;
-      if (nestedCollectionMap.containsKey(name)) {
+      if (nestedCollectionMap.containsKey(key)) {
         return "if ($name != null) '$key': $name.id,";
       } else {
         return "if ($name != null) '$key': $name,";
@@ -68,7 +68,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}
       final key =
           ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
       final name = p.name;
-      if (nestedCollectionMap.containsKey(name)) {
+      if (nestedCollectionMap.containsKey(key)) {
         return "if ($name != null) '$key': $name.id,";
       } else {
         return "if ($name != null) '$key': $name,";

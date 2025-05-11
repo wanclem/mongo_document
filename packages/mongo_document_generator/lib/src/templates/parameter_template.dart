@@ -47,7 +47,10 @@ class ParameterTemplates {
   }
 
   static Map<String, String> getNestedCollectionMap(
-      List<ParameterElement> params) {
+    List<ParameterElement> params,
+    TypeChecker typeChecker,
+    FieldRename? fieldRename,
+  ) {
     final nestedCollectionMap = <String, String>{};
     for (final p in params) {
       final pType = p.type;
@@ -58,7 +61,12 @@ class ParameterTemplates {
         ).firstAnnotationOf(nestedClassElem);
         if (mongoAnn != null) {
           final collName = mongoAnn.getField('collection')!.toStringValue()!;
-          nestedCollectionMap[p.name] = collName;
+          String paramName = getParameterKey(
+            typeChecker,
+            p,
+            fieldRename,
+          );
+          nestedCollectionMap[paramName] = collName;
         }
       }
     }

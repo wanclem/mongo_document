@@ -56,8 +56,11 @@ class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
     final className = element.name;
     final collection = annotation.peek('collection')!.stringValue;
     final params = element.unnamedConstructor?.parameters ?? [];
-    final nestedCollectionMap =
-        ParameterTemplates.getNestedCollectionMap(params);
+    final nestedCollectionMap = ParameterTemplates.getNestedCollectionMap(
+      params,
+      _jsonKeyChecker,
+      fieldRename,
+    );
     final template = '''
 ${ObjectReferences.buildNestedCollectiontionsMapLiteral(
       nestedCollectionMap,
@@ -68,6 +71,7 @@ ${ObjectReferences.buildNestedCollectionProjectionClasses(
       _jsonKeyChecker,
       nestedCollectionMap,
       params,
+      fieldRename,
     )}
 ${QueryTemplates.buildQueryClass(
       _jsonKeyChecker,

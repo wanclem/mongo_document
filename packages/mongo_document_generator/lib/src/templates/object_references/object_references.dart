@@ -13,10 +13,17 @@ class ObjectReferences {
     TypeChecker jsonKeyChecker,
     Map<String, String> nestedCollectionMap,
     List<ParameterElement> params,
+    FieldRename? fieldRename,
   ) {
     final projectionTemplate = '''
 ${nestedCollectionMap.keys.map((root) {
-      final param = params.firstWhere((p) => p.name == root);
+      final param = params.firstWhere((p) =>
+          ParameterTemplates.getParameterKey(
+            jsonKeyChecker,
+            p,
+            fieldRename,
+          ) ==
+          root);
       final paramRC = ReCase(param.name).pascalCase;
       final classRC = ReCase(className).pascalCase;
       final typeName = "$classRC$paramRC";

@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Post {
 
-@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? get id; String? get body;@JsonKey(name: 'post_note') String? get postNote; List<String> get tags;@DateTimeConverter() DateTime? get createdAt;@DateTimeConverter() DateTime? get updatedAt;
+@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? get id; String? get body;@JsonKey(name: 'post_note') String? get postNote;@JsonKey(name: "author_id") User? get author; List<String> get tags;@DateTimeConverter() DateTime? get createdAt;@DateTimeConverter() DateTime? get updatedAt;
 /// Create a copy of Post
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,16 +29,16 @@ $PostCopyWith<Post> get copyWith => _$PostCopyWithImpl<Post>(this as Post, _$ide
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Post&&(identical(other.id, id) || other.id == id)&&(identical(other.body, body) || other.body == body)&&(identical(other.postNote, postNote) || other.postNote == postNote)&&const DeepCollectionEquality().equals(other.tags, tags)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Post&&(identical(other.id, id) || other.id == id)&&(identical(other.body, body) || other.body == body)&&(identical(other.postNote, postNote) || other.postNote == postNote)&&(identical(other.author, author) || other.author == author)&&const DeepCollectionEquality().equals(other.tags, tags)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,body,postNote,const DeepCollectionEquality().hash(tags),createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,body,postNote,author,const DeepCollectionEquality().hash(tags),createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'Post(id: $id, body: $body, postNote: $postNote, tags: $tags, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'Post(id: $id, body: $body, postNote: $postNote, author: $author, tags: $tags, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -49,11 +49,11 @@ abstract mixin class $PostCopyWith<$Res>  {
   factory $PostCopyWith(Post value, $Res Function(Post) _then) = _$PostCopyWithImpl;
 @useResult
 $Res call({
-@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? id, String? body,@JsonKey(name: 'post_note') String? postNote, List<String> tags,@DateTimeConverter() DateTime? createdAt,@DateTimeConverter() DateTime? updatedAt
+@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? id, String? body,@JsonKey(name: 'post_note') String? postNote,@JsonKey(name: "author_id") User? author, List<String> tags,@DateTimeConverter() DateTime? createdAt,@DateTimeConverter() DateTime? updatedAt
 });
 
 
-
+$UserCopyWith<$Res>? get author;
 
 }
 /// @nodoc
@@ -66,18 +66,31 @@ class _$PostCopyWithImpl<$Res>
 
 /// Create a copy of Post
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? body = freezed,Object? postNote = freezed,Object? tags = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? body = freezed,Object? postNote = freezed,Object? author = freezed,Object? tags = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_self.copyWith(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as ObjectId?,body: freezed == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
 as String?,postNote: freezed == postNote ? _self.postNote : postNote // ignore: cast_nullable_to_non_nullable
-as String?,tags: null == tags ? _self.tags : tags // ignore: cast_nullable_to_non_nullable
+as String?,author: freezed == author ? _self.author : author // ignore: cast_nullable_to_non_nullable
+as User?,tags: null == tags ? _self.tags : tags // ignore: cast_nullable_to_non_nullable
 as List<String>,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));
 }
+/// Create a copy of Post
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$UserCopyWith<$Res>? get author {
+    if (_self.author == null) {
+    return null;
+  }
 
+  return $UserCopyWith<$Res>(_self.author!, (value) {
+    return _then(_self.copyWith(author: value));
+  });
+}
 }
 
 
@@ -85,12 +98,13 @@ as DateTime?,
 
 @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
 class _Post implements Post {
-  const _Post({@ObjectIdConverter()@JsonKey(name: '_id') this.id, this.body, @JsonKey(name: 'post_note') this.postNote, final  List<String> tags = const <String>[], @DateTimeConverter() this.createdAt, @DateTimeConverter() this.updatedAt}): _tags = tags;
+  const _Post({@ObjectIdConverter()@JsonKey(name: '_id') this.id, this.body, @JsonKey(name: 'post_note') this.postNote, @JsonKey(name: "author_id") this.author, final  List<String> tags = const <String>[], @DateTimeConverter() this.createdAt, @DateTimeConverter() this.updatedAt}): _tags = tags;
   factory _Post.fromJson(Map<String, dynamic> json) => _$PostFromJson(json);
 
 @override@ObjectIdConverter()@JsonKey(name: '_id') final  ObjectId? id;
 @override final  String? body;
 @override@JsonKey(name: 'post_note') final  String? postNote;
+@override@JsonKey(name: "author_id") final  User? author;
  final  List<String> _tags;
 @override@JsonKey() List<String> get tags {
   if (_tags is EqualUnmodifiableListView) return _tags;
@@ -114,16 +128,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Post&&(identical(other.id, id) || other.id == id)&&(identical(other.body, body) || other.body == body)&&(identical(other.postNote, postNote) || other.postNote == postNote)&&const DeepCollectionEquality().equals(other._tags, _tags)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Post&&(identical(other.id, id) || other.id == id)&&(identical(other.body, body) || other.body == body)&&(identical(other.postNote, postNote) || other.postNote == postNote)&&(identical(other.author, author) || other.author == author)&&const DeepCollectionEquality().equals(other._tags, _tags)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,body,postNote,const DeepCollectionEquality().hash(_tags),createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,body,postNote,author,const DeepCollectionEquality().hash(_tags),createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'Post(id: $id, body: $body, postNote: $postNote, tags: $tags, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'Post(id: $id, body: $body, postNote: $postNote, author: $author, tags: $tags, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -134,11 +148,11 @@ abstract mixin class _$PostCopyWith<$Res> implements $PostCopyWith<$Res> {
   factory _$PostCopyWith(_Post value, $Res Function(_Post) _then) = __$PostCopyWithImpl;
 @override @useResult
 $Res call({
-@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? id, String? body,@JsonKey(name: 'post_note') String? postNote, List<String> tags,@DateTimeConverter() DateTime? createdAt,@DateTimeConverter() DateTime? updatedAt
+@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? id, String? body,@JsonKey(name: 'post_note') String? postNote,@JsonKey(name: "author_id") User? author, List<String> tags,@DateTimeConverter() DateTime? createdAt,@DateTimeConverter() DateTime? updatedAt
 });
 
 
-
+@override $UserCopyWith<$Res>? get author;
 
 }
 /// @nodoc
@@ -151,19 +165,32 @@ class __$PostCopyWithImpl<$Res>
 
 /// Create a copy of Post
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? body = freezed,Object? postNote = freezed,Object? tags = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? body = freezed,Object? postNote = freezed,Object? author = freezed,Object? tags = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_Post(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as ObjectId?,body: freezed == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
 as String?,postNote: freezed == postNote ? _self.postNote : postNote // ignore: cast_nullable_to_non_nullable
-as String?,tags: null == tags ? _self._tags : tags // ignore: cast_nullable_to_non_nullable
+as String?,author: freezed == author ? _self.author : author // ignore: cast_nullable_to_non_nullable
+as User?,tags: null == tags ? _self._tags : tags // ignore: cast_nullable_to_non_nullable
 as List<String>,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));
 }
 
+/// Create a copy of Post
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$UserCopyWith<$Res>? get author {
+    if (_self.author == null) {
+    return null;
+  }
 
+  return $UserCopyWith<$Res>(_self.author!, (value) {
+    return _then(_self.copyWith(author: value));
+  });
+}
 }
 
 // dart format on
