@@ -1,3 +1,9 @@
+## \[1.2.4] - 2025-05-12
+
+### Fixed
+
+Bug fixes in ObjectId mapping amongst arbitrary set of values
+
 ## \[1.2.3] - 2025-05-11
 
 ### Fixed

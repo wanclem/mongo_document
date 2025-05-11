@@ -41,6 +41,15 @@ extension QueryExtensions on Map<String, dynamic> {
     return node;
   }
 
+  bool isValidMongoHex(String s) {
+    try {
+      ObjectId.parse(s);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Recursively wrap every ObjectId (except under '_id') in {'_id': …}.
   Map<String, dynamic> withRefs() {
     final result = <String, dynamic>{};
@@ -59,7 +68,19 @@ extension QueryExtensions on Map<String, dynamic> {
           return item;
         }).toList();
       } else {
-        result[key] = value;
+        if (value is String) {
+          bool mongoId = isValidMongoHex(value);
+          if (mongoId) {
+            ObjectId? id = ObjectId.tryParse(value);
+            if (id != null) {
+              result[key] = {'_id': id};
+            }
+          } else {
+            result[key] = value;
+          }
+        } else {
+          result[key] = value;
+        }
       }
     });
     return result;
