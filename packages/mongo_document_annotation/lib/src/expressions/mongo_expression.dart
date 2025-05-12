@@ -3,17 +3,81 @@ import 'package:mongo_dart/mongo_dart.dart';
 mixin MoreExMixin {
   String get _key;
 
-  Expression exists([bool doesExist = true]) => RawExpression({
-        _key: {r'$exists': doesExist}
-      });
+  Expression exists([bool doesExist = true]) => RawExpression(
+        {
+          _key: {r'$exists': doesExist}
+        },
+      );
 
-  Expression nin(dynamic value) => RawExpression({
-        _key: {r'$nin': value}
-      });
+  Expression isIn(dynamic value) => RawExpression(
+        {
+          _key: {r'$in': value}
+        },
+      );
 
-  Expression containsAll(dynamic value) => RawExpression({
-        _key: {r'$all': value}
-      });
+  Expression notIn(dynamic value) => RawExpression(
+        {
+          _key: {r'$nin': value}
+        },
+      );
+
+  Expression containsAllOf(dynamic value) => RawExpression(
+        {
+          _key: {r'$all': value}
+        },
+      );
+
+  Expression mod(dynamic value) => RawExpression(
+        {
+          _key: {r'$mod': value}
+        },
+      );
+
+  Expression isBetween(dynamic min, dynamic max) => RawExpression(
+        {
+          _key: {
+            r'$gte': min,
+            r'$lte': max,
+          }
+        },
+      );
+
+  Expression near(var value, [double? maxDistance]) => RawExpression(
+        {
+          _key: {
+            r'$near': value,
+            if (maxDistance != null) r'$maxDistance': maxDistance,
+          }
+        },
+      );
+
+  /// Only support $geometry shape operator
+  /// Available ShapeOperator instances: Box , Center, CenterSphere, Geometry
+  Expression geoWithin(ShapeOperator shape) => RawExpression(
+        {
+          _key: {
+            r'$geoWithin': shape.build(),
+          }
+        },
+      );
+
+  /// Only supports geometry points
+  Expression nearSphere(
+    String fieldName,
+    Geometry point, {
+    double? maxDistance,
+    double? minDistance,
+  }) =>
+      RawExpression(
+        {
+          _key: {
+            r'$nearSphere': <String, dynamic>{
+              if (minDistance != null) '\$minDistance': minDistance,
+              if (maxDistance != null) '\$maxDistance': maxDistance
+            }..addAll(point.build())
+          }
+        },
+      );
 }
 
 abstract class Expression {

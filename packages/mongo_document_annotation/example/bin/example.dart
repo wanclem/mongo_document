@@ -1,6 +1,7 @@
 import 'package:example/env/dump.dart';
 import 'package:example/models/organization.dart';
 import 'package:example/models/organization_member.dart';
+import 'package:example/models/post.dart';
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 
 Future<void> main() async {
@@ -34,4 +35,6 @@ Future<void> main() async {
   //   ],
   // );
   // print(organizationMembers.map((om) => om.toJson()).toList().join("\n"));
+  Post? post = await Posts.findOne((p) => p.body.isBetween(10, 18));
+  print(post?.toJson());
 }

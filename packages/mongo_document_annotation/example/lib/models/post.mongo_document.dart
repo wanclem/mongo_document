@@ -114,10 +114,9 @@ extension $PostExtension on Post {
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
-    final postMap =
-        toJson()
-          ..remove('_id')
-          ..removeWhere((key, value) => value == null);
+    final postMap = toJson()
+      ..remove('_id')
+      ..removeWhere((key, value) => value == null);
     postMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
     postMap.update('updated_at', (v) => now, ifAbsent: () => now);
 
@@ -177,16 +176,15 @@ class Posts {
   /// Type-safe saveMany
   static Future<List<Post?>> saveMany(List<Post> posts) async {
     if (posts.isEmpty) return <Post>[];
-    final List<Map<String, dynamic>> postsMap =
-        posts.map((p) {
-          final json = p.toJson()..remove('_id');
-          return json.map((key, value) {
-            if (_nestedCollections.containsKey(key)) {
-              return MapEntry<String, dynamic>(key, value['_id'] as ObjectId?);
-            }
-            return MapEntry<String, dynamic>(key, value);
-          });
-        }).toList();
+    final List<Map<String, dynamic>> postsMap = posts.map((p) {
+      final json = p.toJson()..remove('_id');
+      return json.map((key, value) {
+        if (_nestedCollections.containsKey(key)) {
+          return MapEntry<String, dynamic>(key, value['_id'] as ObjectId?);
+        }
+        return MapEntry<String, dynamic>(key, value);
+      });
+    }).toList();
     final coll = await MongoDbConnection.getCollection(_collection);
     final result = await coll.insertMany(postsMap);
     return posts.asMap().entries.map((e) {
@@ -298,6 +296,7 @@ class Posts {
       return Post.fromJson(results.first.withRefs());
     }
 
+    print(JsonEncoder.withIndent(' ').convert(selectorMap.cleaned()));
     // fallback to simple findOne
     final postResult = await coll.findOne(selectorMap.cleaned());
     return postResult == null ? null : Post.fromJson(postResult);
@@ -441,10 +440,8 @@ class Posts {
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
-      final posts =
-          await coll
-              .modernFind(sort: {'created_at': -1}, limit: limit, skip: skip)
-              .toList();
+      final posts = await coll.modernFind(
+          sort: {'created_at': -1}, limit: limit, skip: skip).toList();
       if (posts.isEmpty) return [];
       return posts.map((e) => Post.fromJson(e.withRefs())).toList();
     }
@@ -498,10 +495,9 @@ class Posts {
       if (posts.isEmpty) return [];
       return posts.map((d) => Post.fromJson(d.withRefs())).toList();
     }
-    final posts =
-        await coll
-            .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
-            .toList();
+    final posts = await coll
+        .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
+        .toList();
     return posts.map((e) => Post.fromJson(e.withRefs())).toList();
   }
 
@@ -648,10 +644,9 @@ class Posts {
   static Future<int> count(Expression Function(QPost p)? predicate) async {
     final coll = await MongoDbConnection.getCollection(_collection);
 
-    final selectorMap =
-        predicate == null
-            ? <String, dynamic>{}
-            : predicate(QPost()).toSelectorBuilder().map;
+    final selectorMap = predicate == null
+        ? <String, dynamic>{}
+        : predicate(QPost()).toSelectorBuilder().map;
 
     final (foundLookups, pipelineWithoutCount) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,

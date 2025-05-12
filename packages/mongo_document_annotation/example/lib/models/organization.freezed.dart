@@ -16,9 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Organization {
 
-@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? get id; String? get tempId; User? get owner; String? get name; dynamic get avatar; Map<String, dynamic> get ephemeralData;/// This property should never be populated or used by the backend.
-/// It is strictly for the frontend to indicate the currently active organization among other organizations.
- bool get active;@DateTimeConverter() DateTime? get createdAt;@DateTimeConverter() DateTime? get updatedAt;
+@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? get id; String? get tempId; User? get owner; String? get name; dynamic get avatar; Map<String, dynamic> get ephemeralData; bool get active;@DateTimeConverter() DateTime? get createdAt;@DateTimeConverter() DateTime? get updatedAt;
 /// Create a copy of Organization
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -117,8 +115,6 @@ class _Organization implements Organization {
   return EqualUnmodifiableMapView(_ephemeralData);
 }
 
-/// This property should never be populated or used by the backend.
-/// It is strictly for the frontend to indicate the currently active organization among other organizations.
 @override@JsonKey() final  bool active;
 @override@DateTimeConverter() final  DateTime? createdAt;
 @override@DateTimeConverter() final  DateTime? updatedAt;
