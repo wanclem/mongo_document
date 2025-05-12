@@ -35,6 +35,4 @@ Future<void> main() async {
   //   ],
   // );
   // print(organizationMembers.map((om) => om.toJson()).toList().join("\n"));
-  Post? post = await Posts.findOne((p) => p.body.isBetween(10, 18));
-  print(post?.toJson());
 }
