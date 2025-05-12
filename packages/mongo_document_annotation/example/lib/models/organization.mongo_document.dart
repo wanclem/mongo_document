@@ -169,7 +169,8 @@ extension $OrganizationExtension on Organization {
       final result = await coll.insertOne(organization);
       if (!result.isSuccess) return null;
       await Future.wait(nestedUpdates);
-      return copyWith(id: result.id);
+      final savedDoc = await coll.findOne({'_id': result.id});
+      return Organization.fromJson(savedDoc!.withRefs());
     }
 
     var parentMod = modify.set('updated_at', now);
@@ -177,7 +178,8 @@ extension $OrganizationExtension on Organization {
     final res = await coll.updateOne(where.eq(r'_id', id), parentMod);
     if (!res.isSuccess) return null;
     await Future.wait(nestedUpdates);
-    return this;
+    final savedDoc = await coll.findOne({'_id': result.id});
+    return Organization.fromJson(savedDoc!.withRefs());
   }
 
   Future<bool> delete() async {
@@ -200,7 +202,7 @@ class Organizations {
         organizations.map((o) {
           final json = o.toJson()..remove('_id');
           return json.map((key, value) {
-            if (_nestedCollections.containsKey(key)) {
+            if (_nestedCollections.containsKey(key) && value is Map) {
               return MapEntry<String, dynamic>(key, value['_id'] as ObjectId?);
             }
             return MapEntry<String, dynamic>(key, value);
@@ -208,12 +210,15 @@ class Organizations {
         }).toList();
     final coll = await MongoDbConnection.getCollection(_collection);
     final result = await coll.insertMany(organizationsMap);
-    return organizations.asMap().entries.map((e) {
-      final idx = e.key;
-      final organization = e.value;
-      final id = result.isSuccess ? result.ids![idx] : null;
-      return organization.copyWith(id: id);
-    }).toList();
+    if (!result.isSuccess || result.ids == null) {
+      return [];
+    }
+    final insertedIds = result.ids!;
+    final insertedDocs =
+        await coll.find(where.oneFrom('_id', insertedIds)).toList();
+    return insertedDocs
+        .map((doc) => Organization.fromJson(doc.withRefs()))
+        .toList();
   }
 
   /// Find a Organization by its _id with optional nested-doc projections

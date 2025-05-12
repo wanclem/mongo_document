@@ -1,3 +1,9 @@
+## \[1.2.8] - 2025-05-12
+
+### Fixed
+
+Save and Save Many timing outs
+
 ## \[1.2.7] - 2025-05-12
 
 ### Added

@@ -122,7 +122,8 @@ extension $UserExtension on User {
       final result = await coll.insertOne(user);
       if (!result.isSuccess) return null;
       await Future.wait(nestedUpdates);
-      return copyWith(id: result.id);
+      final savedDoc = await coll.findOne({'_id': result.id});
+      return User.fromJson(savedDoc!.withRefs());
     }
 
     var parentMod = modify.set('updated_at', now);
@@ -130,7 +131,8 @@ extension $UserExtension on User {
     final res = await coll.updateOne(where.eq(r'_id', id), parentMod);
     if (!res.isSuccess) return null;
     await Future.wait(nestedUpdates);
-    return this;
+    final savedDoc = await coll.findOne({'_id': result.id});
+    return User.fromJson(savedDoc!.withRefs());
   }
 
   Future<bool> delete() async {
@@ -151,7 +153,7 @@ class Users {
         users.map((u) {
           final json = u.toJson()..remove('_id');
           return json.map((key, value) {
-            if (_nestedCollections.containsKey(key)) {
+            if (_nestedCollections.containsKey(key) && value is Map) {
               return MapEntry<String, dynamic>(key, value['_id'] as ObjectId?);
             }
             return MapEntry<String, dynamic>(key, value);
@@ -159,12 +161,13 @@ class Users {
         }).toList();
     final coll = await MongoDbConnection.getCollection(_collection);
     final result = await coll.insertMany(usersMap);
-    return users.asMap().entries.map((e) {
-      final idx = e.key;
-      final user = e.value;
-      final id = result.isSuccess ? result.ids![idx] : null;
-      return user.copyWith(id: id);
-    }).toList();
+    if (!result.isSuccess || result.ids == null) {
+      return [];
+    }
+    final insertedIds = result.ids!;
+    final insertedDocs =
+        await coll.find(where.oneFrom('_id', insertedIds)).toList();
+    return insertedDocs.map((doc) => User.fromJson(doc.withRefs())).toList();
   }
 
   /// Find a User by its _id with optional nested-doc projections

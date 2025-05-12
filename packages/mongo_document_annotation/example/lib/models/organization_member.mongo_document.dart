@@ -217,7 +217,8 @@ extension $OrganizationMemberExtension on OrganizationMember {
       final result = await coll.insertOne(organizationmember);
       if (!result.isSuccess) return null;
       await Future.wait(nestedUpdates);
-      return copyWith(id: result.id);
+      final savedDoc = await coll.findOne({'_id': result.id});
+      return OrganizationMember.fromJson(savedDoc!.withRefs());
     }
 
     var parentMod = modify.set('updated_at', now);
@@ -225,7 +226,8 @@ extension $OrganizationMemberExtension on OrganizationMember {
     final res = await coll.updateOne(where.eq(r'_id', id), parentMod);
     if (!res.isSuccess) return null;
     await Future.wait(nestedUpdates);
-    return this;
+    final savedDoc = await coll.findOne({'_id': result.id});
+    return OrganizationMember.fromJson(savedDoc!.withRefs());
   }
 
   Future<bool> delete() async {
@@ -248,7 +250,7 @@ class OrganizationMembers {
         organizationmembers.map((o) {
           final json = o.toJson()..remove('_id');
           return json.map((key, value) {
-            if (_nestedCollections.containsKey(key)) {
+            if (_nestedCollections.containsKey(key) && value is Map) {
               return MapEntry<String, dynamic>(key, value['_id'] as ObjectId?);
             }
             return MapEntry<String, dynamic>(key, value);
@@ -256,12 +258,15 @@ class OrganizationMembers {
         }).toList();
     final coll = await MongoDbConnection.getCollection(_collection);
     final result = await coll.insertMany(organizationmembersMap);
-    return organizationmembers.asMap().entries.map((e) {
-      final idx = e.key;
-      final organizationmember = e.value;
-      final id = result.isSuccess ? result.ids![idx] : null;
-      return organizationmember.copyWith(id: id);
-    }).toList();
+    if (!result.isSuccess || result.ids == null) {
+      return [];
+    }
+    final insertedIds = result.ids!;
+    final insertedDocs =
+        await coll.find(where.oneFrom('_id', insertedIds)).toList();
+    return insertedDocs
+        .map((doc) => OrganizationMember.fromJson(doc.withRefs()))
+        .toList();
   }
 
   /// Find a OrganizationMember by its _id with optional nested-doc projections

@@ -42,7 +42,8 @@ class CreateTemplates {
       final result = await coll.insertOne($classNameVar);
       if (!result.isSuccess) return null;
       await Future.wait(nestedUpdates);
-      return copyWith(id: result.id);
+      final savedDoc = await coll.findOne({'_id': result.id});
+      return $className.fromJson(savedDoc!.withRefs());
     }
 
     var parentMod = modify.set('updated_at', now);
@@ -50,7 +51,8 @@ class CreateTemplates {
     final res = await coll.updateOne(where.eq(r'_id', id), parentMod);
     if (!res.isSuccess) return null;
     await Future.wait(nestedUpdates);
-    return this;
+    final savedDoc = await coll.findOne({'_id': result.id});
+    return $className.fromJson(savedDoc!.withRefs());
   }
 
 ''';
@@ -67,7 +69,7 @@ class CreateTemplates {
     final List<Map<String, dynamic>> ${classNameVar}sMap = ${classNameVar}s.map((${classNameVar[0]}) {
       final json = ${classNameVar[0]}.toJson()..remove('_id');
       return json.map((key, value) {
-        if (_nestedCollections.containsKey(key)) {
+        if (_nestedCollections.containsKey(key) && value is Map) {
           return MapEntry<String, dynamic>(
             key, value['_id'] as ObjectId?,
           );
@@ -77,15 +79,14 @@ class CreateTemplates {
     }).toList();
     final coll = await MongoDbConnection.getCollection(_collection);
     final result = await coll.insertMany(${classNameVar}sMap);
-    return ${classNameVar}s
-        .asMap()
-        .entries
-        .map((e) {
-          final idx = e.key;
-          final $classNameVar = e.value;
-          final id = result.isSuccess ? result.ids![idx] : null;
-          return $classNameVar.copyWith(id: id);
-        })
+    if (!result.isSuccess || result.ids == null) {
+      return [];
+    }
+    final insertedIds = result.ids!;
+    final insertedDocs =
+        await coll.find(where.oneFrom('_id', insertedIds)).toList();
+    return insertedDocs
+        .map((doc) => $className.fromJson(doc.withRefs()))
         .toList();
   }
 ''';
