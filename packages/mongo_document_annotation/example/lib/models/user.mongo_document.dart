@@ -131,7 +131,7 @@ extension $UserExtension on User {
     final res = await coll.updateOne(where.eq(r'_id', id), parentMod);
     if (!res.isSuccess) return null;
     await Future.wait(nestedUpdates);
-    final savedDoc = await coll.findOne({'_id': result.id});
+    final savedDoc = await coll.findOne({'_id': res.id});
     return User.fromJson(savedDoc!.withRefs());
   }
 
