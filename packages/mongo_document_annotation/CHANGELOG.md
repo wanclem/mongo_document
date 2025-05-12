@@ -1,3 +1,9 @@
+## \[1.2.7] - 2025-05-12
+
+### Added
+
+Update Docs and Metadata
+
 ## \[1.2.6] - 2025-05-12
 
 ### Fixed
