@@ -1,3 +1,9 @@
+## \[1.3.0] - 2025-05-12
+
+### Fixed
+
+Bug fixes and Improvements around upserting
+
 ## \[1.2.9] - 2025-05-12
 
 ### Fixed

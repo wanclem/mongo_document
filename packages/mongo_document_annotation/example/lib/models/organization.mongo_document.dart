@@ -169,7 +169,7 @@ extension $OrganizationExtension on Organization {
       final result = await coll.insertOne(organization);
       if (!result.isSuccess) return null;
       await Future.wait(nestedUpdates);
-      final savedDoc = await coll.findOne({'_id': result.id});
+      final savedDoc = await coll.findOne(where.id(result.id));
       return Organization.fromJson(savedDoc!.withRefs());
     }
 
@@ -178,7 +178,7 @@ extension $OrganizationExtension on Organization {
     final res = await coll.updateOne(where.eq(r'_id', id), parentMod);
     if (!res.isSuccess) return null;
     await Future.wait(nestedUpdates);
-    final savedDoc = await coll.findOne({'_id': res.id});
+    final savedDoc = await coll.findOne(where.id(id!));
     return Organization.fromJson(savedDoc!.withRefs());
   }
 
