@@ -681,7 +681,7 @@ class OrganizationMembers {
   }
 
   /// Type-safe updateOne
-  static Future<bool> updateOne(
+  static Future<OrganizationMember?> updateOne(
     Expression Function(QOrganizationMember o) predicate, {
     ObjectId? id,
     User? user,
@@ -706,11 +706,14 @@ class OrganizationMembers {
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
     final result = await coll.updateOne(selector.map.cleaned(), modifier);
-    return result.isSuccess;
+    if (!result.isSuccess) return null;
+    final updatedDoc = await coll.findOne({'_id': result.id});
+    if (updatedDoc == null) return null;
+    return OrganizationMember.fromJson(updatedDoc.withRefs());
   }
 
   /// Type-safe updateMany
-  static Future<bool> updateMany(
+  static Future<List<OrganizationMember>> updateMany(
     Expression Function(QOrganizationMember o) predicate, {
     ObjectId? id,
     User? user,
@@ -735,7 +738,12 @@ class OrganizationMembers {
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
     final result = await coll.updateMany(selector.map.cleaned(), modifier);
-    return result.isSuccess;
+    if (!result.isSuccess) return [];
+    final updatedDocs = await coll.find({'_id': result.id}).toList();
+    if (updatedDocs.isEmpty) return [];
+    return updatedDocs
+        .map((doc) => OrganizationMember.fromJson(doc.withRefs()))
+        .toList();
   }
 
   static ModifierBuilder _buildModifier(Map<String, dynamic> updateMap) {
@@ -755,7 +763,9 @@ class OrganizationMembers {
     final result = await coll.updateOne({'_id': id}, {'\$set': updateMap});
     if (!result.isSuccess) return null;
     final updatedDoc = await coll.findOne({'_id': id});
-    return updatedDoc == null ? null : OrganizationMember.fromJson(updatedDoc);
+    return updatedDoc == null
+        ? null
+        : OrganizationMember.fromJson(updatedDoc.withRefs());
   }
 
   static Future<int> count(

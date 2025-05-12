@@ -24,7 +24,7 @@ class UpdateTemplates {
   ) {
     return '''
 /// Type-safe updateOne
-  static Future<bool> updateOne(
+  static Future<$className?> updateOne(
     Expression Function(Q$className ${className[0].toLowerCase()}) predicate, {
 ${ParameterTemplates.buildNullableParams(params, fieldRename)}
   }) async {
@@ -44,7 +44,10 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
     final result = await coll.updateOne(selector.map.cleaned(), modifier);
-    return result.isSuccess;
+    if (!result.isSuccess) return null;
+    final updatedDoc = await coll.findOne({'_id': result.id});
+    if (updatedDoc == null) return null;
+    return $className.fromJson(updatedDoc.withRefs());
   }
 
 ''';
@@ -59,7 +62,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}
   ) {
     return '''
   /// Type-safe updateMany
-  static Future<bool> updateMany(
+  static Future<List<$className>> updateMany(
     Expression Function(Q$className ${className[0].toLowerCase()}) predicate, {
 ${ParameterTemplates.buildNullableParams(params, fieldRename)}
   }) async {
@@ -79,7 +82,12 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}
     final selector = expr.toSelectorBuilder();
     final coll = await MongoDbConnection.getCollection(_collection);
     final result = await coll.updateMany(selector.map.cleaned(), modifier);
-    return result.isSuccess;
+    if (!result.isSuccess) return [];
+    final updatedDocs = await coll.find({'_id': result.id}).toList();
+    if (updatedDocs.isEmpty) return [];
+    return updatedDocs
+        .map((doc) => $className.fromJson(doc.withRefs()))
+        .toList();
   }
 ''';
   }
@@ -98,7 +106,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}
     final updatedDoc = await coll.findOne({
       '_id': id
     });
-    return updatedDoc == null?null:$className.fromJson(updatedDoc);
+    return updatedDoc == null?null:$className.fromJson(updatedDoc.withRefs());
   }''';
   }
 }

@@ -1,3 +1,9 @@
+## \[1.2.6] - 2025-05-12
+
+### Fixed
+
+Update functions should now properly populate object references after the update
+
 ## \[1.2.5] - 2025-05-12
 
 ### Added
