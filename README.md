@@ -41,7 +41,7 @@
 
 ## Motivation
 
-When your Dart models use camelCase, but your database schema uses a different naming style (e.g. snake\_case or any other convention), manual mapping between the two becomes tedious and error-prone. **mongo\_document** removes that friction—letting you CRUD and query directly from your Dart model definitions, regardless of how you choose to name fields in MongoDB.
+When your Dart models use camelCase, but your database schema uses a different naming style (e.g. snake\_case or any other convention), manual mapping between the two becomes tedious and error-prone. **mongo\_document** removes that friction—letting you CRUD directly from your Dart model definitions, regardless of how you choose to name fields in MongoDB.
 
 ## Features
 

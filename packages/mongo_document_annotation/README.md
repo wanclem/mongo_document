@@ -10,18 +10,18 @@
 
 3. [Getting Started](#getting-started)
 
-   * [Prerequisites](#prerequisites)
-   * [Installation](#installation)
-   * [Initialization](#initialization)
+   - [Prerequisites](#prerequisites)
+   - [Installation](#installation)
+   - [Initialization](#initialization)
 
 4. [Usage](#usage)
 
-   * [Defining Models](#defining-models)
-   * [Generating Code](#generating-code)
-   * [CRUD Examples](#crud-examples)
-   * [Advanced Queries & Projections](#advanced-queries--projections)
-   * [Named-Argument Queries & Projections](#named-argument-queries--projections)
-   * [Nested-Document Queries & Projections](#nested-document-queries--projections)
+   - [Defining Models](#defining-models)
+   - [Generating Code](#generating-code)
+   - [CRUD Examples](#crud-examples)
+   - [Advanced Queries & Projections](#advanced-queries--projections)
+   - [Named-Argument Queries & Projections](#named-argument-queries--projections)
+   - [Nested-Document Queries & Projections](#nested-document-queries--projections)
 
 5. [Configuration & Conventions](#configuration--conventions)
 
@@ -35,31 +35,31 @@
 
 ## Overview
 
-**mongo\_document** bridges Dart `freezed` models and MongoDB via `mongo_dart`, generating zero‑boilerplate, type‑safe CRUD and query builders that respect your Dart-native naming conventions (e.g. camelCase) while serializing to and from your DB schema (e.g. snake\_case).
+**mongo_document** bridges Dart `freezed` models and MongoDB via `mongo_dart`, generating zero‑boilerplate, type‑safe CRUD and query builders that respect your Dart-native naming conventions (e.g. camelCase) while serializing to and from your DB schema (e.g. snake_case).
 
-> ⚠️ *Work in Progress*: Experimental features may change. Your feedback and contributions are welcome.
+> ⚠️ _Work in Progress_: Experimental features may change. Your feedback and contributions are welcome.
 
 ## Motivation
 
-When your Dart models use camelCase, but your database schema uses a different naming style (e.g. snake\_case or any other convention), manual mapping between the two becomes tedious and error-prone. **mongo\_document** removes that friction—letting you CRUD and query directly from your Dart model definitions, regardless of how you choose to name fields in MongoDB.
+When your Dart models use camelCase, but your database schema uses a different naming style (e.g. snake_case or any other convention), manual mapping between the two becomes tedious and error-prone. **mongo_document** removes that friction—letting you CRUD directly from your Dart model definitions, regardless of how you choose to name fields in MongoDB.
 
 ## Features
 
-* **Zero‑Boilerplate CRUD & Queries**: `.save()`, `.delete()`, `.findOne()`, `.findMany()`, `.findOneByNamed()`, `.findManyByNamed()`, `.findById()`
-* **Batch Operations**: `.saveMany(List<T> documents)` for bulk inserts; `.updateOne(predicate, namedArgumentsOfUpdates)` for targeted updates
-* **Type-Safe DSL & Named Filters**: Lambda-based predicates (`p => p.field.eq(...)`) or named-argument filters matching your model
-* **Automatic Field Mapping**: Honors `@JsonSerializable(fieldRename)`—camelCase in Dart, snake\_case in MongoDB—and respects explicit `@JsonKey(name)` overrides
-* **Nested References & Projections**: Generates `*Projections` helper classes for each nested `@MongoDocument` type
-* **Joins, Arrays & Maps**: Built-in `$lookup` for references; `QList` and `QMap` support array/map operations
-* **Timestamps & IDs**: Auto-manage `_id`, `created_at`, and `updated_at`
+- **Zero‑Boilerplate CRUD & Queries**: `.save()`, `.delete()`, `.findOne()`, `.findMany()`, `.findOneByNamed()`, `.findManyByNamed()`, `.findById()`
+- **Batch Operations**: `.saveMany(List<T> documents)` for bulk inserts; `.updateOne(predicate, namedArgumentsOfUpdates)` for targeted updates
+- **Type-Safe DSL & Named Filters**: Lambda-based predicates (`p => p.field.eq(...)`) or named-argument filters matching your model
+- **Automatic Field Mapping**: Honors `@JsonSerializable(fieldRename)`—camelCase in Dart, snake_case in MongoDB—and respects explicit `@JsonKey(name)` overrides
+- **Nested References & Projections**: Generates `*Projections` helper classes for each nested `@MongoDocument` type
+- **Joins, Arrays & Maps**: Built-in `$lookup` for references; `QList` and `QMap` support array/map operations
+- **Timestamps & IDs**: Auto-manage `_id`, `created_at`, and `updated_at`
 
 ## Getting Started
 
 ### Prerequisites
 
-* Dart SDK ≥ 3.0
-* A running MongoDB instance (local or remote)
-* **MongoDB server version ≥ 3.6**
+- Dart SDK ≥ 3.0
+- A running MongoDB instance (local or remote)
+- **MongoDB server version ≥ 3.6**
 
 ### Installation
 
@@ -143,7 +143,7 @@ abstract class Post with _$Post {
 
 ### Generating Code
 
-Run build\_runner:
+Run build_runner:
 
 ```bash
 dart run build_runner build --delete-conflicting-outputs
@@ -151,9 +151,9 @@ dart run build_runner build --delete-conflicting-outputs
 
 This generates:
 
-* Instance methods: `.save()`, `.delete()`,
-* Static APIs: `Posts.saveMany()`, `Posts.findOne()`, `Posts.findMany()`, `Posts.findById()`, `Posts.findOneByNamed()`, `Posts.findManyByNamed()`,`Posts.updateOne(...)`
-* Query builder `QPost` with typed fields
+- Instance methods: `.save()`, `.delete()`,
+- Static APIs: `Posts.saveMany()`, `Posts.findOne()`, `Posts.findMany()`, `Posts.findById()`, `Posts.findOneByNamed()`, `Posts.findManyByNamed()`,`Posts.updateOne(...)`
+- Query builder `QPost` with typed fields
 
 ### CRUD Examples
 
@@ -239,8 +239,8 @@ Both `PostProjections` and `PostAuthorProjections` also support `inclusions` and
 
 ## Configuration & Conventions
 
-* Converters: `@ObjectIdConverter()`, `@DateTimeConverter()`
-* Collection name from `@MongoDocument(collection: ...)`
+- Converters: `@ObjectIdConverter()`, `@DateTimeConverter()`
+- Collection name from `@MongoDocument(collection: ...)`
 
 ## Troubleshooting
 
