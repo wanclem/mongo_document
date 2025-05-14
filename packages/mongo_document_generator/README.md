@@ -199,49 +199,6 @@ Post? postWithAuthorNames = await Posts.findOne(
 );
 ```
 
-### Named-Argument Queries & Projections
-
-```dart
-// Named-argument many query
-List<Post> intros = await Posts.findManyByNamed(body: 'Welcome', tags: ['intro']);
-
-// Targeted deleteManyByNamed
-await Posts.deleteManyByNamed(body:'Hello World');
-```
-
-### Nested-Document Queries & Projections
-
-When querying via a nested `@MongoDocument`, you must include projection helpers for both the root and the nested documents to ensure fields are returned. Otherwise, queries against nested fields will not return any data even if matching documents exist.
-
-```dart
-// Querying only nested field without projection - returns null
-final postNull = await Posts.findOne((p) => p.author.id(authorId));
-
-// Project all root Post fields
-final postAllFields = await Posts.findOne(
-  (p) => p.author.id(authorId),
-  projections: [
-    PostProjections()
-  ]
-);
-
-// Project both Post and nested author fields
-final postWithAuthor = await Posts.findOne(
-  (p) => p.author.id(authorId),
-  projections: [
-    PostProjections(),
-    PostAuthorProjections()
-  ]
-);
-```
-
-Both `PostProjections` and `PostAuthorProjections` also support `inclusions` and `exclusions` parameters to customize which fields to include or omit in the result.
-
-## Configuration & Conventions
-
-- Converters: `@ObjectIdConverter()`, `@DateTimeConverter()`
-- Collection name from `@MongoDocument(collection: ...)`
-
 ## Troubleshooting
 
 Add to `analysis_options.yaml`:
