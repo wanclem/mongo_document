@@ -10,7 +10,10 @@ _Post _$PostFromJson(Map<String, dynamic> json) => _Post(
   id: const ObjectIdConverter().fromJson(json['_id']),
   body: json['body'] as String?,
   postNote: json['post_note'] as String?,
-  author: const ObjectIdConverter().fromJson(json['author']),
+  author:
+      json['author'] == null
+          ? null
+          : User.fromJson(json['author'] as Map<String, dynamic>),
   tags:
       (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const <String>[],
@@ -22,7 +25,7 @@ Map<String, dynamic> _$PostToJson(_Post instance) => <String, dynamic>{
   '_id': const ObjectIdConverter().toJson(instance.id),
   'body': instance.body,
   'post_note': instance.postNote,
-  'author': const ObjectIdConverter().toJson(instance.author),
+  'author': instance.author?.toJson(),
   'tags': instance.tags,
   'created_at': const DateTimeConverter().toJson(instance.createdAt),
   'updated_at': const DateTimeConverter().toJson(instance.updatedAt),

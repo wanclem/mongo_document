@@ -1,6 +1,3 @@
-import 'dart:convert';
-import 'dart:math';
-
 import 'package:example/models/user.dart';
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -19,7 +16,7 @@ abstract class Post with _$Post {
     @ObjectIdConverter() @JsonKey(name: '_id') ObjectId? id,
     String? body,
     @JsonKey(name: 'post_note') String? postNote,
-    @ObjectIdConverter() ObjectId? author,
+    User? author,
     @Default(<String>[]) List<String> tags,
     @DateTimeConverter() DateTime? createdAt,
     @DateTimeConverter() DateTime? updatedAt,

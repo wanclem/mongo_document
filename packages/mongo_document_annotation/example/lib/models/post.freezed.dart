@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Post {
 
-@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? get id; String? get body;@JsonKey(name: 'post_note') String? get postNote;@ObjectIdConverter() ObjectId? get author; List<String> get tags;@DateTimeConverter() DateTime? get createdAt;@DateTimeConverter() DateTime? get updatedAt;
+@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? get id; String? get body;@JsonKey(name: 'post_note') String? get postNote; User? get author; List<String> get tags;@DateTimeConverter() DateTime? get createdAt;@DateTimeConverter() DateTime? get updatedAt;
 /// Create a copy of Post
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -49,11 +49,11 @@ abstract mixin class $PostCopyWith<$Res>  {
   factory $PostCopyWith(Post value, $Res Function(Post) _then) = _$PostCopyWithImpl;
 @useResult
 $Res call({
-@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? id, String? body,@JsonKey(name: 'post_note') String? postNote,@ObjectIdConverter() ObjectId? author, List<String> tags,@DateTimeConverter() DateTime? createdAt,@DateTimeConverter() DateTime? updatedAt
+@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? id, String? body,@JsonKey(name: 'post_note') String? postNote, User? author, List<String> tags,@DateTimeConverter() DateTime? createdAt,@DateTimeConverter() DateTime? updatedAt
 });
 
 
-
+$UserCopyWith<$Res>? get author;
 
 }
 /// @nodoc
@@ -72,13 +72,25 @@ id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as ObjectId?,body: freezed == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
 as String?,postNote: freezed == postNote ? _self.postNote : postNote // ignore: cast_nullable_to_non_nullable
 as String?,author: freezed == author ? _self.author : author // ignore: cast_nullable_to_non_nullable
-as ObjectId?,tags: null == tags ? _self.tags : tags // ignore: cast_nullable_to_non_nullable
+as User?,tags: null == tags ? _self.tags : tags // ignore: cast_nullable_to_non_nullable
 as List<String>,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));
 }
+/// Create a copy of Post
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$UserCopyWith<$Res>? get author {
+    if (_self.author == null) {
+    return null;
+  }
 
+  return $UserCopyWith<$Res>(_self.author!, (value) {
+    return _then(_self.copyWith(author: value));
+  });
+}
 }
 
 
@@ -86,13 +98,13 @@ as DateTime?,
 
 @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
 class _Post implements Post {
-  const _Post({@ObjectIdConverter()@JsonKey(name: '_id') this.id, this.body, @JsonKey(name: 'post_note') this.postNote, @ObjectIdConverter() this.author, final  List<String> tags = const <String>[], @DateTimeConverter() this.createdAt, @DateTimeConverter() this.updatedAt}): _tags = tags;
+  const _Post({@ObjectIdConverter()@JsonKey(name: '_id') this.id, this.body, @JsonKey(name: 'post_note') this.postNote, this.author, final  List<String> tags = const <String>[], @DateTimeConverter() this.createdAt, @DateTimeConverter() this.updatedAt}): _tags = tags;
   factory _Post.fromJson(Map<String, dynamic> json) => _$PostFromJson(json);
 
 @override@ObjectIdConverter()@JsonKey(name: '_id') final  ObjectId? id;
 @override final  String? body;
 @override@JsonKey(name: 'post_note') final  String? postNote;
-@override@ObjectIdConverter() final  ObjectId? author;
+@override final  User? author;
  final  List<String> _tags;
 @override@JsonKey() List<String> get tags {
   if (_tags is EqualUnmodifiableListView) return _tags;
@@ -136,11 +148,11 @@ abstract mixin class _$PostCopyWith<$Res> implements $PostCopyWith<$Res> {
   factory _$PostCopyWith(_Post value, $Res Function(_Post) _then) = __$PostCopyWithImpl;
 @override @useResult
 $Res call({
-@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? id, String? body,@JsonKey(name: 'post_note') String? postNote,@ObjectIdConverter() ObjectId? author, List<String> tags,@DateTimeConverter() DateTime? createdAt,@DateTimeConverter() DateTime? updatedAt
+@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? id, String? body,@JsonKey(name: 'post_note') String? postNote, User? author, List<String> tags,@DateTimeConverter() DateTime? createdAt,@DateTimeConverter() DateTime? updatedAt
 });
 
 
-
+@override $UserCopyWith<$Res>? get author;
 
 }
 /// @nodoc
@@ -159,14 +171,26 @@ id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as ObjectId?,body: freezed == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
 as String?,postNote: freezed == postNote ? _self.postNote : postNote // ignore: cast_nullable_to_non_nullable
 as String?,author: freezed == author ? _self.author : author // ignore: cast_nullable_to_non_nullable
-as ObjectId?,tags: null == tags ? _self._tags : tags // ignore: cast_nullable_to_non_nullable
+as User?,tags: null == tags ? _self._tags : tags // ignore: cast_nullable_to_non_nullable
 as List<String>,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));
 }
 
+/// Create a copy of Post
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$UserCopyWith<$Res>? get author {
+    if (_self.author == null) {
+    return null;
+  }
 
+  return $UserCopyWith<$Res>(_self.author!, (value) {
+    return _then(_self.copyWith(author: value));
+  });
+}
 }
 
 // dart format on

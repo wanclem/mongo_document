@@ -11,7 +11,7 @@ part of 'post.dart';
 // MongoDocumentGenerator
 // **************************************************************************
 
-enum PostFields { id, body, postNote, author, tags, createdAt, updatedAt }
+enum PostFields { id, body, postNote, tags, createdAt, updatedAt }
 
 class PostProjections implements BaseProjections {
   @override
@@ -22,7 +22,6 @@ class PostProjections implements BaseProjections {
     "id": "_id",
     "body": "body",
     "postNote": "post_note",
-    "author": "author",
     "tags": "tags",
     "createdAt": "created_at",
     "updatedAt": "updated_at",
@@ -35,7 +34,6 @@ class PostProjections implements BaseProjections {
       '_id': 1,
       'body': 1,
       'post_note': 1,
-      'author': 1,
       'tags': 1,
       'created_at': 1,
       'updated_at': 1,
@@ -43,7 +41,47 @@ class PostProjections implements BaseProjections {
   }
 }
 
-const _nestedCollections = <String, String>{};
+const _nestedCollections = <String, String>{'author': 'accounts'};
+
+enum PostAuthorFields {
+  id,
+  firstName,
+  lastName,
+  email,
+  password,
+  createdAt,
+  updatedAt,
+}
+
+class PostAuthorProjections implements BaseProjections {
+  @override
+  final List<PostAuthorFields>? inclusions;
+  final List<PostAuthorFields>? exclusions;
+  @override
+  final Map<String, dynamic> fieldMappings = const {
+    "id": "author._id",
+    "firstName": "author.first_name",
+    "lastName": "author.last_name",
+    "email": "author.email",
+    "password": "author.password",
+    "createdAt": "author.created_at",
+    "updatedAt": "author.updated_at",
+  };
+  const PostAuthorProjections({this.inclusions, this.exclusions});
+
+  @override
+  Map<String, int> toProjection() {
+    return {
+      'author._id': 1,
+      'author.first_name': 1,
+      'author.last_name': 1,
+      'author.email': 1,
+      'author.password': 1,
+      'author.created_at': 1,
+      'author.updated_at': 1,
+    };
+  }
+}
 
 class QPost {
   final String _prefix;
@@ -57,7 +95,7 @@ class QPost {
 
   QueryField<String?> get postNote => QueryField<String?>(_key('post_note'));
 
-  QueryField<ObjectId?> get author => QueryField<ObjectId?>(_key('author'));
+  QUser get author => QUser(_key('author'));
 
   QList<String> get tags => QList<String>(_key('tags'));
 
@@ -279,7 +317,7 @@ class Posts {
     ObjectId? id,
     String? body,
     String? postNote,
-    ObjectId? author,
+    User? author,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -293,7 +331,7 @@ class Posts {
     if (id != null) selector['_id'] = id;
     if (body != null) selector['body'] = body;
     if (postNote != null) selector['post_note'] = postNote;
-    if (author != null) selector['author'] = author;
+    if (author != null) selector['author'] = author.id;
     if (tags != null) selector['tags'] = tags;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
@@ -396,7 +434,7 @@ class Posts {
     ObjectId? id,
     String? body,
     String? postNote,
-    ObjectId? author,
+    User? author,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -413,7 +451,7 @@ class Posts {
     if (id != null) selector['_id'] = id;
     if (body != null) selector['body'] = body;
     if (postNote != null) selector['post_note'] = postNote;
-    if (author != null) selector['author'] = author;
+    if (author != null) selector['author'] = author.id;
     if (tags != null) selector['tags'] = tags;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
@@ -499,7 +537,7 @@ class Posts {
     ObjectId? id,
     String? body,
     String? postNote,
-    ObjectId? author,
+    User? author,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -509,7 +547,7 @@ class Posts {
     if (id != null) selector['_id'] = id;
     if (body != null) selector['body'] = body;
     if (postNote != null) selector['post_note'] = postNote;
-    if (author != null) selector['author'] = author;
+    if (author != null) selector['author'] = author.id;
     if (tags != null) selector['tags'] = tags;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
@@ -538,7 +576,7 @@ class Posts {
     ObjectId? id,
     String? body,
     String? postNote,
-    ObjectId? author,
+    User? author,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -548,7 +586,7 @@ class Posts {
     if (id != null) selector['_id'] = id;
     if (body != null) selector['body'] = body;
     if (postNote != null) selector['post_note'] = postNote;
-    if (author != null) selector['author'] = author;
+    if (author != null) selector['author'] = author.id;
     if (tags != null) selector['tags'] = tags;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
@@ -565,7 +603,7 @@ class Posts {
     ObjectId? id,
     String? body,
     String? postNote,
-    ObjectId? author,
+    User? author,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -575,7 +613,7 @@ class Posts {
       if (id != null) '_id': id,
       if (body != null) 'body': body,
       if (postNote != null) 'post_note': postNote,
-      if (author != null) 'author': author,
+      if (author != null) 'author': author.id,
       if (tags != null) 'tags': tags,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -597,7 +635,7 @@ class Posts {
     ObjectId? id,
     String? body,
     String? postNote,
-    ObjectId? author,
+    User? author,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -607,7 +645,7 @@ class Posts {
       if (id != null) '_id': id,
       if (body != null) 'body': body,
       if (postNote != null) 'post_note': postNote,
-      if (author != null) 'author': author,
+      if (author != null) 'author': author.id,
       if (tags != null) 'tags': tags,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
