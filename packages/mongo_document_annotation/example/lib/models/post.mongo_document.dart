@@ -109,8 +109,9 @@ class QPost {
 extension $PostExtension on Post {
   static String get _collection => 'posts';
 
-  Future<Post?> save() async {
-    final coll = await MongoDbConnection.getCollection(_collection);
+  Future<Post?> save({Db? db}) async {
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
@@ -127,9 +128,12 @@ extension $PostExtension on Post {
       final root = entry.key;
       if (_nestedCollections.containsKey(root)) {
         final collectionName = _nestedCollections[root]!;
-        var nestedColl = await MongoDbConnection.getCollection(collectionName);
-        var value = entry.value as Map<String, dynamic>?;
-        if (value == null) continue;
+        var nestedColl = await database.collection(collectionName);
+        final Map<String, dynamic> value =
+            entry.value is Map
+                ? Map<String, dynamic>.from(entry.value as Map)
+                : <String, dynamic>{};
+        if (value.isEmpty) continue;
         value.removeWhere((key, value) => value == null);
         final nestedId = value['_id'] as ObjectId?;
         if (nestedId == null) {
@@ -165,9 +169,10 @@ extension $PostExtension on Post {
     return Post.fromJson(savedDoc!.withRefs());
   }
 
-  Future<bool> delete() async {
+  Future<bool> delete({Db? db}) async {
     if (id == null) return false;
-    final coll = await MongoDbConnection.getCollection(_collection);
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
     final res = await coll.deleteOne(where.eq(r'_id', id));
     return res.isSuccess;
   }
@@ -175,21 +180,20 @@ extension $PostExtension on Post {
 
 class Posts {
   static String get _collection => 'posts';
-
-  /// Type-safe saveMany
-  static Future<List<Post?>> saveMany(List<Post> posts) async {
+  static Future<List<Post?>> saveMany(List<Post> posts, {Db? db}) async {
     if (posts.isEmpty) return <Post>[];
     final List<Map<String, dynamic>> postsMap =
         posts.map((p) {
           final json = p.toJson()..remove('_id');
           return json.map((key, value) {
-            if (_nestedCollections.containsKey(key) && value is Map) {
+            if (_nestedCollections.containsKey(key) && value is! Map) {
               return MapEntry<String, dynamic>(key, value['_id'] as ObjectId?);
             }
             return MapEntry<String, dynamic>(key, value);
           });
         }).toList();
-    final coll = await MongoDbConnection.getCollection(_collection);
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
     final result = await coll.insertMany(postsMap);
     if (!result.isSuccess || result.ids == null) {
       return [];
@@ -200,9 +204,9 @@ class Posts {
     return insertedDocs.map((doc) => Post.fromJson(doc.withRefs())).toList();
   }
 
-  /// Find a Post by its _id with optional nested-doc projections
   static Future<Post?> findById(
     dynamic postId, {
+    Db? db,
     List<BaseProjections> projections = const [],
   }) async {
     if (postId == null) return null;
@@ -210,8 +214,8 @@ class Posts {
     if (postId is! ObjectId) {
       throw ArgumentError('Invalid postId type: ${postId.runtimeType}');
     }
-
-    final coll = await MongoDbConnection.getCollection(_collection);
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
 
     if (projections.isNotEmpty) {
       final pipeline = <Map<String, Object>>[];
@@ -274,9 +278,11 @@ class Posts {
   /// Type-safe findOne by predicate
   static Future<Post?> findOne(
     Expression Function(QPost p)? predicate, {
+    Db? db,
     List<BaseProjections> projections = const [],
   }) async {
-    final coll = await MongoDbConnection.getCollection(_collection);
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
 
     if (predicate == null) {
       final post = await coll.modernFindOne(sort: {'created_at': -1});
@@ -315,9 +321,11 @@ class Posts {
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
+    Db? db,
     List<BaseProjections> projections = const [],
   }) async {
-    final coll = await MongoDbConnection.getCollection(_collection);
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
 
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
@@ -392,8 +400,10 @@ class Posts {
     int? skip,
     int? limit,
     List<BaseProjections> projections = const [],
+    Db? db,
   }) async {
-    final coll = await MongoDbConnection.getCollection(_collection);
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
 
     var selectorBuilder = predicate(QPost()).toSelectorBuilder();
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
@@ -428,12 +438,14 @@ class Posts {
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
+    Db? db,
     List<BaseProjections> projections = const [],
     Map<String, Object> sort = const {},
     int? skip,
     int limit = 10,
   }) async {
-    final coll = await MongoDbConnection.getCollection(_collection);
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
 
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
@@ -508,11 +520,14 @@ class Posts {
     return posts.map((e) => Post.fromJson(e.withRefs())).toList();
   }
 
-  /// Type-safe deleteOne by predicate
-  static Future<bool> deleteOne(Expression Function(QPost p) predicate) async {
+  static Future<bool> deleteOne(
+    Expression Function(QPost p) predicate, {
+    Db? db,
+  }) async {
+    final database = db ?? await MongoDbConnection.instance;
     final expr = predicate(QPost());
     final selector = expr.toSelectorBuilder();
-    final coll = await MongoDbConnection.getCollection(_collection);
+    final coll = await database.collection(_collection);
     final result = await coll.deleteOne(selector.map.cleaned());
     return result.isSuccess;
   }
@@ -526,6 +541,7 @@ class Posts {
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
+    Db? db,
   }) async {
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
@@ -536,16 +552,21 @@ class Posts {
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) return false;
-    final coll = await MongoDbConnection.getCollection(_collection);
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
     final result = await coll.deleteOne(selector);
     return result.isSuccess;
   }
 
   /// Type-safe deleteMany
-  static Future<bool> deleteMany(Expression Function(QPost p) predicate) async {
+  static Future<bool> deleteMany(
+    Expression Function(QPost p) predicate, {
+    Db? db,
+  }) async {
+    final database = db ?? await MongoDbConnection.instance;
     final expr = predicate(QPost());
     final selector = expr.toSelectorBuilder();
-    final coll = await MongoDbConnection.getCollection(_collection);
+    final coll = await database.collection(_collection);
     final result = await coll.deleteMany(selector.map.cleaned());
     return result.isSuccess;
   }
@@ -559,6 +580,7 @@ class Posts {
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
+    Db? db,
   }) async {
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
@@ -569,7 +591,8 @@ class Posts {
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) return false;
-    final coll = await MongoDbConnection.getCollection(_collection);
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
     final result = await coll.deleteMany(selector);
     return result.isSuccess;
   }
@@ -584,6 +607,7 @@ class Posts {
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
+    Db? db,
   }) async {
     final modifier = _buildModifier({
       if (id != null) '_id': id,
@@ -596,7 +620,8 @@ class Posts {
     });
     final expr = predicate(QPost());
     final selector = expr.toSelectorBuilder();
-    final coll = await MongoDbConnection.getCollection(_collection);
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
     final result = await coll.updateOne(selector.map.cleaned(), modifier);
     if (!result.isSuccess) return null;
     final updatedDoc = await coll.findOne({'_id': result.id});
@@ -614,6 +639,7 @@ class Posts {
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
+    Db? db,
   }) async {
     final modifier = _buildModifier({
       if (id != null) '_id': id,
@@ -626,7 +652,8 @@ class Posts {
     });
     final expr = predicate(QPost());
     final selector = expr.toSelectorBuilder();
-    final coll = await MongoDbConnection.getCollection(_collection);
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
     final result = await coll.updateMany(selector.map.cleaned(), modifier);
     if (!result.isSuccess) return [];
     final updatedDocs = await coll.find({'_id': result.id}).toList();
@@ -645,17 +672,23 @@ class Posts {
   /// This method is a fallback for cases where you just had to use a map.
   static Future<Post?> updateOneFromMap(
     ObjectId id,
-    Map<String, dynamic> updateMap,
-  ) async {
-    final coll = await MongoDbConnection.getCollection(_collection);
+    Map<String, dynamic> updateMap, {
+    Db? db,
+  }) async {
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
     final result = await coll.updateOne({'_id': id}, {'\$set': updateMap});
     if (!result.isSuccess) return null;
     final updatedDoc = await coll.findOne({'_id': id});
     return updatedDoc == null ? null : Post.fromJson(updatedDoc.withRefs());
   }
 
-  static Future<int> count(Expression Function(QPost p)? predicate) async {
-    final coll = await MongoDbConnection.getCollection(_collection);
+  static Future<int> count(
+    Expression Function(QPost p)? predicate, {
+    Db? db,
+  }) async {
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
 
     final selectorMap =
         predicate == null

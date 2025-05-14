@@ -7,9 +7,9 @@ class ReadTemplates {
   static String findById(String className) {
     String classNameVar = className.toLowerCase();
     return '''
-/// Find a $className by its _id with optional nested-doc projections
   static Future<$className?> findById(
     dynamic ${classNameVar}Id, {
+    Db? db,
     List<BaseProjections> projections=const [],
   }) async {
     if (${classNameVar}Id == null) return null;
@@ -17,8 +17,8 @@ class ReadTemplates {
     if (${classNameVar}Id is! ObjectId) {
       throw ArgumentError('Invalid ${classNameVar}Id type: \${${classNameVar}Id.runtimeType}');
     }
-
-    final coll = await MongoDbConnection.getCollection(_collection);
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
 
     if (projections.isNotEmpty) {
        ${buildAggregationPipeline('''{
@@ -43,10 +43,10 @@ class ReadTemplates {
 /// Type-safe findOne by predicate
   static Future<$className?> findOne(
   Expression Function(Q$className ${className[0].toLowerCase()})? predicate,
-  {List<BaseProjections> projections=const [],}
+  {Db?db,List<BaseProjections> projections=const [],}
   ) async {
-
-    final coll = await MongoDbConnection.getCollection(_collection);
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
 
     if (predicate == null) {
       final $classNameVar = await coll.modernFindOne(sort: {'created_at': -1});
@@ -88,9 +88,9 @@ class ReadTemplates {
     String classNameVar = className.toLowerCase();
     return '''
 /// Type-safe findOne by named arguments
-  static Future<$className?> findOneByNamed({${ParameterTemplates.buildNullableParams(params, fieldRename)}List<BaseProjections> projections=const [],})async{
-
-    final coll = await MongoDbConnection.getCollection(_collection);
+  static Future<$className?> findOneByNamed({${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db,List<BaseProjections> projections=const [],})async{
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
 
     final selector = <String, dynamic>{};
     ${params.map((p) {
@@ -126,8 +126,10 @@ class ReadTemplates {
     Expression Function(Q$className ${className[0].toLowerCase()}) predicate, {
     int? skip, int? limit,
     List<BaseProjections> projections=const [],
+    Db?db,
   }) async {
-    final coll = await MongoDbConnection.getCollection(_collection);
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
 
     var selectorBuilder = predicate(Q$className()).toSelectorBuilder();
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
@@ -165,8 +167,9 @@ class ReadTemplates {
     String classNameVar = className.toLowerCase();
     return '''
 /// Type-safe findMany by named arguments
-  static Future<List<$className>> findManyByNamed({${ParameterTemplates.buildNullableParams(params, fieldRename)}    List<BaseProjections> projections=const [],Map<String,Object>sort=const{},int? skip,int limit=10,})async{
-    final coll = await MongoDbConnection.getCollection(_collection);
+  static Future<List<$className>> findManyByNamed({${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db,List<BaseProjections> projections=const [],Map<String,Object>sort=const{},int? skip,int limit=10,})async{
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
 
     final selector = <String, dynamic>{};
     ${params.map((p) {
@@ -197,9 +200,11 @@ class ReadTemplates {
   static String count(String className) {
     return '''
   static Future<int> count(
-  Expression Function(Q$className ${className[0].toLowerCase()})? predicate
+  Expression Function(Q$className ${className[0].toLowerCase()})? predicate,
+  {Db?db}
 ) async {
-  final coll = await MongoDbConnection.getCollection(_collection);
+  final database = db ?? await MongoDbConnection.instance;
+  final coll = await database.collection(_collection);
 
   final selectorMap = predicate == null
       ? <String, dynamic>{}

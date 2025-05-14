@@ -1,3 +1,9 @@
+## \[1.3.1] - 2025-05-12
+
+### Added
+
+All Crud functions now takes in an optional db parameter mostly useful in isolates
+
 ## \[1.3.0] - 2025-05-12
 
 ### Fixed

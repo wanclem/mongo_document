@@ -26,7 +26,7 @@ class UpdateTemplates {
 /// Type-safe updateOne
   static Future<$className?> updateOne(
     Expression Function(Q$className ${className[0].toLowerCase()}) predicate, {
-${ParameterTemplates.buildNullableParams(params, fieldRename)}
+${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
   }) async {
     final modifier = _buildModifier({
       ${params.map((p) {
@@ -42,7 +42,8 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}
     });
     final expr = predicate(Q$className());
     final selector = expr.toSelectorBuilder();
-    final coll = await MongoDbConnection.getCollection(_collection);
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
     final result = await coll.updateOne(selector.map.cleaned(), modifier);
     if (!result.isSuccess) return null;
     final updatedDoc = await coll.findOne({'_id': result.id});
@@ -64,7 +65,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}
   /// Type-safe updateMany
   static Future<List<$className>> updateMany(
     Expression Function(Q$className ${className[0].toLowerCase()}) predicate, {
-${ParameterTemplates.buildNullableParams(params, fieldRename)}
+${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
   }) async {
     final modifier = _buildModifier({
       ${params.map((p) {
@@ -80,7 +81,8 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}
     });
     final expr = predicate(Q$className());
     final selector = expr.toSelectorBuilder();
-    final coll = await MongoDbConnection.getCollection(_collection);
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
     final result = await coll.updateMany(selector.map.cleaned(), modifier);
     if (!result.isSuccess) return [];
     final updatedDocs = await coll.find({'_id': result.id}).toList();
@@ -99,8 +101,10 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}
   static Future<$className?> updateOneFromMap(
     ObjectId id, 
     Map<String, dynamic> updateMap,
+    {Db?db}
   ) async {
-    final coll = await MongoDbConnection.getCollection(_collection);
+    final database = db ?? await MongoDbConnection.instance;
+    final coll = await database.collection(_collection);
     final result = await coll.updateOne({'_id':id},{'\\\$set':updateMap});
     if(!result.isSuccess) return null;
     final updatedDoc = await coll.findOne({
