@@ -1,14 +1,14 @@
-## \[1.3.1] - 2025-05-12
+## \[1.3.1] - 2025-05-13
 
 ### Added
 
-All Crud functions now takes in an optional db parameter mostly useful in isolates
+Added support for optional db parameter across all crud functions -- Useful mostly in isolates
 
 ## \[1.3.0] - 2025-05-12
 
 ### Fixed
 
-Bug fixes and Improvements around upserting
+Bug fixes and Improvements around saves and updates
 
 ## \[1.2.9] - 2025-05-12
 
