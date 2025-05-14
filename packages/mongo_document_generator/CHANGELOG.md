@@ -1,3 +1,9 @@
+## \[1.3.3]
+
+### Fixed
+
+Fixed an issue where saveMany saved plain object references
+
 ## \[1.3.2] - 2025-05-13
 
 ### Fixed

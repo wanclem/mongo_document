@@ -71,7 +71,7 @@ class CreateTemplates {
     final List<Map<String, dynamic>> ${classNameVar}sMap = ${classNameVar}s.map((${classNameVar[0]}) {
       final json = ${classNameVar[0]}.toJson()..remove('_id');
       return json.map((key, value) {
-        if (_nestedCollections.containsKey(key) && value is! Map) {
+        if (_nestedCollections.containsKey(key) && value is Map) {
           return MapEntry<String, dynamic>(
             key, value['_id'] as ObjectId?,
           );
