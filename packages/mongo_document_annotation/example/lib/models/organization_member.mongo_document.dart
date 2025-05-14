@@ -176,20 +176,20 @@ extension $OrganizationMemberExtension on OrganizationMember {
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
-    final organizationmemberMap =
+    final organizationMemberMap =
         toJson()
           ..remove('_id')
           ..removeWhere((key, value) => value == null);
-    organizationmemberMap.update(
+    organizationMemberMap.update(
       'created_at',
       (v) => v ?? now,
       ifAbsent: () => now,
     );
-    organizationmemberMap.update('updated_at', (v) => now, ifAbsent: () => now);
+    organizationMemberMap.update('updated_at', (v) => now, ifAbsent: () => now);
 
-    var organizationmember = {...organizationmemberMap};
+    var organizationMember = {...organizationMemberMap};
     final nestedUpdates = <Future>[];
-    for (var entry in organizationmemberMap.entries) {
+    for (var entry in organizationMemberMap.entries) {
       final root = entry.key;
       if (_nestedCollections.containsKey(root)) {
         final collectionName = _nestedCollections[root]!;
@@ -202,9 +202,9 @@ extension $OrganizationMemberExtension on OrganizationMember {
         value.removeWhere((key, value) => value == null);
         final nestedId = value['_id'] as ObjectId?;
         if (nestedId == null) {
-          organizationmember.remove(root);
+          organizationMember.remove(root);
         } else {
-          organizationmember[root] = nestedId;
+          organizationMember[root] = nestedId;
           final nestedMap = value..remove('_id');
           if (nestedMap.isNotEmpty) {
             var mod = modify.set('updated_at', now);
@@ -218,7 +218,7 @@ extension $OrganizationMemberExtension on OrganizationMember {
     }
 
     if (isInsert) {
-      final result = await coll.insertOne(organizationmember);
+      final result = await coll.insertOne(organizationMember);
       if (!result.isSuccess) return null;
       await Future.wait(nestedUpdates);
       final savedDoc = await coll.findOne(where.id(result.id));
@@ -226,7 +226,7 @@ extension $OrganizationMemberExtension on OrganizationMember {
     }
 
     var parentMod = modify.set('updated_at', now);
-    organizationmember.forEach((k, v) => parentMod = parentMod.set(k, v));
+    organizationMember.forEach((k, v) => parentMod = parentMod.set(k, v));
     final res = await coll.updateOne(where.eq(r'_id', id), parentMod);
     if (!res.isSuccess) return null;
     await Future.wait(nestedUpdates);
@@ -246,12 +246,12 @@ extension $OrganizationMemberExtension on OrganizationMember {
 class OrganizationMembers {
   static String get _collection => 'organizationmembers';
   static Future<List<OrganizationMember?>> saveMany(
-    List<OrganizationMember> organizationmembers, {
+    List<OrganizationMember> organizationMembers, {
     Db? db,
   }) async {
-    if (organizationmembers.isEmpty) return <OrganizationMember>[];
-    final List<Map<String, dynamic>> organizationmembersMap =
-        organizationmembers.map((o) {
+    if (organizationMembers.isEmpty) return <OrganizationMember>[];
+    final List<Map<String, dynamic>> organizationMembersMap =
+        organizationMembers.map((o) {
           final json = o.toJson()..remove('_id');
           return json.map((key, value) {
             if (_nestedCollections.containsKey(key) && value is! Map) {
@@ -262,7 +262,7 @@ class OrganizationMembers {
         }).toList();
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
-    final result = await coll.insertMany(organizationmembersMap);
+    final result = await coll.insertMany(organizationMembersMap);
     if (!result.isSuccess || result.ids == null) {
       return [];
     }
@@ -275,17 +275,14 @@ class OrganizationMembers {
   }
 
   static Future<OrganizationMember?> findById(
-    dynamic organizationmemberId, {
+    dynamic id, {
     Db? db,
     List<BaseProjections> projections = const [],
   }) async {
-    if (organizationmemberId == null) return null;
-    if (organizationmemberId is String)
-      organizationmemberId = ObjectId.fromHexString(organizationmemberId);
-    if (organizationmemberId is! ObjectId) {
-      throw ArgumentError(
-        'Invalid organizationmemberId type: ${organizationmemberId.runtimeType}',
-      );
+    if (id == null) return null;
+    if (id is String) id = ObjectId.fromHexString(id);
+    if (id is! ObjectId) {
+      throw ArgumentError('Invalid id type: ${id.runtimeType}');
     }
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
@@ -294,7 +291,7 @@ class OrganizationMembers {
       final pipeline = <Map<String, Object>>[];
       final projDoc = <String, int>{};
       pipeline.add({
-        r"$match": {'_id': organizationmemberId},
+        r"$match": {'_id': id},
       });
       final selected = <String, int>{};
       for (var p in projections) {
@@ -338,19 +335,17 @@ class OrganizationMembers {
       }
       pipeline.add({r'$project': projDoc});
 
-      final organizationmembers =
+      final organizationMembers =
           await coll.aggregateToStream(pipeline).toList();
-      if (organizationmembers.isEmpty) return null;
-      return OrganizationMember.fromJson(organizationmembers.first.withRefs());
+      if (organizationMembers.isEmpty) return null;
+      return OrganizationMember.fromJson(organizationMembers.first.withRefs());
     }
 
-    // fallback: return entire organizationmember
-    final organizationmember = await coll.findOne(
-      where.eq(r'_id', organizationmemberId),
-    );
-    return organizationmember == null
+    // fallback: return entire organizationMember
+    final organizationMember = await coll.findOne(where.eq(r'_id', id));
+    return organizationMember == null
         ? null
-        : OrganizationMember.fromJson(organizationmember.withRefs());
+        : OrganizationMember.fromJson(organizationMember.withRefs());
   }
 
   /// Type-safe findOne by predicate
@@ -363,11 +358,11 @@ class OrganizationMembers {
     final coll = await database.collection(_collection);
 
     if (predicate == null) {
-      final organizationmember = await coll.modernFindOne(
+      final organizationMember = await coll.modernFindOne(
         sort: {'created_at': -1},
       );
-      if (organizationmember == null) return null;
-      return OrganizationMember.fromJson(organizationmember.withRefs());
+      if (organizationMember == null) return null;
+      return OrganizationMember.fromJson(organizationMember.withRefs());
     }
     final selectorBuilder =
         predicate(QOrganizationMember()).toSelectorBuilder();
@@ -382,17 +377,17 @@ class OrganizationMembers {
       cleaned: selectorMap.cleaned(),
     );
 
-    if (foundLookups || projDoc != null) {
+    if (foundLookups) {
       final results = await coll.aggregateToStream(pipeline).toList();
       if (results.isEmpty) return null;
       return OrganizationMember.fromJson(results.first.withRefs());
     }
 
     // fallback to simple findOne
-    final organizationmemberResult = await coll.findOne(selectorMap.cleaned());
-    return organizationmemberResult == null
+    final organizationMemberResult = await coll.findOne(selectorMap.cleaned());
+    return organizationMemberResult == null
         ? null
-        : OrganizationMember.fromJson(organizationmemberResult);
+        : OrganizationMember.fromJson(organizationMemberResult.withRefs());
   }
 
   /// Type-safe findOne by named arguments
@@ -421,11 +416,11 @@ class OrganizationMembers {
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
-      final organizationmember = await coll.modernFindOne(
+      final organizationMember = await coll.modernFindOne(
         sort: {'created_at': -1},
       );
-      if (organizationmember == null) return null;
-      return OrganizationMember.fromJson(organizationmember.withRefs());
+      if (organizationMember == null) return null;
+      return OrganizationMember.fromJson(organizationMember.withRefs());
     }
     if (projections.isNotEmpty) {
       final pipeline = <Map<String, Object>>[];
@@ -473,15 +468,15 @@ class OrganizationMembers {
       }
       pipeline.add({r'$project': projDoc});
 
-      final organizationmembers =
+      final organizationMembers =
           await coll.aggregateToStream(pipeline).toList();
-      if (organizationmembers.isEmpty) return null;
-      return OrganizationMember.fromJson(organizationmembers.first.withRefs());
+      if (organizationMembers.isEmpty) return null;
+      return OrganizationMember.fromJson(organizationMembers.first.withRefs());
     }
-    final organizationmemberResult = await coll.findOne(selector);
-    return organizationmemberResult == null
+    final organizationMemberResult = await coll.findOne(selector);
+    return organizationMemberResult == null
         ? null
-        : OrganizationMember.fromJson(organizationmemberResult.withRefs());
+        : OrganizationMember.fromJson(organizationMemberResult.withRefs());
   }
 
   /// Type-safe findMany by predicate
@@ -509,17 +504,17 @@ class OrganizationMembers {
       cleaned: selectorMap.cleaned(),
     );
 
-    if (foundLookups || projDoc != null) {
-      final organizationmembers =
+    if (foundLookups) {
+      final organizationMembers =
           await coll.aggregateToStream(pipeline).toList();
-      if (organizationmembers.isEmpty) return [];
-      return organizationmembers
+      if (organizationMembers.isEmpty) return [];
+      return organizationMembers
           .map((d) => OrganizationMember.fromJson(d.withRefs()))
           .toList();
     }
 
-    final organizationmembers = await coll.find(selectorMap.cleaned()).toList();
-    return organizationmembers
+    final organizationMembers = await coll.find(selectorMap.cleaned()).toList();
+    return organizationMembers
         .map((e) => OrganizationMember.fromJson(e.withRefs()))
         .toList();
   }
@@ -553,12 +548,12 @@ class OrganizationMembers {
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
-      final organizationmembers =
+      final organizationMembers =
           await coll
               .modernFind(sort: {'created_at': -1}, limit: limit, skip: skip)
               .toList();
-      if (organizationmembers.isEmpty) return [];
-      return organizationmembers
+      if (organizationMembers.isEmpty) return [];
+      return organizationMembers
           .map((e) => OrganizationMember.fromJson(e.withRefs()))
           .toList();
     }
@@ -608,18 +603,18 @@ class OrganizationMembers {
       }
       pipeline.add({r'$project': projDoc});
 
-      final organizationmembers =
+      final organizationMembers =
           await coll.aggregateToStream(pipeline).toList();
-      if (organizationmembers.isEmpty) return [];
-      return organizationmembers
+      if (organizationMembers.isEmpty) return [];
+      return organizationMembers
           .map((d) => OrganizationMember.fromJson(d.withRefs()))
           .toList();
     }
-    final organizationmembers =
+    final organizationMembers =
         await coll
             .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
             .toList();
-    return organizationmembers
+    return organizationMembers
         .map((e) => OrganizationMember.fromJson(e.withRefs()))
         .toList();
   }

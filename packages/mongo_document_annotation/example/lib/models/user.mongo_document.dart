@@ -175,14 +175,14 @@ class Users {
   }
 
   static Future<User?> findById(
-    dynamic userId, {
+    dynamic id, {
     Db? db,
     List<BaseProjections> projections = const [],
   }) async {
-    if (userId == null) return null;
-    if (userId is String) userId = ObjectId.fromHexString(userId);
-    if (userId is! ObjectId) {
-      throw ArgumentError('Invalid userId type: ${userId.runtimeType}');
+    if (id == null) return null;
+    if (id is String) id = ObjectId.fromHexString(id);
+    if (id is! ObjectId) {
+      throw ArgumentError('Invalid id type: ${id.runtimeType}');
     }
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
@@ -191,7 +191,7 @@ class Users {
       final pipeline = <Map<String, Object>>[];
       final projDoc = <String, int>{};
       pipeline.add({
-        r"$match": {'_id': userId},
+        r"$match": {'_id': id},
       });
       final selected = <String, int>{};
       for (var p in projections) {
@@ -241,7 +241,7 @@ class Users {
     }
 
     // fallback: return entire user
-    final user = await coll.findOne(where.eq(r'_id', userId));
+    final user = await coll.findOne(where.eq(r'_id', id));
     return user == null ? null : User.fromJson(user.withRefs());
   }
 
@@ -271,7 +271,7 @@ class Users {
       cleaned: selectorMap.cleaned(),
     );
 
-    if (foundLookups || projDoc != null) {
+    if (foundLookups) {
       final results = await coll.aggregateToStream(pipeline).toList();
       if (results.isEmpty) return null;
       return User.fromJson(results.first.withRefs());
@@ -279,7 +279,7 @@ class Users {
 
     // fallback to simple findOne
     final userResult = await coll.findOne(selectorMap.cleaned());
-    return userResult == null ? null : User.fromJson(userResult);
+    return userResult == null ? null : User.fromJson(userResult.withRefs());
   }
 
   /// Type-safe findOne by named arguments
@@ -389,7 +389,7 @@ class Users {
       cleaned: selectorMap.cleaned(),
     );
 
-    if (foundLookups || projDoc != null) {
+    if (foundLookups) {
       final users = await coll.aggregateToStream(pipeline).toList();
       if (users.isEmpty) return [];
       return users.map((d) => User.fromJson(d.withRefs())).toList();

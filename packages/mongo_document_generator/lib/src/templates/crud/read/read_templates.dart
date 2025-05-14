@@ -1,28 +1,29 @@
 import 'package:analyzer/dart/element/element.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mongo_document/src/templates/parameter_template.dart';
+import 'package:recase/recase.dart';
 import 'package:source_gen/source_gen.dart';
 
 class ReadTemplates {
   static String findById(String className) {
-    String classNameVar = className.toLowerCase();
+    String classNameVar = ReCase(className).camelCase;
     return '''
   static Future<$className?> findById(
-    dynamic ${classNameVar}Id, {
+    dynamic id, {
     Db? db,
     List<BaseProjections> projections=const [],
   }) async {
-    if (${classNameVar}Id == null) return null;
-    if (${classNameVar}Id is String) ${classNameVar}Id = ObjectId.fromHexString(${classNameVar}Id);
-    if (${classNameVar}Id is! ObjectId) {
-      throw ArgumentError('Invalid ${classNameVar}Id type: \${${classNameVar}Id.runtimeType}');
+    if (id == null) return null;
+    if (id is String) id = ObjectId.fromHexString(id);
+    if (id is! ObjectId) {
+      throw ArgumentError('Invalid id type: \${id.runtimeType}');
     }
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
 
     if (projections.isNotEmpty) {
        ${buildAggregationPipeline('''{
-          r"\$match": {'_id': ${classNameVar}Id}
+          r"\$match": {'_id': id}
         }''')}
       final ${classNameVar}s = await coll.aggregateToStream(pipeline).toList();
       if (${classNameVar}s.isEmpty) return null;
@@ -30,7 +31,7 @@ class ReadTemplates {
     }
 
     // fallback: return entire $classNameVar
-    final $classNameVar = await coll.findOne(where.eq(r'_id', ${classNameVar}Id));
+    final $classNameVar = await coll.findOne(where.eq(r'_id', id));
     return $classNameVar == null ? null : $className.fromJson($classNameVar.withRefs());
   }
 
@@ -38,7 +39,7 @@ class ReadTemplates {
   }
 
   static String findOne(String className) {
-    String classNameVar = className.toLowerCase();
+    String classNameVar = ReCase(className).camelCase;
     return '''
 /// Type-safe findOne by predicate
   static Future<$className?> findOne(
@@ -65,7 +66,7 @@ class ReadTemplates {
       cleaned: selectorMap.cleaned(),
     );
 
-    if (foundLookups || projDoc != null) {
+    if (foundLookups) {
       final results = await coll.aggregateToStream(pipeline).toList();
       if (results.isEmpty) return null;
       return $className.fromJson(results.first.withRefs());
@@ -73,7 +74,7 @@ class ReadTemplates {
 
     // fallback to simple findOne
     final ${classNameVar}Result = await coll.findOne(selectorMap.cleaned());
-    return ${classNameVar}Result == null ? null : $className.fromJson(${classNameVar}Result);
+    return ${classNameVar}Result == null ? null : $className.fromJson(${classNameVar}Result.withRefs());
   }
 ''';
   }
@@ -85,7 +86,7 @@ class ReadTemplates {
     String className,
     Map<String, dynamic> nestedCollectionMap,
   ) {
-    String classNameVar = className.toLowerCase();
+    String classNameVar = ReCase(className).camelCase;
     return '''
 /// Type-safe findOne by named arguments
   static Future<$className?> findOneByNamed({${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db,List<BaseProjections> projections=const [],})async{
@@ -119,7 +120,7 @@ class ReadTemplates {
   }
 
   static String findMany(String className) {
-    String classNameVar = className.toLowerCase();
+    String classNameVar = ReCase(className).camelCase;
     return '''
   /// Type-safe findMany by predicate
   static Future<List<$className>> findMany(
@@ -145,7 +146,7 @@ class ReadTemplates {
       cleaned: selectorMap.cleaned(),
     );
 
-    if (foundLookups || projDoc != null) {
+    if (foundLookups) {
       final ${classNameVar}s = await coll.aggregateToStream(pipeline).toList();
       if (${classNameVar}s.isEmpty) return [];
       return ${classNameVar}s.map((d)=>$className.fromJson(d.withRefs())).toList();
@@ -164,7 +165,7 @@ class ReadTemplates {
     String className,
     Map<String, dynamic> nestedCollectionMap,
   ) {
-    String classNameVar = className.toLowerCase();
+    String classNameVar = ReCase(className).camelCase;
     return '''
 /// Type-safe findMany by named arguments
   static Future<List<$className>> findManyByNamed({${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db,List<BaseProjections> projections=const [],Map<String,Object>sort=const{},int? skip,int limit=10,})async{

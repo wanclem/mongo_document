@@ -23,7 +23,7 @@
     }
   }
 
-  final stages = <Map<String, Object>>[];
+  var stages = <Map<String, Object>>[];
   stages.add({r'$match': cleaned});
 
   for (final prefix in prefixes) {
@@ -37,25 +37,54 @@
       },
     });
     stages.add({
-      r'$unwind': {
-        'path': '\$$prefix',
-        'preserveNullAndEmptyArrays': true,
-      },
+      r'$unwind': {'path': '\$$prefix', 'preserveNullAndEmptyArrays': true},
     });
   }
-
   if (projections != null && projections.isNotEmpty) {
-    stages.add({r'$project': projections});
+    final projectionKeys = projections.keys;
+    final refined = <Map<String, Object>>[...stages];
+    for (final stage in stages) {
+      if (stage.containsKey(r'$lookup')) {
+        final asField = (stage[r'$lookup'] as Map)['as'] as String;
+        final hasMatch = projectionKeys.any((k) => k.startsWith('$asField.'));
+        if (!hasMatch) {
+          refined.remove(stage);
+          continue;
+        }
+      }
+      if (stage.containsKey(r'$unwind')) {
+        final path = (stage[r'$unwind'] as Map)['path'] as String;
+        final prefix = path.startsWith(r'$') ? path.substring(1) : path;
+        final hasMatch = projectionKeys.any((k) => k.startsWith('$prefix.'));
+        if (!hasMatch) {
+          refined.remove(stage);
+          continue;
+        }
+      }
+    }
+    stages = refined;
+    final includeProj = <String, Object>{};
+    final excludes = <String>[];
+    projections.forEach((key, value) {
+      if (value == 0 || value == false) {
+        excludes.add(key);
+      } else {
+        includeProj[key] = value;
+      }
+    });
+    if (includeProj.isNotEmpty) {
+      stages.add({r'$project': includeProj});
+    }
+    if (excludes.isNotEmpty) {
+      stages.add({r'$unset': excludes.length == 1 ? excludes.first : excludes});
+    }
+  } else {
+    lookupsCreated = false;
   }
-
   return (lookupsCreated, stages);
 }
 
-void scan(
-  Map<String, String> lookupRef,
-  Set<String> prefixes,
-  dynamic node,
-) {
+void scan(Map<String, String> lookupRef, Set<String> prefixes, dynamic node) {
   if (node is Map<String, dynamic>) {
     for (final entry in node.entries) {
       final key = entry.key;

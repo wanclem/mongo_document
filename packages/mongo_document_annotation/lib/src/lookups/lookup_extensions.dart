@@ -1,8 +1,6 @@
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 
-Map<String, dynamic> buildProjectionDoc(
-  List<BaseProjections> projections,
-) {
+Map<String, dynamic> buildProjectionDoc(List<BaseProjections> projections) {
   final proj = <String, int>{};
   for (var p in projections) {
     final inc = p.inclusions ?? <Object>[];
@@ -15,9 +13,10 @@ Map<String, dynamic> buildProjectionDoc(
       }
     }
     if (exc.isNotEmpty) {
-      for (var f in exc) {
-        final key = p.fieldMappings[(f as Enum).name]!;
-        proj[key] = 0;
+      final toExclude =
+          exc.map((f) => p.fieldMappings[(f as Enum).name]!).toSet();
+      for (var key in all.keys) {
+        proj[key] = toExclude.contains(key) ? 0 : 1;
       }
     }
     if (inc.isEmpty && exc.isEmpty) {

@@ -227,17 +227,14 @@ class Organizations {
   }
 
   static Future<Organization?> findById(
-    dynamic organizationId, {
+    dynamic id, {
     Db? db,
     List<BaseProjections> projections = const [],
   }) async {
-    if (organizationId == null) return null;
-    if (organizationId is String)
-      organizationId = ObjectId.fromHexString(organizationId);
-    if (organizationId is! ObjectId) {
-      throw ArgumentError(
-        'Invalid organizationId type: ${organizationId.runtimeType}',
-      );
+    if (id == null) return null;
+    if (id is String) id = ObjectId.fromHexString(id);
+    if (id is! ObjectId) {
+      throw ArgumentError('Invalid id type: ${id.runtimeType}');
     }
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
@@ -246,7 +243,7 @@ class Organizations {
       final pipeline = <Map<String, Object>>[];
       final projDoc = <String, int>{};
       pipeline.add({
-        r"$match": {'_id': organizationId},
+        r"$match": {'_id': id},
       });
       final selected = <String, int>{};
       for (var p in projections) {
@@ -296,7 +293,7 @@ class Organizations {
     }
 
     // fallback: return entire organization
-    final organization = await coll.findOne(where.eq(r'_id', organizationId));
+    final organization = await coll.findOne(where.eq(r'_id', id));
     return organization == null
         ? null
         : Organization.fromJson(organization.withRefs());
@@ -328,7 +325,7 @@ class Organizations {
       cleaned: selectorMap.cleaned(),
     );
 
-    if (foundLookups || projDoc != null) {
+    if (foundLookups) {
       final results = await coll.aggregateToStream(pipeline).toList();
       if (results.isEmpty) return null;
       return Organization.fromJson(results.first.withRefs());
@@ -338,7 +335,7 @@ class Organizations {
     final organizationResult = await coll.findOne(selectorMap.cleaned());
     return organizationResult == null
         ? null
-        : Organization.fromJson(organizationResult);
+        : Organization.fromJson(organizationResult.withRefs());
   }
 
   /// Type-safe findOne by named arguments
@@ -454,7 +451,7 @@ class Organizations {
       cleaned: selectorMap.cleaned(),
     );
 
-    if (foundLookups || projDoc != null) {
+    if (foundLookups) {
       final organizations = await coll.aggregateToStream(pipeline).toList();
       if (organizations.isEmpty) return [];
       return organizations

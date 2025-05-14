@@ -1,6 +1,8 @@
+import 'package:recase/recase.dart';
+
 class CreateTemplates {
   static save(String className) {
-    String classNameVar = className.toLowerCase();
+    String classNameVar = ReCase(className).camelCase;
     return '''
   Future<$className?> save({Db? db}) async {
     final database = db ?? await MongoDbConnection.instance;
@@ -60,7 +62,7 @@ class CreateTemplates {
   }
 
   static saveMany(String className) {
-    String classNameVar = className.toLowerCase();
+    String classNameVar = ReCase(className).camelCase;
     return '''
   static Future<List<$className?>> saveMany(
     List<$className> ${classNameVar}s,{Db? db}

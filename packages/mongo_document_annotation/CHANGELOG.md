@@ -1,3 +1,9 @@
+## \[1.3.2] - 2025-05-13
+
+### Fixed
+
+Aggregation Pipelines shouldn't lookup collections that aren't projected
+
 ## \[1.3.1] - 2025-05-13
 
 ### Added

@@ -205,14 +205,14 @@ class Posts {
   }
 
   static Future<Post?> findById(
-    dynamic postId, {
+    dynamic id, {
     Db? db,
     List<BaseProjections> projections = const [],
   }) async {
-    if (postId == null) return null;
-    if (postId is String) postId = ObjectId.fromHexString(postId);
-    if (postId is! ObjectId) {
-      throw ArgumentError('Invalid postId type: ${postId.runtimeType}');
+    if (id == null) return null;
+    if (id is String) id = ObjectId.fromHexString(id);
+    if (id is! ObjectId) {
+      throw ArgumentError('Invalid id type: ${id.runtimeType}');
     }
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
@@ -221,7 +221,7 @@ class Posts {
       final pipeline = <Map<String, Object>>[];
       final projDoc = <String, int>{};
       pipeline.add({
-        r"$match": {'_id': postId},
+        r"$match": {'_id': id},
       });
       final selected = <String, int>{};
       for (var p in projections) {
@@ -271,7 +271,7 @@ class Posts {
     }
 
     // fallback: return entire post
-    final post = await coll.findOne(where.eq(r'_id', postId));
+    final post = await coll.findOne(where.eq(r'_id', id));
     return post == null ? null : Post.fromJson(post.withRefs());
   }
 
@@ -301,7 +301,7 @@ class Posts {
       cleaned: selectorMap.cleaned(),
     );
 
-    if (foundLookups || projDoc != null) {
+    if (foundLookups) {
       final results = await coll.aggregateToStream(pipeline).toList();
       if (results.isEmpty) return null;
       return Post.fromJson(results.first.withRefs());
@@ -309,7 +309,7 @@ class Posts {
 
     // fallback to simple findOne
     final postResult = await coll.findOne(selectorMap.cleaned());
-    return postResult == null ? null : Post.fromJson(postResult);
+    return postResult == null ? null : Post.fromJson(postResult.withRefs());
   }
 
   /// Type-safe findOne by named arguments
@@ -419,7 +419,7 @@ class Posts {
       cleaned: selectorMap.cleaned(),
     );
 
-    if (foundLookups || projDoc != null) {
+    if (foundLookups) {
       final posts = await coll.aggregateToStream(pipeline).toList();
       if (posts.isEmpty) return [];
       return posts.map((d) => Post.fromJson(d.withRefs())).toList();

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:example/models/organization.dart';
 import 'package:example/models/user.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
