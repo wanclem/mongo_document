@@ -12,6 +12,15 @@
       <excludeFolder url="file://$MODULE_DIR$/packages/mongo_document_generator/.dart_tool" />
       <excludeFolder url="file://$MODULE_DIR$/packages/mongo_document_generator/.pub" />
       <excludeFolder url="file://$MODULE_DIR$/packages/mongo_document_generator/build" />
+      <excludeFolder url="file://$MODULE_DIR$/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/build" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/mongo_document_annotation/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/mongo_document_annotation/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/mongo_document_annotation/build" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/mongo_document_annotation/example/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/mongo_document_annotation/example/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/mongo_document_annotation/example/build" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

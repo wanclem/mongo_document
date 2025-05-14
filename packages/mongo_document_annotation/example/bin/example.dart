@@ -1,15 +1,11 @@
 import 'package:example/env/dump.dart';
-import 'package:example/models/organization.dart';
-import 'package:example/models/organization_member.dart';
-import 'package:example/models/post.dart';
-import 'package:example/models/user.dart';
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 
 Future<void> main() async {
   Environment env = Environment();
   String mongoUri = env.get('MONGO_URI') ?? "";
   await MongoDbConnection.initialize(mongoUri);
-  //Creat a new user
+  //Create a new user
   // User? newUser = await User(firstName: "Wan", lastName: "Clem").save();
   // print("User Created: ${newUser}");
   //Find a user by id
