@@ -40,13 +40,13 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
       }
     }).join('\n    ')}
     });
-    final expr = predicate(Q$className());
-    final selector = expr.toSelectorBuilder();
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
-    final result = await coll.updateOne(selector.map.cleaned(), modifier);
+    final retrieved = await findOne(predicate);
+    if (retrieved == null) return null;
+    final result = await coll.updateOne(where.id(retrieved.id!), modifier);
     if (!result.isSuccess) return null;
-    final updatedDoc = await coll.findOne({'_id': result.id});
+    final updatedDoc = await coll.findOne({'_id': retrieved.id});
     if (updatedDoc == null) return null;
     return $className.fromJson(updatedDoc.withRefs());
   }
@@ -79,17 +79,17 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
       }
     }).join('\n    ')}
     });
-    final expr = predicate(Q$className());
-    final selector = expr.toSelectorBuilder();
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
-    final result = await coll.updateMany(selector.map.cleaned(), modifier);
+    final retrieved = await findMany(predicate);
+    if (retrieved.isEmpty) return [];
+    final ids = retrieved.map((doc) => doc.id).toList();
+    final result = await coll.updateMany(where.oneFrom('_id', ids), modifier);
     if (!result.isSuccess) return [];
-    final updatedDocs = await coll.find({'_id': result.id}).toList();
+    final updatedCursor = coll.find(where.oneFrom('_id', ids));
+    final updatedDocs = await updatedCursor.toList();
     if (updatedDocs.isEmpty) return [];
-    return updatedDocs
-        .map((doc) => $className.fromJson(doc.withRefs()))
-        .toList();
+    return updatedDocs.map((doc) => $className.fromJson(doc.withRefs())).toList();
   }
 ''';
   }
@@ -103,9 +103,10 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
     Map<String, dynamic> updateMap,
     {Db?db}
   ) async {
+    final mod = _buildModifier(updateMap);
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
-    final result = await coll.updateOne({'_id':id},{'\\\$set':updateMap});
+    final result = await coll.updateOne(where.id(id),mod);
     if(!result.isSuccess) return null;
     final updatedDoc = await coll.findOne({
       '_id': id

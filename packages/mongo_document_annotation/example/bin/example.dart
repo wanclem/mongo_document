@@ -6,31 +6,14 @@ Future<void> main() async {
   String mongoUri = env.get('MONGO_URI') ?? "";
   await MongoDbConnection.initialize(mongoUri);
   //Create a new user
-  // User? newUser = await User(firstName: "Wan", lastName: "Clem").save();
-  // print("User Created: ${newUser}");
-  //Find a user by id
-  // User? user = await Users.findById(newUser?.id);
-  //Print the user
-  // print("User Found: ${user?.toJson()}");
-  //Update the user
-  // newUser = await newUser?.copyWith(firstName: "John").save();
-  //Print the user
-  // print("User Updated: ${newUser?.toJson()}");
-  //DSL find One
-  // user = await Users.findOne((p) => p.firstName.eq("John"));
-  //Print the user
-  // print("User Found: ${user?.toJson()}");
-  // List<OrganizationMember> organizationMembers =
-  //     await OrganizationMembers.findMany(
-  //       (om) =>
-  //           om.user.id.eq(ObjectId.fromHexString("67ad0176bb3688f5ae000000")),
-  //       projections: [
-  //         OrganizationMemberProjections(),
-  //         OrganizationMemberUserProjections(
-  //           inclusions: [OrganizationMemberUserFields.password],
-  //         ),
-  //         OrganizationMemberOrganizationProjections(),
-  //       ],
-  //     );
-  // print(organizationMembers.map((om) => om.toJson()).toList().join("\n"));
+  // User? newUser = await User(firstName: "John", lastName: "Doe").save();
+  // print("User Created: $newUser");
+  // //Create a new post
+  // Post? post =
+  //     await Post(
+  //       author: newUser,
+  //       body: "Setting up my post",
+  //       tags: ['setup', 'init'],
+  //     ).save();
+  // print("Post Created: $post");
 }

@@ -16,7 +16,12 @@ class ObjectIdConverter implements JsonConverter<ObjectId?, dynamic> {
       return json;
     }
     if (json is Map<String, dynamic>) {
-      return ObjectId.fromHexString(json['_id'] ?? json['id']);
+      if (json['_id'] is String) {
+        return ObjectId.fromHexString(json['_id']);
+      }
+      if (json['_id'] is ObjectId) {
+        return json['_id'];
+      }
     }
     throw ArgumentError('Invalid ObjectId format: $json');
   }

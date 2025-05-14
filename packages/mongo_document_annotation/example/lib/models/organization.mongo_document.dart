@@ -206,7 +206,7 @@ class Organizations {
         organizations.map((o) {
           final json = o.toJson()..remove('_id');
           return json.map((key, value) {
-            if (_nestedCollections.containsKey(key) && value is! Map) {
+            if (_nestedCollections.containsKey(key) && value is Map) {
               return MapEntry<String, dynamic>(key, value['_id'] as ObjectId?);
             }
             return MapEntry<String, dynamic>(key, value);
@@ -676,13 +676,13 @@ class Organizations {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
-    final expr = predicate(QOrganization());
-    final selector = expr.toSelectorBuilder();
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
-    final result = await coll.updateOne(selector.map.cleaned(), modifier);
+    final retrieved = await findOne(predicate);
+    if (retrieved == null) return null;
+    final result = await coll.updateOne(where.id(retrieved.id!), modifier);
     if (!result.isSuccess) return null;
-    final updatedDoc = await coll.findOne({'_id': result.id});
+    final updatedDoc = await coll.findOne({'_id': retrieved.id});
     if (updatedDoc == null) return null;
     return Organization.fromJson(updatedDoc.withRefs());
   }
@@ -712,13 +712,15 @@ class Organizations {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
-    final expr = predicate(QOrganization());
-    final selector = expr.toSelectorBuilder();
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
-    final result = await coll.updateMany(selector.map.cleaned(), modifier);
+    final retrieved = await findMany(predicate);
+    if (retrieved.isEmpty) return [];
+    final ids = retrieved.map((doc) => doc.id).toList();
+    final result = await coll.updateMany(where.oneFrom('_id', ids), modifier);
     if (!result.isSuccess) return [];
-    final updatedDocs = await coll.find({'_id': result.id}).toList();
+    final updatedCursor = coll.find(where.oneFrom('_id', ids));
+    final updatedDocs = await updatedCursor.toList();
     if (updatedDocs.isEmpty) return [];
     return updatedDocs
         .map((doc) => Organization.fromJson(doc.withRefs()))
@@ -739,9 +741,10 @@ class Organizations {
     Map<String, dynamic> updateMap, {
     Db? db,
   }) async {
+    final mod = _buildModifier(updateMap);
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
-    final result = await coll.updateOne({'_id': id}, {'\$set': updateMap});
+    final result = await coll.updateOne(where.id(id), mod);
     if (!result.isSuccess) return null;
     final updatedDoc = await coll.findOne({'_id': id});
     return updatedDoc == null

@@ -4,8 +4,11 @@ import 'dart:math';
 import 'package:example/models/user.dart';
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+
 part 'post.freezed.dart';
+
 part 'post.g.dart';
+
 part 'post.mongo_document.dart';
 
 @MongoDocument(collection: 'posts')
@@ -16,7 +19,7 @@ abstract class Post with _$Post {
     @ObjectIdConverter() @JsonKey(name: '_id') ObjectId? id,
     String? body,
     @JsonKey(name: 'post_note') String? postNote,
-    @JsonKey(name: "author_id") User? author,
+    @ObjectIdConverter() ObjectId? author,
     @Default(<String>[]) List<String> tags,
     @DateTimeConverter() DateTime? createdAt,
     @DateTimeConverter() DateTime? updatedAt,

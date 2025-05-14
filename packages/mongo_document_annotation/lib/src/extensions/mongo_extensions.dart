@@ -59,14 +59,15 @@ extension QueryExtensions on Map<String, dynamic> {
       } else if (value is Map<String, dynamic>) {
         result[key] = value.withRefs();
       } else if (value is List) {
-        result[key] = value.map((item) {
-          if (item is ObjectId) {
-            return {'_id': item};
-          } else if (item is Map<String, dynamic>) {
-            return item.withRefs();
-          }
-          return item;
-        }).toList();
+        result[key] =
+            value.map((item) {
+              if (item is ObjectId) {
+                return {'_id': item};
+              } else if (item is Map<String, dynamic>) {
+                return item.withRefs();
+              }
+              return item;
+            }).toList();
       } else {
         if (value is String) {
           bool mongoId = isValidMongoHex(value);

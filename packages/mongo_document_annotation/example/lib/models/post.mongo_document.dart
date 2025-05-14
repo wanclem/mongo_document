@@ -11,7 +11,7 @@ part of 'post.dart';
 // MongoDocumentGenerator
 // **************************************************************************
 
-enum PostFields { id, body, postNote, tags, createdAt, updatedAt }
+enum PostFields { id, body, postNote, author, tags, createdAt, updatedAt }
 
 class PostProjections implements BaseProjections {
   @override
@@ -22,6 +22,7 @@ class PostProjections implements BaseProjections {
     "id": "_id",
     "body": "body",
     "postNote": "post_note",
+    "author": "author",
     "tags": "tags",
     "createdAt": "created_at",
     "updatedAt": "updated_at",
@@ -34,6 +35,7 @@ class PostProjections implements BaseProjections {
       '_id': 1,
       'body': 1,
       'post_note': 1,
+      'author': 1,
       'tags': 1,
       'created_at': 1,
       'updated_at': 1,
@@ -41,47 +43,7 @@ class PostProjections implements BaseProjections {
   }
 }
 
-const _nestedCollections = <String, String>{'author_id': 'accounts'};
-
-enum PostAuthorFields {
-  id,
-  firstName,
-  lastName,
-  email,
-  password,
-  createdAt,
-  updatedAt,
-}
-
-class PostAuthorProjections implements BaseProjections {
-  @override
-  final List<PostAuthorFields>? inclusions;
-  final List<PostAuthorFields>? exclusions;
-  @override
-  final Map<String, dynamic> fieldMappings = const {
-    "id": "author_id._id",
-    "firstName": "author_id.first_name",
-    "lastName": "author_id.last_name",
-    "email": "author_id.email",
-    "password": "author_id.password",
-    "createdAt": "author_id.created_at",
-    "updatedAt": "author_id.updated_at",
-  };
-  const PostAuthorProjections({this.inclusions, this.exclusions});
-
-  @override
-  Map<String, int> toProjection() {
-    return {
-      'author_id._id': 1,
-      'author_id.first_name': 1,
-      'author_id.last_name': 1,
-      'author_id.email': 1,
-      'author_id.password': 1,
-      'author_id.created_at': 1,
-      'author_id.updated_at': 1,
-    };
-  }
-}
+const _nestedCollections = <String, String>{};
 
 class QPost {
   final String _prefix;
@@ -95,7 +57,7 @@ class QPost {
 
   QueryField<String?> get postNote => QueryField<String?>(_key('post_note'));
 
-  QUser get author => QUser(_key('author_id'));
+  QueryField<ObjectId?> get author => QueryField<ObjectId?>(_key('author'));
 
   QList<String> get tags => QList<String>(_key('tags'));
 
@@ -186,7 +148,7 @@ class Posts {
         posts.map((p) {
           final json = p.toJson()..remove('_id');
           return json.map((key, value) {
-            if (_nestedCollections.containsKey(key) && value is! Map) {
+            if (_nestedCollections.containsKey(key) && value is Map) {
               return MapEntry<String, dynamic>(key, value['_id'] as ObjectId?);
             }
             return MapEntry<String, dynamic>(key, value);
@@ -317,7 +279,7 @@ class Posts {
     ObjectId? id,
     String? body,
     String? postNote,
-    User? author,
+    ObjectId? author,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -331,7 +293,7 @@ class Posts {
     if (id != null) selector['_id'] = id;
     if (body != null) selector['body'] = body;
     if (postNote != null) selector['post_note'] = postNote;
-    if (author != null) selector['author_id'] = author.id;
+    if (author != null) selector['author'] = author;
     if (tags != null) selector['tags'] = tags;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
@@ -434,7 +396,7 @@ class Posts {
     ObjectId? id,
     String? body,
     String? postNote,
-    User? author,
+    ObjectId? author,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -451,7 +413,7 @@ class Posts {
     if (id != null) selector['_id'] = id;
     if (body != null) selector['body'] = body;
     if (postNote != null) selector['post_note'] = postNote;
-    if (author != null) selector['author_id'] = author.id;
+    if (author != null) selector['author'] = author;
     if (tags != null) selector['tags'] = tags;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
@@ -537,7 +499,7 @@ class Posts {
     ObjectId? id,
     String? body,
     String? postNote,
-    User? author,
+    ObjectId? author,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -547,7 +509,7 @@ class Posts {
     if (id != null) selector['_id'] = id;
     if (body != null) selector['body'] = body;
     if (postNote != null) selector['post_note'] = postNote;
-    if (author != null) selector['author_id'] = author.id;
+    if (author != null) selector['author'] = author;
     if (tags != null) selector['tags'] = tags;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
@@ -576,7 +538,7 @@ class Posts {
     ObjectId? id,
     String? body,
     String? postNote,
-    User? author,
+    ObjectId? author,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -586,7 +548,7 @@ class Posts {
     if (id != null) selector['_id'] = id;
     if (body != null) selector['body'] = body;
     if (postNote != null) selector['post_note'] = postNote;
-    if (author != null) selector['author_id'] = author.id;
+    if (author != null) selector['author'] = author;
     if (tags != null) selector['tags'] = tags;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
@@ -603,7 +565,7 @@ class Posts {
     ObjectId? id,
     String? body,
     String? postNote,
-    User? author,
+    ObjectId? author,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -613,18 +575,18 @@ class Posts {
       if (id != null) '_id': id,
       if (body != null) 'body': body,
       if (postNote != null) 'post_note': postNote,
-      if (author != null) 'author_id': author.id,
+      if (author != null) 'author': author,
       if (tags != null) 'tags': tags,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
-    final expr = predicate(QPost());
-    final selector = expr.toSelectorBuilder();
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
-    final result = await coll.updateOne(selector.map.cleaned(), modifier);
+    final retrieved = await findOne(predicate);
+    if (retrieved == null) return null;
+    final result = await coll.updateOne(where.id(retrieved.id!), modifier);
     if (!result.isSuccess) return null;
-    final updatedDoc = await coll.findOne({'_id': result.id});
+    final updatedDoc = await coll.findOne({'_id': retrieved.id});
     if (updatedDoc == null) return null;
     return Post.fromJson(updatedDoc.withRefs());
   }
@@ -635,7 +597,7 @@ class Posts {
     ObjectId? id,
     String? body,
     String? postNote,
-    User? author,
+    ObjectId? author,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -645,18 +607,20 @@ class Posts {
       if (id != null) '_id': id,
       if (body != null) 'body': body,
       if (postNote != null) 'post_note': postNote,
-      if (author != null) 'author_id': author.id,
+      if (author != null) 'author': author,
       if (tags != null) 'tags': tags,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
-    final expr = predicate(QPost());
-    final selector = expr.toSelectorBuilder();
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
-    final result = await coll.updateMany(selector.map.cleaned(), modifier);
+    final retrieved = await findMany(predicate);
+    if (retrieved.isEmpty) return [];
+    final ids = retrieved.map((doc) => doc.id).toList();
+    final result = await coll.updateMany(where.oneFrom('_id', ids), modifier);
     if (!result.isSuccess) return [];
-    final updatedDocs = await coll.find({'_id': result.id}).toList();
+    final updatedCursor = coll.find(where.oneFrom('_id', ids));
+    final updatedDocs = await updatedCursor.toList();
     if (updatedDocs.isEmpty) return [];
     return updatedDocs.map((doc) => Post.fromJson(doc.withRefs())).toList();
   }
@@ -675,9 +639,10 @@ class Posts {
     Map<String, dynamic> updateMap, {
     Db? db,
   }) async {
+    final mod = _buildModifier(updateMap);
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
-    final result = await coll.updateOne({'_id': id}, {'\$set': updateMap});
+    final result = await coll.updateOne(where.id(id), mod);
     if (!result.isSuccess) return null;
     final updatedDoc = await coll.findOne({'_id': id});
     return updatedDoc == null ? null : Post.fromJson(updatedDoc.withRefs());

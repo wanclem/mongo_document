@@ -1,3 +1,9 @@
+## 1.3.4
+
+### Fixed
+
+Bug fixes and Improvements in update functions
+
 ## \[1.3.3]
 
 ### Fixed
