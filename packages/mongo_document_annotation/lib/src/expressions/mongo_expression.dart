@@ -1,5 +1,12 @@
 import 'package:mongo_dart/mongo_dart.dart';
 
+dynamic processedValue(dynamic v) {
+  if (v is Enum) {
+    return v.name;
+  }
+  return v;
+}
+
 mixin MoreExMixin {
   String get _key;
 
@@ -11,33 +18,33 @@ mixin MoreExMixin {
 
   Expression isIn(dynamic value) => RawExpression(
         {
-          _key: {r'$in': value}
+          _key: {r'$in': processedValue(value)}
         },
       );
 
   Expression notIn(dynamic value) => RawExpression(
         {
-          _key: {r'$nin': value}
+          _key: {r'$nin': processedValue(value)}
         },
       );
 
   Expression containsAllOf(dynamic value) => RawExpression(
         {
-          _key: {r'$all': value}
+          _key: {r'$all': processedValue(value)}
         },
       );
 
   Expression mod(dynamic value) => RawExpression(
         {
-          _key: {r'$mod': value}
+          _key: {r'$mod': processedValue(value)}
         },
       );
 
   Expression isBetween(dynamic min, dynamic max) => RawExpression(
         {
           _key: {
-            r'$gte': min,
-            r'$lte': max,
+            r'$gte': processedValue(min),
+            r'$lte': processedValue(max),
           }
         },
       );
@@ -45,7 +52,7 @@ mixin MoreExMixin {
   Expression near(var value, [double? maxDistance]) => RawExpression(
         {
           _key: {
-            r'$near': value,
+            r'$near': processedValue(value),
             if (maxDistance != null) r'$maxDistance': maxDistance,
           }
         },
@@ -97,40 +104,41 @@ class Comparison implements Expression {
 
   @override
   SelectorBuilder toSelectorBuilder() {
+    final safeValue = processedValue(value);
     if (field.contains('.')) {
       final parts = field.split('.');
       final nestedField = parts.last;
       final embeddedPath = parts.sublist(0, parts.length - 1).join('.');
       switch (op) {
         case r'$eq':
-          return where.eq('$embeddedPath.$nestedField', value);
+          return where.eq('$embeddedPath.$nestedField', safeValue);
         case r'$ne':
-          return where.ne('$embeddedPath.$nestedField', value);
+          return where.ne('$embeddedPath.$nestedField', safeValue);
         case r'$lt':
-          return where.lt('$embeddedPath.$nestedField', value);
+          return where.lt('$embeddedPath.$nestedField', safeValue);
         case r'$lte':
-          return where.lte('$embeddedPath.$nestedField', value);
+          return where.lte('$embeddedPath.$nestedField', safeValue);
         case r'$gt':
-          return where.gt('$embeddedPath.$nestedField', value);
+          return where.gt('$embeddedPath.$nestedField', safeValue);
         case r'$gte':
-          return where.gte('$embeddedPath.$nestedField', value);
+          return where.gte('$embeddedPath.$nestedField', safeValue);
         default:
           throw ArgumentError('Unsupported comparison operator: $op');
       }
     } else {
       switch (op) {
         case r'$eq':
-          return where.eq(field, value);
+          return where.eq(field, safeValue);
         case r'$ne':
-          return where.ne(field, value);
+          return where.ne(field, safeValue);
         case r'$lt':
-          return where.lt(field, value);
+          return where.lt(field, safeValue);
         case r'$lte':
-          return where.lte(field, value);
+          return where.lte(field, safeValue);
         case r'$gt':
-          return where.gt(field, value);
+          return where.gt(field, safeValue);
         case r'$gte':
-          return where.gte(field, value);
+          return where.gte(field, safeValue);
         default:
           throw ArgumentError('Unsupported comparison operator: $op');
       }
@@ -157,13 +165,14 @@ class MethodCall implements Expression {
 
   @override
   SelectorBuilder toSelectorBuilder() {
+    final safeValue = processedValue(value);
     final pattern = method == 'startsWith'
-        ? RegExp.escape(value)
+        ? RegExp.escape(safeValue)
         : method == 'endsWith'
-            ? '${RegExp.escape(value)}\$'
+            ? '${RegExp.escape(safeValue)}\$'
             : method == 'contains'
-                ? RegExp.escape(value)
-                : RegExp.escape(value);
+                ? RegExp.escape(safeValue)
+                : RegExp.escape(safeValue);
     if (field.contains('.')) {
       final parts = field.split('.');
       final nestedField = parts.last;

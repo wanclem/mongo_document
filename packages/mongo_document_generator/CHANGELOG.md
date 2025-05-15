@@ -1,3 +1,9 @@
+## 1.3.5
+
+### Fixed
+
+Bug fixes in cruds with enums
+
 ## 1.3.4
 
 ### Fixed
