@@ -22,9 +22,11 @@ class ReadTemplates {
     final coll = await database.collection(_collection);
 
     if (projections.isNotEmpty) {
-       ${buildAggregationPipeline('''{
+       ${buildAggregationPipeline([
+          '''{
           r"\$match": {'_id': id}
-        }''')}
+        }'''
+        ])}
       final ${classNameVar}s = await coll.aggregateToStream(pipeline).toList();
       if (${classNameVar}s.isEmpty) return null;
       return $className.fromJson(${classNameVar}s.first.withRefs());
@@ -62,6 +64,7 @@ class ReadTemplates {
     final (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
       projections: projDoc,
+      limit: 1,
       raw: selectorMap.raw(),
       cleaned: selectorMap.cleaned(),
     );
@@ -106,9 +109,11 @@ class ReadTemplates {
       return $className.fromJson($classNameVar.withRefs());
     }
     if (projections.isNotEmpty) {
-       ${buildAggregationPipeline('''{
+       ${buildAggregationPipeline([
+          '''{
           r"\$match": selector
-        }''')}
+        }'''
+        ])}
       final ${classNameVar}s = await coll.aggregateToStream(pipeline).toList();
       if (${classNameVar}s.isEmpty) return null;
       return $className.fromJson(${classNameVar}s.first.withRefs());
@@ -125,7 +130,9 @@ class ReadTemplates {
   /// Type-safe findMany by predicate
   static Future<List<$className>> findMany(
     Expression Function(Q$className ${className[0].toLowerCase()}) predicate, {
-    int? skip, int? limit,
+    int? skip, 
+    int limit = 10,
+    (String, int) sort = const("created_at", -1),
     List<BaseProjections> projections=const [],
     Db?db,
   }) async {
@@ -133,9 +140,7 @@ class ReadTemplates {
     final coll = await database.collection(_collection);
 
     var selectorBuilder = predicate(Q$className()).toSelectorBuilder();
-    if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
-    if (limit != null) selectorBuilder = selectorBuilder.limit(limit);
-    final selectorMap = selectorBuilder.map;
+    var selectorMap = selectorBuilder.map;
 
     final projDoc =
         projections.isNotEmpty ? buildProjectionDoc(projections) : null;
@@ -143,6 +148,9 @@ class ReadTemplates {
       lookupRef: _nestedCollections,
       projections: projDoc,
       raw: selectorMap.raw(),
+      sort: sort,
+      limit: limit,
+      skip: skip,
       cleaned: selectorMap.cleaned(),
     );
 
@@ -151,6 +159,12 @@ class ReadTemplates {
       if (${classNameVar}s.isEmpty) return [];
       return ${classNameVar}s.map((d)=>$className.fromJson(d.withRefs())).toList();
     }
+
+    if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
+    selectorBuilder = selectorBuilder.limit(limit);
+    selectorBuilder = selectorBuilder.sortBy(sort.\$1, descending: sort.\$2==-1);
+
+    selectorMap=selectorBuilder.map;
 
     final ${classNameVar}s = await coll.find(selectorMap.cleaned()).toList();
     return ${classNameVar}s.map((e) => $className.fromJson(e.withRefs())).toList();
@@ -168,7 +182,8 @@ class ReadTemplates {
     String classNameVar = ReCase(className).camelCase;
     return '''
 /// Type-safe findMany by named arguments
-  static Future<List<$className>> findManyByNamed({${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db,List<BaseProjections> projections=const [],Map<String,Object>sort=const{},int? skip,int limit=10,})async{
+  static Future<List<$className>> findManyByNamed({${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db,List<BaseProjections> projections=const [],Map<String,Object>sort=const{'created_at':-1},int? skip,int limit=10,
+})async{
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
 
@@ -180,14 +195,22 @@ class ReadTemplates {
       return '''if ($paramName != null) selector['$key'] = ${nestedCollectionMap.containsKey(key) ? "$paramName.id" : paramName};''';
     }).join('\n')}
     if (selector.isEmpty) {
-      final ${classNameVar}s = await coll.modernFind(sort: {'created_at': -1},limit:limit,skip:skip).toList();
+      final ${classNameVar}s = await coll.modernFind(sort: sort ,limit:limit,skip:skip).toList();
       if (${classNameVar}s.isEmpty) return [];
      return ${classNameVar}s.map((e) => $className.fromJson(e.withRefs())).toList();
     }
     if (projections.isNotEmpty) {
-       ${buildAggregationPipeline('''{
+       ${buildAggregationPipeline([
+          '''{
           r"\$match": selector
-        }''')}
+        }''',
+        '''{
+          r"\$sort": sort
+        }''',
+        '''{
+          r"\$limit": limit
+        }'''
+        ])}
       final ${classNameVar}s = await coll.aggregateToStream(pipeline).toList();
       if (${classNameVar}s.isEmpty) return [];
       return ${classNameVar}s.map((d)=>$className.fromJson(d.withRefs())).toList();
@@ -237,11 +260,19 @@ class ReadTemplates {
   }
 }
 
-String buildAggregationPipeline(String matchQuery) {
+String addStages(List<dynamic> stages) {
+  String stageString = "";
+  for (var stage in stages) {
+    stageString += "pipeline.add($stage);";
+  }
+  return stageString;
+}
+
+String buildAggregationPipeline(List<dynamic> stages) {
   return '''
 final pipeline = <Map<String, Object>>[];
      final projDoc = <String, int>{};
-     pipeline.add($matchQuery);
+     ${addStages(stages)}
      final selected = <String, int>{};
      for (var p in projections) {
         final inclusions = p.inclusions??[];

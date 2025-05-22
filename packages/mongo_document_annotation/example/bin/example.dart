@@ -1,4 +1,5 @@
 import 'package:example/env/dump.dart';
+import 'package:example/models/post.dart';
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 
 Future<void> main() async {
@@ -16,5 +17,4 @@ Future<void> main() async {
   //       tags: ['setup', 'init'],
   //     ).save();
   // print("Post Created: $post");
-  
 }

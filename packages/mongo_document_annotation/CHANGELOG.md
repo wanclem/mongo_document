@@ -1,3 +1,9 @@
+## 1.3.6
+
+### Fixed
+
+Bug fixes in sort, limit and skip stages within aggregation pipelines
+
 ## 1.3.5
 
 ### Fixed

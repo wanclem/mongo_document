@@ -373,6 +373,7 @@ class OrganizationMembers {
     final (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
       projections: projDoc,
+      limit: 1,
       raw: selectorMap.raw(),
       cleaned: selectorMap.cleaned(),
     );
@@ -483,7 +484,8 @@ class OrganizationMembers {
   static Future<List<OrganizationMember>> findMany(
     Expression Function(QOrganizationMember o) predicate, {
     int? skip,
-    int? limit,
+    int limit = 10,
+    (String, int) sort = const ("created_at", -1),
     List<BaseProjections> projections = const [],
     Db? db,
   }) async {
@@ -491,9 +493,7 @@ class OrganizationMembers {
     final coll = await database.collection(_collection);
 
     var selectorBuilder = predicate(QOrganizationMember()).toSelectorBuilder();
-    if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
-    if (limit != null) selectorBuilder = selectorBuilder.limit(limit);
-    final selectorMap = selectorBuilder.map;
+    var selectorMap = selectorBuilder.map;
 
     final projDoc =
         projections.isNotEmpty ? buildProjectionDoc(projections) : null;
@@ -501,6 +501,9 @@ class OrganizationMembers {
       lookupRef: _nestedCollections,
       projections: projDoc,
       raw: selectorMap.raw(),
+      sort: sort,
+      limit: limit,
+      skip: skip,
       cleaned: selectorMap.cleaned(),
     );
 
@@ -512,6 +515,15 @@ class OrganizationMembers {
           .map((d) => OrganizationMember.fromJson(d.withRefs()))
           .toList();
     }
+
+    if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
+    selectorBuilder = selectorBuilder.limit(limit);
+    selectorBuilder = selectorBuilder.sortBy(
+      sort.$1,
+      descending: sort.$2 == -1,
+    );
+
+    selectorMap = selectorBuilder.map;
 
     final organizationMembers = await coll.find(selectorMap.cleaned()).toList();
     return organizationMembers
@@ -531,7 +543,7 @@ class OrganizationMembers {
     DateTime? updatedAt,
     Db? db,
     List<BaseProjections> projections = const [],
-    Map<String, Object> sort = const {},
+    Map<String, Object> sort = const {'created_at': -1},
     int? skip,
     int limit = 10,
   }) async {
@@ -549,9 +561,7 @@ class OrganizationMembers {
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
       final organizationMembers =
-          await coll
-              .modernFind(sort: {'created_at': -1}, limit: limit, skip: skip)
-              .toList();
+          await coll.modernFind(sort: sort, limit: limit, skip: skip).toList();
       if (organizationMembers.isEmpty) return [];
       return organizationMembers
           .map((e) => OrganizationMember.fromJson(e.withRefs()))
@@ -561,6 +571,8 @@ class OrganizationMembers {
       final pipeline = <Map<String, Object>>[];
       final projDoc = <String, int>{};
       pipeline.add({r"$match": selector});
+      pipeline.add({r"$sort": sort});
+      pipeline.add({r"$limit": limit});
       final selected = <String, int>{};
       for (var p in projections) {
         final inclusions = p.inclusions ?? [];

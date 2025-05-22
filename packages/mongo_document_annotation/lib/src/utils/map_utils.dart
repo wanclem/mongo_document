@@ -2,6 +2,9 @@
   Map<String, String> lookupRef = const {},
   Map<String, dynamic>? projections,
   required Map<String, dynamic> raw,
+  (String, int) sort = const ("created_at", -1),
+  int limit = 10,
+  int? skip,
   required Map<String, dynamic> cleaned,
 }) {
   final prefixes = <String>{};
@@ -25,6 +28,13 @@
 
   var stages = <Map<String, Object>>[];
   stages.add({r'$match': cleaned});
+  stages.add({
+    r'$sort': {sort.$1: sort.$2}
+  });
+  if (skip != null) {
+    stages.add({r'$skip': skip});
+  }
+  stages.add({r'$limit': limit});
 
   for (final prefix in prefixes) {
     lookupsCreated = true;
