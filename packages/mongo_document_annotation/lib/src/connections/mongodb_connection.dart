@@ -14,7 +14,7 @@ class MongoDbConnection {
       );
     }
     if (!_instance!.isConnected) {
-      await _instance!.open(secure: true);
+      await _instance!.open();
     }
     return _instance!;
   }
@@ -30,7 +30,7 @@ class MongoDbConnection {
       _instance = databaseUri.startsWith('mongodb+srv://')
           ? await Db.create(databaseUri)
           : Db(databaseUri);
-      await _instance?.open(secure: true);
+      await _instance?.open();
     } catch (e) {
       print("Db Error $e");
       exit(0);

@@ -1,3 +1,9 @@
+## 1.3.9
+
+### Fixes
+
+Downgrade mongo_dart to 0.10.4 - Weird issues in 0.10.5
+
 ## 1.3.8
 
 ### Fixes
