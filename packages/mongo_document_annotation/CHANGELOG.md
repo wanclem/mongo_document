@@ -1,3 +1,9 @@
+## 1.4.2
+
+### Fixed
+
+Fixed a bug where saveMany wasn't auto creating time stamps
+
 ## 1.4.1
 
 ### Removed

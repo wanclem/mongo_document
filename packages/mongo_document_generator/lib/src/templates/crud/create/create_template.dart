@@ -70,6 +70,9 @@ class CreateTemplates {
     if (${classNameVar}s.isEmpty) return <$className>[];
     final List<Map<String, dynamic>> ${classNameVar}sMap = ${classNameVar}s.map((${classNameVar[0]}) {
       final json = ${classNameVar[0]}.toJson()..remove('_id');
+      final now = DateTime.now().toUtc();
+      json.update('created_at', (v) => v ?? now, ifAbsent: () => now);
+      json.update('updated_at', (v) => now, ifAbsent: () => now);
       return json.map((key, value) {
         if (_nestedCollections.containsKey(key) && value is Map) {
           return MapEntry<String, dynamic>(
