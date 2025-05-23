@@ -430,10 +430,6 @@ class Posts {
 
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
     selectorBuilder = selectorBuilder.limit(limit);
-    selectorBuilder = selectorBuilder.sortBy(
-      sort.$1,
-      descending: sort.$2 == -1,
-    );
 
     selectorMap = selectorBuilder.map;
 

@@ -1,3 +1,9 @@
+## 1.4.1
+
+### Removed
+
+Removed sort option until fixed
+
 ## 1.4.0
 
 ### Fixes
