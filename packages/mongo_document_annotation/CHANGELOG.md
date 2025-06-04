@@ -1,3 +1,9 @@
+## 1.4.3
+
+### Fixed
+
+Cosmetic changes
+
 ## 1.4.2
 
 ### Fixed
