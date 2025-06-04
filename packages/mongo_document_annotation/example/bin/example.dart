@@ -18,6 +18,5 @@ Future<void> main() async {
   // print("Post Created: $post");
   // final post = await Posts.findById("649f2a0b8c1d4e3f8c5b6e7a");
   // print(post);
-  
 }
 
