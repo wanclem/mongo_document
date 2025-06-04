@@ -1,10 +1,10 @@
 name: mongo_document
 description: A code generator for MongoDB-backed Dart models using @MongoDocument annotations - build type-safe, maintainable backend layers.
 version: 1.4.2
-repository: https://github.com/wanclem/mongo_document
-homepage: https://github.com/wanclem/mongo_document
-issue_tracker: https://github.com/wanclem/mongo_document/issues
-documentation: https://github.com/wanclem/mongo_document#readme
+repository: https://github.com/aye-codes/mongo_document
+homepage: https://github.com/aye-codes/mongo_document
+issue_tracker: https://github.com/aye-codes/mongo_document/issues
+documentation: https://github.com/aye-codes/mongo_document#readme
 
 environment:
   sdk: ^3.7.0
