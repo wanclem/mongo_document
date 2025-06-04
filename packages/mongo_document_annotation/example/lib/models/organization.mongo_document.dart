@@ -205,6 +205,9 @@ class Organizations {
     final List<Map<String, dynamic>> organizationsMap =
         organizations.map((o) {
           final json = o.toJson()..remove('_id');
+          final now = DateTime.now().toUtc();
+          json.update('created_at', (v) => v ?? now, ifAbsent: () => now);
+          json.update('updated_at', (v) => now, ifAbsent: () => now);
           return json.map((key, value) {
             if (_nestedCollections.containsKey(key) && value is Map) {
               return MapEntry<String, dynamic>(key, value['_id'] as ObjectId?);
