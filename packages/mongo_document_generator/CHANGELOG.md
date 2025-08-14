@@ -1,3 +1,9 @@
+## 1.4.6
+
+### Fixed
+
+Removed transitive updates
+
 ## 1.4.5
 
 ### Fixed

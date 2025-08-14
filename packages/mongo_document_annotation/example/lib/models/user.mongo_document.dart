@@ -93,31 +93,19 @@ extension $UserExtension on User {
     userMap.update('updated_at', (v) => now, ifAbsent: () => now);
 
     var user = {...userMap};
-    final nestedUpdates = <Future>[];
     for (var entry in userMap.entries) {
       final root = entry.key;
       if (_nestedCollections.containsKey(root)) {
-        final collectionName = _nestedCollections[root]!;
-        var nestedColl = await database.collection(collectionName);
         final Map<String, dynamic> value =
             entry.value is Map
                 ? Map<String, dynamic>.from(entry.value as Map)
                 : <String, dynamic>{};
         if (value.isEmpty) continue;
-        value.removeWhere((key, value) => value == null);
         final nestedId = value['_id'] as ObjectId?;
         if (nestedId == null) {
           user.remove(root);
         } else {
           user[root] = nestedId;
-          final nestedMap = value..remove('_id');
-          if (nestedMap.isNotEmpty) {
-            var mod = modify.set('updated_at', now);
-            nestedMap.forEach((k, v) => mod = mod.set(k, v));
-            nestedUpdates.add(
-              nestedColl.updateOne(where.eq(r'_id', nestedId), mod),
-            );
-          }
         }
       }
     }
@@ -125,7 +113,6 @@ extension $UserExtension on User {
     if (isInsert) {
       final result = await coll.insertOne(user);
       if (!result.isSuccess) return null;
-      await Future.wait(nestedUpdates);
       final savedDoc = await coll.findOne(where.id(result.id));
       return User.fromJson(savedDoc!.withRefs());
     }
@@ -134,7 +121,6 @@ extension $UserExtension on User {
     user.forEach((k, v) => parentMod = parentMod.set(k, v));
     final res = await coll.updateOne(where.eq(r'_id', id), parentMod);
     if (!res.isSuccess) return null;
-    await Future.wait(nestedUpdates);
     final savedDoc = await coll.findOne(where.id(id!));
     return User.fromJson(savedDoc!.withRefs());
   }

@@ -14,7 +14,7 @@ Future<void> main() async {
   User? newUser = await User(firstName: "John", lastName: "Doe").save();
   print("User Created: $newUser");
 
-  //Create a new post
+  // //Create a new post
   Post? post =
       await Post(
         author: newUser,
@@ -24,6 +24,9 @@ Future<void> main() async {
 
   print("Post Created: $post");
 
-  final existingPost = await Posts.findById("649f2a0b8c1d4e3f8c5b6e7a");
+  final existingPost = await Posts.findById(post!.id);
   print(existingPost);
+  // Post? post = await Posts.findById("689e41051961c583a1000000");
+  // post = await post?.copyWith(body: "Hey World").save();
+  // print(post);
 }
