@@ -1,3 +1,8 @@
+## 1.4.7
+
+### Fixed
+Preserve nulls when updating documents
+
 ## 1.4.6
 
 ### Fixed

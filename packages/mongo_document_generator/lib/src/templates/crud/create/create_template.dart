@@ -10,7 +10,7 @@ class CreateTemplates {
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
-    final ${classNameVar}Map = toJson()..remove('_id')..removeWhere((key, value) => value == null);
+    final ${classNameVar}Map = toJson()..remove('_id');
     ${classNameVar}Map.update('created_at', (v) => v ?? now, ifAbsent: () => now);
     ${classNameVar}Map.update('updated_at', (v) => now,    ifAbsent: () => now);
 
