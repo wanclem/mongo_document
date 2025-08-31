@@ -1,6 +1,6 @@
 name: mongo_document
 description: A code generator for MongoDB-backed Dart models using @MongoDocument annotations - build type-safe, maintainable backend layers.
-version: 1.4.7
+version: 1.4.8
 repository: https://github.com/wanclem/mongo_document
 homepage: https://github.com/wanclem/mongo_document
 issue_tracker: https://github.com/wanclem/mongo_document/issues
@@ -14,7 +14,7 @@ resolution: workspace
 dependencies:
   source_gen: ^2.0.0
   build: ^2.4.0
-  mongo_document_annotation: ^1.4.7
+  mongo_document_annotation: ^1.4.8
   mongo_dart: ^0.10.5
   json_annotation: ^4.9.0
   dart_style: ">=2.3.8 <4.0.0"

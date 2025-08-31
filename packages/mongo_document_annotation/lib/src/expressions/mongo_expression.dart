@@ -10,63 +10,42 @@ dynamic processedValue(dynamic v) {
 mixin MoreExMixin {
   String get _key;
 
-  Expression exists([bool doesExist = true]) => RawExpression(
-        {
-          _key: {r'$exists': doesExist}
-        },
-      );
+  Expression exists([bool doesExist = true]) => RawExpression({
+    _key: {r'$exists': doesExist},
+  });
 
-  Expression isIn(dynamic value) => RawExpression(
-        {
-          _key: {r'$in': processedValue(value)}
-        },
-      );
+  Expression isIn(dynamic value) => RawExpression({
+    _key: {r'$in': processedValue(value)},
+  });
 
-  Expression notIn(dynamic value) => RawExpression(
-        {
-          _key: {r'$nin': processedValue(value)}
-        },
-      );
+  Expression notIn(dynamic value) => RawExpression({
+    _key: {r'$nin': processedValue(value)},
+  });
 
-  Expression containsAllOf(dynamic value) => RawExpression(
-        {
-          _key: {r'$all': processedValue(value)}
-        },
-      );
+  Expression containsAllOf(dynamic value) => RawExpression({
+    _key: {r'$all': processedValue(value)},
+  });
 
-  Expression mod(dynamic value) => RawExpression(
-        {
-          _key: {r'$mod': processedValue(value)}
-        },
-      );
+  Expression mod(dynamic value) => RawExpression({
+    _key: {r'$mod': processedValue(value)},
+  });
 
-  Expression isBetween(dynamic min, dynamic max) => RawExpression(
-        {
-          _key: {
-            r'$gte': processedValue(min),
-            r'$lte': processedValue(max),
-          }
-        },
-      );
+  Expression isBetween(dynamic min, dynamic max) => RawExpression({
+    _key: {r'$gte': processedValue(min), r'$lte': processedValue(max)},
+  });
 
-  Expression near(var value, [double? maxDistance]) => RawExpression(
-        {
-          _key: {
-            r'$near': processedValue(value),
-            if (maxDistance != null) r'$maxDistance': maxDistance,
-          }
-        },
-      );
+  Expression near(var value, [double? maxDistance]) => RawExpression({
+    _key: {
+      r'$near': processedValue(value),
+      if (maxDistance != null) r'$maxDistance': maxDistance,
+    },
+  });
 
   /// Only support $geometry shape operator
   /// Available ShapeOperator instances: Box , Center, CenterSphere, Geometry
-  Expression geoWithin(ShapeOperator shape) => RawExpression(
-        {
-          _key: {
-            r'$geoWithin': shape.build(),
-          }
-        },
-      );
+  Expression geoWithin(ShapeOperator shape) => RawExpression({
+    _key: {r'$geoWithin': shape.build()},
+  });
 
   /// Only supports geometry points
   Expression nearSphere(
@@ -74,17 +53,14 @@ mixin MoreExMixin {
     Geometry point, {
     double? maxDistance,
     double? minDistance,
-  }) =>
-      RawExpression(
-        {
-          _key: {
-            r'$nearSphere': <String, dynamic>{
-              if (minDistance != null) '\$minDistance': minDistance,
-              if (maxDistance != null) '\$maxDistance': maxDistance
-            }..addAll(point.build())
-          }
-        },
-      );
+  }) => RawExpression({
+    _key: {
+      r'$nearSphere': <String, dynamic>{
+        if (minDistance != null) '\$minDistance': minDistance,
+        if (maxDistance != null) '\$maxDistance': maxDistance,
+      }..addAll(point.build()),
+    },
+  });
 }
 
 abstract class Expression {
@@ -166,13 +142,14 @@ class MethodCall implements Expression {
   @override
   SelectorBuilder toSelectorBuilder() {
     final safeValue = processedValue(value);
-    final pattern = method == 'startsWith'
-        ? RegExp.escape(safeValue)
-        : method == 'endsWith'
+    final pattern =
+        method == 'startsWith'
+            ? RegExp.escape(safeValue)
+            : method == 'endsWith'
             ? '${RegExp.escape(safeValue)}\$'
             : method == 'contains'
-                ? RegExp.escape(safeValue)
-                : RegExp.escape(safeValue);
+            ? RegExp.escape(safeValue)
+            : RegExp.escape(safeValue);
     if (field.contains('.')) {
       final parts = field.split('.');
       final nestedField = parts.last;
@@ -257,13 +234,13 @@ class QueryField<T> with MoreExMixin {
 
   Expression ne(T v) => Comparison(name, r'$ne', v);
 
-  Expression lt(num v) => Comparison(name, r'$lt', v);
+  Expression lt(T v) => Comparison(name, r'$lt', v);
 
-  Expression lte(num v) => Comparison(name, r'$lte', v);
+  Expression lte(T v) => Comparison(name, r'$lte', v);
 
-  Expression gt(num v) => Comparison(name, r'$gt', v);
+  Expression gt(T v) => Comparison(name, r'$gt', v);
 
-  Expression gte(num v) => Comparison(name, r'$gte', v);
+  Expression gte(T v) => Comparison(name, r'$gte', v);
 
   Expression startsWith(String v) => MethodCall(name, 'startsWith', v);
 
@@ -308,17 +285,73 @@ class QList<T> with MoreExMixin {
 
   ///Check if the list contains a value
   Expression contains(T value) => RawExpression({
-        _prefix: {
-          r'$in': [value],
-        },
-      });
+    _prefix: {
+      r'$in': [value],
+    },
+  });
 
   ///Check if the list contains a value that matches the given expression
   Expression elemMatch(T value) => RawExpression({
-        _prefix: {
-          r'$elemMatch': value,
-        },
-      });
+    _prefix: {r'$elemMatch': value},
+  });
+}
+
+class QueryLink<T> {
+  final Expression _previous;
+  final String _fieldName;
+
+  QueryLink(this._previous, this._fieldName);
+
+  QueryField<T> get _current => QueryField<T>(_fieldName);
+
+  QueryField<String> get _currentString => QueryField<String>(_fieldName);
+
+  Expression eq(T v) => _previous & _current.eq(v);
+
+  Expression ne(T v) => _previous & _current.ne(v);
+
+  Expression lt(T v) => _previous & _current.lt(v);
+
+  Expression lte(T v) => _previous & _current.lte(v);
+
+  Expression gt(T v) => _previous & _current.gt(v);
+
+  Expression gte(T v) => _previous & _current.gte(v);
+
+  Expression startsWith(String v) => _previous & _currentString.startsWith(v);
+
+  Expression endsWith(String v) => _previous & _currentString.endsWith(v);
+
+  Expression contains(String v) => _previous & _currentString.contains(v);
+}
+
+extension ChainedQuery on Expression {
+  /// Chains an AND condition for the given [fieldName].
+  ///
+  /// **Warning:** This method forces the user to provide the database field name
+  /// as a raw string. This can be error-prone, as the provided `fieldName` is
+  /// not checked at compile-time and may become inconsistent with the structure
+  /// of your data model if field names are refactored. ⚠️
+  ///
+  /// Where possible, you should refrain from using this method. For better type
+  /// safety and maintainability, it is strongly recommended to use the `&`
+  /// operator with predefined `QueryField` instances instead.
+  ///
+  /// ```dart
+  /// // Safer: Uses predefined, strongly-typed QueryField instances.
+  /// // A change in the 'age' field name only needs to be updated in one place.
+  /// final saferQuery = Posts.findMany((p)=>p.author.id(id) & p.createdAt.eq(DateTime.now()));
+  /// ```
+  ///
+  /// ```dart
+  /// // Risky: The string 'created_at' is not checked. A typo or a
+  /// // database schema change would lead to a runtime error.
+  /// final riskyQuery = Posts.findMany((p)=>p.author.id(id).and('created_at').eq(DateTime.now()));
+  /// ```
+  ///
+  QueryLink<T> and<T>(String fieldName) {
+    return QueryLink<T>(this, fieldName);
+  }
 }
 
 class RawExpression implements Expression {
@@ -339,7 +372,10 @@ class RawExpression implements Expression {
 /// Marker interface for all projections
 abstract class BaseProjections<E> {
   List<E>? get inclusions;
+
   List<E>? get exclusions;
+
   Map<String, dynamic> get fieldMappings;
+
   Map<String, int> toProjection();
 }

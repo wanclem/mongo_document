@@ -176,10 +176,7 @@ extension $OrganizationMemberExtension on OrganizationMember {
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
-    final organizationMemberMap =
-        toJson()
-          ..remove('_id')
-          ..removeWhere((key, value) => value == null);
+    final organizationMemberMap = toJson()..remove('_id');
     organizationMemberMap.update(
       'created_at',
       (v) => v ?? now,

@@ -85,10 +85,7 @@ extension $UserExtension on User {
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
-    final userMap =
-        toJson()
-          ..remove('_id')
-          ..removeWhere((key, value) => value == null);
+    final userMap = toJson()..remove('_id');
     userMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
     userMap.update('updated_at', (v) => now, ifAbsent: () => now);
 

@@ -1,3 +1,10 @@
+## 1.4.8
+
+### Added
+
+Added support for chaining queries beyond the recommended DSL patterns, allowing shorthand syntaxes.
+Use with caution, as type checking is not enforced at compile time
+
 ## 1.4.7
 
 ### Fixed
@@ -170,7 +177,8 @@ Aggregation Pipelines should be able to infer lookups from projections
 
 ### Fixed
 
-Fixed a bug in projection-classes code generation where the typecheckers ignored the JsonKey names of nested collections, and also within the `nestedCollectionMap` literals
+Fixed a bug in projection-classes code generation where the typecheckers ignored the JsonKey names
+of nested collections, and also within the `nestedCollectionMap` literals
 
 ## \[1.1.7] - 2025-05-11
 
@@ -196,8 +204,10 @@ Documentation and metadata
 
 fix(delete): ensure nested object references use IDs in deleteByNamed variants
 
-Previously, deletes like `deleteOneByNamed` assigned entire objects (e.g., `selector['author'] = author`),
-causing incorrect filtering. This fix updates all `deleteOneByNamed` and `deleteManyByNamed` functions
+Previously, deletes like `deleteOneByNamed` assigned entire objects (e.g.,
+`selector['author'] = author`),
+causing incorrect filtering. This fix updates all `deleteOneByNamed` and `deleteManyByNamed`
+functions
 to reference the object ID instead (e.g., `selector['author'] = author.id`).
 
 ## \[1.1.3] - 2025-05-10
@@ -206,7 +216,8 @@ to reference the object ID instead (e.g., `selector['author'] = author.id`).
 
 fix(query): ensure nested object references use IDs in findByNamed variants
 
-Previously, queries like `findByNamed` assigned entire objects (e.g., `selector['author'] = author`),
+Previously, queries like `findByNamed` assigned entire objects (e.g.,
+`selector['author'] = author`),
 causing incorrect filtering. This fix updates all `findByOneNamed` and `findByManyNamed` functions
 to reference the object ID instead (e.g., `selector['author'] = author.id`).
 
@@ -232,7 +243,8 @@ Bug where query via nested object references returns null
 
 ### Added
 
-- Full support for multi‑level nested queries using MongoDB document references, enabling retrieval of deeply nested data in a single call.
+- Full support for multi‑level nested queries using MongoDB document references, enabling retrieval
+  of deeply nested data in a single call.
 - Validation logic to ensure referenced documents exist before executing nested lookups.
 - Examples and recipe in documentation for querying nested sub‑documents via object references.
 

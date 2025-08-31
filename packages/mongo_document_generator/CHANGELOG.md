@@ -1,6 +1,14 @@
+## 1.4.8
+
+### Added
+
+Added support for chaining queries beyond the recommended DSL patterns, allowing shorthand syntaxes.
+Use with caution, as type checking is not enforced at compile time
+
 ## 1.4.7
 
 ### Fixed
+
 Preserve nulls when updating documents
 
 ## 1.4.6
