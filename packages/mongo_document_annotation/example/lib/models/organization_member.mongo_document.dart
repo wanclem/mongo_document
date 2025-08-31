@@ -304,6 +304,7 @@ class OrganizationMembers {
         if (selected.isNotEmpty) {
           projDoc.addAll(selected);
         }
+        projDoc.addAll(OrganizationMemberProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,
@@ -438,6 +439,7 @@ class OrganizationMembers {
         if (selected.isNotEmpty) {
           projDoc.addAll(selected);
         }
+        projDoc.addAll(OrganizationMemberProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,
@@ -580,6 +582,7 @@ class OrganizationMembers {
         if (selected.isNotEmpty) {
           projDoc.addAll(selected);
         }
+        projDoc.addAll(OrganizationMemberProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,

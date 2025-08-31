@@ -22,11 +22,9 @@ class ReadTemplates {
     final coll = await database.collection(_collection);
 
     if (projections.isNotEmpty) {
-       ${buildAggregationPipeline([
-          '''{
+       ${buildAggregationPipeline("${className}Projections()", ['''{
           r"\$match": {'_id': id}
-        }'''
-        ])}
+        }'''])}
       final ${classNameVar}s = await coll.aggregateToStream(pipeline).toList();
       if (${classNameVar}s.isEmpty) return null;
       return $className.fromJson(${classNameVar}s.first.withRefs());
@@ -99,8 +97,7 @@ class ReadTemplates {
     final selector = <String, dynamic>{};
     ${params.map((p) {
       final paramName = p.name;
-      final key =
-          ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
+      final key = ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
       return '''if ($paramName != null) selector['$key'] = ${nestedCollectionMap.containsKey(key) ? "$paramName.id" : paramName};''';
     }).join('\n')}
     if (selector.isEmpty) {
@@ -109,11 +106,9 @@ class ReadTemplates {
       return $className.fromJson($classNameVar.withRefs());
     }
     if (projections.isNotEmpty) {
-       ${buildAggregationPipeline([
-          '''{
+       ${buildAggregationPipeline("${className}Projections()", ['''{
           r"\$match": selector
-        }'''
-        ])}
+        }'''])}
       final ${classNameVar}s = await coll.aggregateToStream(pipeline).toList();
       if (${classNameVar}s.isEmpty) return null;
       return $className.fromJson(${classNameVar}s.first.withRefs());
@@ -189,8 +184,7 @@ class ReadTemplates {
     final selector = <String, dynamic>{};
     ${params.map((p) {
       final paramName = p.name;
-      final key =
-          ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
+      final key = ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
       return '''if ($paramName != null) selector['$key'] = ${nestedCollectionMap.containsKey(key) ? "$paramName.id" : paramName};''';
     }).join('\n')}
     if (selector.isEmpty) {
@@ -199,17 +193,13 @@ class ReadTemplates {
      return ${classNameVar}s.map((e) => $className.fromJson(e.withRefs())).toList();
     }
     if (projections.isNotEmpty) {
-       ${buildAggregationPipeline([
-          '''{
+       ${buildAggregationPipeline("${className}Projections()", ['''{
           r"\$match": selector
-        }''',
-        '''{
+        }''', '''{
           r"\$sort": sort
-        }''',
-        '''{
+        }''', '''{
           r"\$limit": limit
-        }'''
-        ])}
+        }'''])}
       final ${classNameVar}s = await coll.aggregateToStream(pipeline).toList();
       if (${classNameVar}s.isEmpty) return [];
       return ${classNameVar}s.map((d)=>$className.fromJson(d.withRefs())).toList();
@@ -267,7 +257,7 @@ String addStages(List<dynamic> stages) {
   return stageString;
 }
 
-String buildAggregationPipeline(List<dynamic> stages) {
+String buildAggregationPipeline(String baseProjection, List<dynamic> stages) {
   return '''
 final pipeline = <Map<String, Object>>[];
      final projDoc = <String, int>{};
@@ -297,6 +287,7 @@ final pipeline = <Map<String, Object>>[];
         if(selected.isNotEmpty){
           projDoc.addAll(selected);
         }
+        projDoc.addAll($baseProjection.toProjection());
         pipeline.add({
           r'\$lookup': {
             'from': foreignColl,

@@ -204,6 +204,7 @@ class Users {
         if (selected.isNotEmpty) {
           projDoc.addAll(selected);
         }
+        projDoc.addAll(UserProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,
@@ -326,6 +327,7 @@ class Users {
         if (selected.isNotEmpty) {
           projDoc.addAll(selected);
         }
+        projDoc.addAll(UserProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,
@@ -456,6 +458,7 @@ class Users {
         if (selected.isNotEmpty) {
           projDoc.addAll(selected);
         }
+        projDoc.addAll(UserProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,

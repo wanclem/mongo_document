@@ -26,7 +26,6 @@ class PostProjections implements BaseProjections {
     "createdAt": "created_at",
     "updatedAt": "updated_at",
   };
-
   const PostProjections({this.inclusions, this.exclusions});
 
   @override
@@ -68,7 +67,6 @@ class PostAuthorProjections implements BaseProjections {
     "createdAt": "author.created_at",
     "updatedAt": "author.updated_at",
   };
-
   const PostAuthorProjections({this.inclusions, this.exclusions});
 
   @override
@@ -87,7 +85,6 @@ class PostAuthorProjections implements BaseProjections {
 
 class QPost {
   final String _prefix;
-
   QPost([this._prefix = '']);
 
   String _key(String field) => _prefix.isEmpty ? field : '$_prefix.$field';
@@ -166,7 +163,6 @@ extension $PostExtension on Post {
 
 class Posts {
   static String get _collection => 'posts';
-
   static Future<List<Post?>> saveMany(List<Post> posts, {Db? db}) async {
     if (posts.isEmpty) return <Post>[];
     final List<Map<String, dynamic>> postsMap =
@@ -238,6 +234,7 @@ class Posts {
         if (selected.isNotEmpty) {
           projDoc.addAll(selected);
         }
+        projDoc.addAll(PostProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,
@@ -281,7 +278,7 @@ class Posts {
     }
     final selectorBuilder = predicate(QPost()).toSelectorBuilder();
     final selectorMap = selectorBuilder.map;
-    print("selectorMap: $selectorMap");
+
     final projDoc =
         projections.isNotEmpty ? buildProjectionDoc(projections) : null;
     final (foundLookups, pipeline) = toAggregationPipelineWithMap(
@@ -360,6 +357,7 @@ class Posts {
         if (selected.isNotEmpty) {
           projDoc.addAll(selected);
         }
+        projDoc.addAll(PostProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,
@@ -490,6 +488,7 @@ class Posts {
         if (selected.isNotEmpty) {
           projDoc.addAll(selected);
         }
+        projDoc.addAll(PostProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,

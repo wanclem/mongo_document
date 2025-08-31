@@ -1,3 +1,9 @@
+## 1.4.9
+
+### Fixed
+
+Bug fixes around Base Projections
+
 ## 1.4.8
 
 ### Added
