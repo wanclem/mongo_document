@@ -135,28 +135,52 @@ class Users {
   static String get _collection => 'accounts';
   static Future<List<User?>> saveMany(List<User> users, {Db? db}) async {
     if (users.isEmpty) return <User>[];
-    final List<Map<String, dynamic>> usersMap =
-        users.map((u) {
-          final json = u.toJson()..remove('_id');
-          final now = DateTime.now().toUtc();
-          json.update('created_at', (v) => v ?? now, ifAbsent: () => now);
-          json.update('updated_at', (v) => now, ifAbsent: () => now);
-          return json.map((key, value) {
-            if (_nestedCollections.containsKey(key) && value is Map) {
-              return MapEntry<String, dynamic>(key, value['_id'] as ObjectId?);
-            }
-            return MapEntry<String, dynamic>(key, value);
-          });
-        }).toList();
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
-    final result = await coll.insertMany(usersMap);
-    if (!result.isSuccess || result.ids == null) {
-      return [];
+    final now = DateTime.now().toUtc();
+    final List<Map<String, dynamic>> toInsert = [];
+    final List<Map<String, dynamic>> toSave = [];
+    for (final u in users) {
+      final json = u.toJson();
+      json.update('created_at', (v) => v ?? now, ifAbsent: () => now);
+      json.update('updated_at', (v) => now, ifAbsent: () => now);
+      final processed = json.map((key, value) {
+        if (_nestedCollections.containsKey(key) && value is Map) {
+          return MapEntry<String, dynamic>(key, value['_id'] as ObjectId?);
+        }
+        return MapEntry<String, dynamic>(key, value);
+      });
+      if (processed.containsKey('_id') && processed['_id'] != null) {
+        toSave.add(processed);
+      } else {
+        processed.remove('_id');
+        toInsert.add(processed);
+      }
     }
-    final insertedIds = result.ids!;
+    final affectedIds = <dynamic>[];
+    if (toInsert.isNotEmpty) {
+      final insertResult = await coll.insertMany(toInsert);
+      if (!insertResult.isSuccess || insertResult.ids == null) {
+        return [];
+      }
+      affectedIds.addAll(insertResult.ids!);
+    }
+    for (final doc in toSave) {
+      try {
+        final rawId = doc['_id'];
+        if (rawId is String && rawId.length == 24) {
+          doc['_id'] = ObjectId.fromHexString(rawId);
+        }
+      } catch (_) {
+        // ignore invalid conversion and let the driver handle it
+      }
+      await coll.save(doc);
+      affectedIds.add(doc['_id']);
+    }
+    final uniqueIds = affectedIds.where((e) => e != null).toSet().toList();
+    if (uniqueIds.isEmpty) return <User>[];
     final insertedDocs =
-        await coll.find(where.oneFrom('_id', insertedIds)).toList();
+        await coll.find(where.oneFrom('_id', uniqueIds)).toList();
     return insertedDocs.map((doc) => User.fromJson(doc.withRefs())).toList();
   }
 

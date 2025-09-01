@@ -1,3 +1,9 @@
+## 1.5.0
+
+### Fixed
+
+Bug fixes around saveMany
+
 ## 1.4.9
 
 ### Fixed
