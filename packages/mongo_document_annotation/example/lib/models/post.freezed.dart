@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Post {
 
-@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? get id; String? get body;@JsonKey(name: 'post_note') String? get postNote; User? get author; List<String> get tags;@DateTimeConverter() DateTime? get createdAt;@DateTimeConverter() DateTime? get updatedAt;
+@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? get id; String? get body; String? get postNote; User? get author; List<String> get tags;@DateTimeConverter() DateTime? get createdAt;@DateTimeConverter() DateTime? get updatedAt;
 /// Create a copy of Post
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -49,7 +49,7 @@ abstract mixin class $PostCopyWith<$Res>  {
   factory $PostCopyWith(Post value, $Res Function(Post) _then) = _$PostCopyWithImpl;
 @useResult
 $Res call({
-@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? id, String? body,@JsonKey(name: 'post_note') String? postNote, User? author, List<String> tags,@DateTimeConverter() DateTime? createdAt,@DateTimeConverter() DateTime? updatedAt
+@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? id, String? body, String? postNote, User? author, List<String> tags,@DateTimeConverter() DateTime? createdAt,@DateTimeConverter() DateTime? updatedAt
 });
 
 
@@ -98,12 +98,12 @@ $UserCopyWith<$Res>? get author {
 
 @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
 class _Post implements Post {
-  const _Post({@ObjectIdConverter()@JsonKey(name: '_id') this.id, this.body, @JsonKey(name: 'post_note') this.postNote, this.author, final  List<String> tags = const <String>[], @DateTimeConverter() this.createdAt, @DateTimeConverter() this.updatedAt}): _tags = tags;
+  const _Post({@ObjectIdConverter()@JsonKey(name: '_id') this.id, this.body, this.postNote, this.author, final  List<String> tags = const <String>[], @DateTimeConverter() this.createdAt, @DateTimeConverter() this.updatedAt}): _tags = tags;
   factory _Post.fromJson(Map<String, dynamic> json) => _$PostFromJson(json);
 
 @override@ObjectIdConverter()@JsonKey(name: '_id') final  ObjectId? id;
 @override final  String? body;
-@override@JsonKey(name: 'post_note') final  String? postNote;
+@override final  String? postNote;
 @override final  User? author;
  final  List<String> _tags;
 @override@JsonKey() List<String> get tags {
@@ -148,7 +148,7 @@ abstract mixin class _$PostCopyWith<$Res> implements $PostCopyWith<$Res> {
   factory _$PostCopyWith(_Post value, $Res Function(_Post) _then) = __$PostCopyWithImpl;
 @override @useResult
 $Res call({
-@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? id, String? body,@JsonKey(name: 'post_note') String? postNote, User? author, List<String> tags,@DateTimeConverter() DateTime? createdAt,@DateTimeConverter() DateTime? updatedAt
+@ObjectIdConverter()@JsonKey(name: '_id') ObjectId? id, String? body, String? postNote, User? author, List<String> tags,@DateTimeConverter() DateTime? createdAt,@DateTimeConverter() DateTime? updatedAt
 });
 
 

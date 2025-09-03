@@ -1,3 +1,9 @@
+## 1.5.1
+
+### Fixed
+
+Bug fixes around projection classes
+
 ## 1.5.0
 
 ### Fixed

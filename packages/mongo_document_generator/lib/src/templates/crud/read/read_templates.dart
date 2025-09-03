@@ -262,8 +262,8 @@ String buildAggregationPipeline(String baseProjection, List<dynamic> stages) {
 final pipeline = <Map<String, Object>>[];
      final projDoc = <String, int>{};
      ${addStages(stages)}
-     final selected = <String, int>{};
      for (var p in projections) {
+        final selected = <String, int>{};
         final inclusions = p.inclusions??[];
         final exclusions = p.exclusions??[];
         final allProjections = p.toProjection();
@@ -282,9 +282,8 @@ final pipeline = <Map<String, Object>>[];
           }
         }
         if(selected.isEmpty){
-          selected.addAll(allProjections);
-        }
-        if(selected.isNotEmpty){
+          projDoc.addAll(allProjections);
+        }else {
           projDoc.addAll(selected);
         }
         projDoc.addAll($baseProjection.toProjection());

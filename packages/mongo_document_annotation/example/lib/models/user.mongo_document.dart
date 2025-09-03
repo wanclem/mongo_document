@@ -203,8 +203,8 @@ class Users {
       pipeline.add({
         r"$match": {'_id': id},
       });
-      final selected = <String, int>{};
       for (var p in projections) {
+        final selected = <String, int>{};
         final inclusions = p.inclusions ?? [];
         final exclusions = p.exclusions ?? [];
         final allProjections = p.toProjection();
@@ -223,9 +223,8 @@ class Users {
           }
         }
         if (selected.isEmpty) {
-          selected.addAll(allProjections);
-        }
-        if (selected.isNotEmpty) {
+          projDoc.addAll(allProjections);
+        } else {
           projDoc.addAll(selected);
         }
         projDoc.addAll(UserProjections().toProjection());
@@ -326,8 +325,8 @@ class Users {
       final pipeline = <Map<String, Object>>[];
       final projDoc = <String, int>{};
       pipeline.add({r"$match": selector});
-      final selected = <String, int>{};
       for (var p in projections) {
+        final selected = <String, int>{};
         final inclusions = p.inclusions ?? [];
         final exclusions = p.exclusions ?? [];
         final allProjections = p.toProjection();
@@ -346,9 +345,8 @@ class Users {
           }
         }
         if (selected.isEmpty) {
-          selected.addAll(allProjections);
-        }
-        if (selected.isNotEmpty) {
+          projDoc.addAll(allProjections);
+        } else {
           projDoc.addAll(selected);
         }
         projDoc.addAll(UserProjections().toProjection());
@@ -457,8 +455,8 @@ class Users {
       pipeline.add({r"$match": selector});
       pipeline.add({r"$sort": sort});
       pipeline.add({r"$limit": limit});
-      final selected = <String, int>{};
       for (var p in projections) {
+        final selected = <String, int>{};
         final inclusions = p.inclusions ?? [];
         final exclusions = p.exclusions ?? [];
         final allProjections = p.toProjection();
@@ -477,9 +475,8 @@ class Users {
           }
         }
         if (selected.isEmpty) {
-          selected.addAll(allProjections);
-        }
-        if (selected.isNotEmpty) {
+          projDoc.addAll(allProjections);
+        } else {
           projDoc.addAll(selected);
         }
         projDoc.addAll(UserProjections().toProjection());

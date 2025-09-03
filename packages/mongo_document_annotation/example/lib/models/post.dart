@@ -17,7 +17,7 @@ abstract class Post with _$Post {
   const factory Post({
     @ObjectIdConverter() @JsonKey(name: '_id') ObjectId? id,
     String? body,
-    @JsonKey(name: 'post_note') String? postNote,
+    String? postNote,
     User? author,
     @Default(<String>[]) List<String> tags,
     @DateTimeConverter() DateTime? createdAt,
