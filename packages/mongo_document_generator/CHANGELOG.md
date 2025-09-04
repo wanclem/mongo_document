@@ -1,3 +1,9 @@
+## 1.5.2
+
+### Fixed
+
+Bug fixes around datetime converters
+
 ## 1.5.1
 
 ### Fixed

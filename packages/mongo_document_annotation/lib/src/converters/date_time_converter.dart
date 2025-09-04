@@ -18,7 +18,8 @@ class DateTimeConverter implements JsonConverter<DateTime?, dynamic> {
   }
 
   @override
-  DateTime? toJson(DateTime? date) {
-    return date;
+  String? toJson(DateTime? date) {
+    if (date == null) return null;
+    return date.toIso8601String();
   }
 }
