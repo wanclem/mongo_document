@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:example/models/schedule.dart';
 import 'package:example/models/user.dart';
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -19,6 +20,7 @@ abstract class Post with _$Post {
     String? body,
     String? postNote,
     User? author,
+    Schedule?schedule,
     @Default(<String>[]) List<String> tags,
     @DateTimeConverter() DateTime? createdAt,
     @DateTimeConverter() DateTime? updatedAt,

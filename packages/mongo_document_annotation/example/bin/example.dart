@@ -26,7 +26,4 @@ Future<void> main() async {
 
   final existingPost = await Posts.findById(post!.id);
   print(existingPost);
-  // Post? post = await Posts.findById("689e41051961c583a1000000");
-  // post = await post?.copyWith(body: "Hey World").save();
-  // print(post);
 }

@@ -14,6 +14,10 @@ _Post _$PostFromJson(Map<String, dynamic> json) => _Post(
       json['author'] == null
           ? null
           : User.fromJson(json['author'] as Map<String, dynamic>),
+  schedule:
+      json['schedule'] == null
+          ? null
+          : Schedule.fromJson(json['schedule'] as Map<String, dynamic>),
   tags:
       (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const <String>[],
@@ -26,6 +30,7 @@ Map<String, dynamic> _$PostToJson(_Post instance) => <String, dynamic>{
   'body': instance.body,
   'post_note': instance.postNote,
   'author': instance.author?.toJson(),
+  'schedule': instance.schedule?.toJson(),
   'tags': instance.tags,
   'created_at': const DateTimeConverter().toJson(instance.createdAt),
   'updated_at': const DateTimeConverter().toJson(instance.updatedAt),

@@ -1,3 +1,9 @@
+## 1.5.3
+
+### Feat
+
+**Nested Field Querying**: Query builder now supports deep field access on nested objects, allowing queries on properties of embedded classes (e.g., `user.profile.settings.theme.eq('dark')`)
+
 ## 1.5.2
 
 ### Fixed

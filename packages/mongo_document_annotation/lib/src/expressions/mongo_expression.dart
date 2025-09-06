@@ -247,6 +247,10 @@ class QueryField<T> with MoreExMixin {
   Expression endsWith(String v) => MethodCall(name, 'endsWith', v);
 
   Expression contains(String v) => MethodCall(name, 'contains', v);
+
+  QueryField<V> field<V>(String fieldName) => QueryField<V>('$name.$fieldName');
+
+  QueryField operator [](String fieldName) => QueryField('$name.$fieldName');
 }
 
 void collectKeys(dynamic node, Set<String> out) {
