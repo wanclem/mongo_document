@@ -1,3 +1,11 @@
+## 1.5.4
+
+### Added
+
+Array Query Enhancements: Added isNotEmpty() and isEmpty() methods to the QList query builder class,
+enabling efficient filtering of documents based on whether array fields contain elements or are
+empty.
+
 ## 1.5.3
 
 ### Feat

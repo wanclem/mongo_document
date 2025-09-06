@@ -1,8 +1,17 @@
+## 1.5.4
+
+### Added
+
+Array Query Enhancements: Added isNotEmpty() and isEmpty() methods to the QList query builder class,
+enabling efficient filtering of documents based on whether array fields contain elements or are
+empty. 
+
 ## 1.5.3
 
 ### Feat
 
-**Nested Field Querying**: Query builder now supports deep field access on nested objects, allowing queries on properties of embedded classes (e.g., `user.profile.settings.theme.eq('dark')`)
+**Nested Field Querying**: Query builder now supports deep field access on nested objects, allowing
+queries on properties of embedded classes (e.g., `user.profile.settings.theme.eq('dark')`)
 
 ## 1.5.2
 

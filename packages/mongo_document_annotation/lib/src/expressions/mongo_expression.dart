@@ -298,6 +298,21 @@ class QList<T> with MoreExMixin {
   Expression elemMatch(T value) => RawExpression({
     _prefix: {r'$elemMatch': value},
   });
+
+  Expression isNotEmpty() => RawExpression({
+    _prefix: {
+      r'$exists': true,
+      r'$ne': [],
+    },
+  });
+
+  ///Check if the list is empty
+  Expression isEmpty() => RawExpression({
+    _prefix: {
+      r'$exists': true,
+      r'$eq': [],
+    },
+  });
 }
 
 class QueryLink<T> {
