@@ -93,7 +93,9 @@ class CreateTemplates {
       } catch (_) {
         // ignore invalid conversion and let the driver handle it
       }
-      await coll.save(doc);
+      var parentMod = modify.set('updated_at', now);
+      doc.forEach((k, v) => parentMod = parentMod.set(k, v));
+      await coll.updateOne(where.eq(r'_id', doc['_id']), parentMod);
       affectedIds.add(doc['_id']);
     }
     final uniqueIds = affectedIds.where((e) => e != null).toSet().toList();
