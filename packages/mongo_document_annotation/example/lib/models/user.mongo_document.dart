@@ -174,7 +174,9 @@ class Users {
       } catch (_) {
         // ignore invalid conversion and let the driver handle it
       }
-      await coll.save(doc);
+      var parentMod = modify.set('updated_at', now);
+      doc.forEach((k, v) => parentMod = parentMod.set(k, v));
+      await coll.updateOne(where.eq(r'_id', doc['_id']), parentMod);
       affectedIds.add(doc['_id']);
     }
     final uniqueIds = affectedIds.where((e) => e != null).toSet().toList();
@@ -665,7 +667,7 @@ class Users {
     Map<String, dynamic> updateMap, {
     Db? db,
   }) async {
-    final mod = _buildModifier(updateMap);
+    final mod = _buildModifier(updateMap.withValidObjectReferences());
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
     final result = await coll.updateOne(where.id(id), mod);
