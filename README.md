@@ -69,13 +69,13 @@ Add to `pubspec.yaml`:
 dependencies:
   freezed_annotation: ">=2.4.4 <4.0.0"
   json_annotation: ^4.9.0
-  mongo_document_annotation: ^1.5.5
+  mongo_document_annotation: ^1.5.6
 
 dev_dependencies:
   build_runner: ^2.4.14
   freezed: ">=2.5.8 <4.0.0"
   json_serializable: ^6.9.3
-  mongo_document: ^1.5.5
+  mongo_document: ^1.5.6
 ```
 
 Then:
@@ -143,7 +143,7 @@ abstract class Post with _$Post {
 
 ### Generating Code
 
-Run build\_runner:
+Run build_runner:
 
 ```bash
 dart run build_runner build --delete-conflicting-outputs

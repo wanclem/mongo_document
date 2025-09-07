@@ -86,4 +86,37 @@ extension QueryExtensions on Map<String, dynamic> {
     });
     return result;
   }
+
+  Map<String, dynamic> withValidObjectReferences() {
+    final result = <String, dynamic>{};
+    forEach((key, value) {
+      result[key] = _sniffValue(value);
+    });
+    return result;
+  }
+
+  dynamic _sniffValue(dynamic value) {
+    if (value is String) {
+      final objectIdCheck = ObjectId.tryParse(value);
+      if (objectIdCheck != null) {
+        return objectIdCheck;
+      } else {
+        return value;
+      }
+    } else if (value is Map) {
+      if (value.containsKey('_id')) {
+        final idVal = value['_id'];
+        if (idVal is ObjectId) return idVal;
+        if (idVal is String) {
+          final parsed = ObjectId.tryParse(idVal);
+          if (parsed != null) return parsed;
+        }
+      }
+      return (value.cast<String, dynamic>()).withValidObjectReferences();
+    } else if (value is Iterable) {
+      return value.map((e) => _sniffValue(e)).toList();
+    } else {
+      return value;
+    }
+  }
 }

@@ -1,3 +1,9 @@
+## 1.5.6
+
+### Fixed
+
+Bug fixes around updateOneFromMap
+
 ## 1.5.5
 
 ### Fixed

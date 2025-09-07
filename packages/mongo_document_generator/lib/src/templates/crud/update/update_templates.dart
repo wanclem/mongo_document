@@ -103,7 +103,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
     Map<String, dynamic> updateMap,
     {Db?db}
   ) async {
-    final mod = _buildModifier(updateMap);
+    final mod = _buildModifier(updateMap.withValidObjectReferences());
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
     final result = await coll.updateOne(where.id(id),mod);
