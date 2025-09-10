@@ -89,7 +89,7 @@ extension $UserExtension on User {
     userMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
     userMap.update('updated_at', (v) => now, ifAbsent: () => now);
 
-    var user = {...userMap};
+    var user = sanitizedDocument({...userMap});
     for (var entry in userMap.entries) {
       final root = entry.key;
       if (_nestedCollections.containsKey(root)) {
@@ -141,7 +141,7 @@ class Users {
     final List<Map<String, dynamic>> toInsert = [];
     final List<Map<String, dynamic>> toSave = [];
     for (final u in users) {
-      final json = u.toJson();
+      final json = sanitizedDocument(u.toJson());
       json.update('created_at', (v) => v ?? now, ifAbsent: () => now);
       json.update('updated_at', (v) => now, ifAbsent: () => now);
       final processed = json.map((key, value) {
@@ -599,15 +599,17 @@ class Users {
     DateTime? updatedAt,
     Db? db,
   }) async {
-    final modifier = _buildModifier({
-      if (id != null) '_id': id,
-      if (firstName != null) 'first_name': firstName,
-      if (lastName != null) 'last_name': lastName,
-      if (email != null) 'email': email,
-      if (password != null) 'password': password,
-      if (createdAt != null) 'created_at': createdAt,
-      if (updatedAt != null) 'updated_at': updatedAt,
-    });
+    final modifier = _buildModifier(
+      sanitizedDocument({
+        if (id != null) '_id': id,
+        if (firstName != null) 'first_name': firstName,
+        if (lastName != null) 'last_name': lastName,
+        if (email != null) 'email': email,
+        if (password != null) 'password': password,
+        if (createdAt != null) 'created_at': createdAt,
+        if (updatedAt != null) 'updated_at': updatedAt,
+      }),
+    );
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
     final retrieved = await findOne(predicate);
@@ -631,15 +633,17 @@ class Users {
     DateTime? updatedAt,
     Db? db,
   }) async {
-    final modifier = _buildModifier({
-      if (id != null) '_id': id,
-      if (firstName != null) 'first_name': firstName,
-      if (lastName != null) 'last_name': lastName,
-      if (email != null) 'email': email,
-      if (password != null) 'password': password,
-      if (createdAt != null) 'created_at': createdAt,
-      if (updatedAt != null) 'updated_at': updatedAt,
-    });
+    final modifier = _buildModifier(
+      sanitizedDocument({
+        if (id != null) '_id': id,
+        if (firstName != null) 'first_name': firstName,
+        if (lastName != null) 'last_name': lastName,
+        if (email != null) 'email': email,
+        if (password != null) 'password': password,
+        if (createdAt != null) 'created_at': createdAt,
+        if (updatedAt != null) 'updated_at': updatedAt,
+      }),
+    );
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
     final retrieved = await findMany(predicate);
@@ -667,7 +671,9 @@ class Users {
     Map<String, dynamic> updateMap, {
     Db? db,
   }) async {
-    final mod = _buildModifier(updateMap.withValidObjectReferences());
+    final mod = _buildModifier(
+      sanitizedDocument(updateMap.withValidObjectReferences()),
+    );
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
     final result = await coll.updateOne(where.id(id), mod);

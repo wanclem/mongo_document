@@ -28,7 +28,7 @@ class UpdateTemplates {
     Expression Function(Q$className ${className[0].toLowerCase()}) predicate, {
 ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
   }) async {
-    final modifier = _buildModifier({
+    final modifier = _buildModifier(sanitizedDocument({
       ${params.map((p) {
       final key =
           ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
@@ -39,7 +39,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
         return "if ($name != null) '$key': $name,";
       }
     }).join('\n    ')}
-    });
+    }));
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
     final retrieved = await findOne(predicate);
@@ -67,7 +67,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
     Expression Function(Q$className ${className[0].toLowerCase()}) predicate, {
 ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
   }) async {
-    final modifier = _buildModifier({
+    final modifier = _buildModifier(sanitizedDocument({
       ${params.map((p) {
       final key =
           ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
@@ -78,7 +78,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
         return "if ($name != null) '$key': $name,";
       }
     }).join('\n    ')}
-    });
+    }));
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
     final retrieved = await findMany(predicate);
@@ -103,7 +103,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
     Map<String, dynamic> updateMap,
     {Db?db}
   ) async {
-    final mod = _buildModifier(updateMap.withValidObjectReferences());
+    final mod = _buildModifier(sanitizedDocument(updateMap.withValidObjectReferences()));
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
     final result = await coll.updateOne(where.id(id),mod);

@@ -5,103 +5,88 @@
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 // Author: Wan Clem <wannclem@gmail.com>
 
-part of 'post.dart';
+part of 'token.dart';
 
 // **************************************************************************
 // MongoDocumentGenerator
 // **************************************************************************
 
-enum PostFields { id, body, postNote, schedule, tags, createdAt, updatedAt }
+enum TokenFields {
+  id,
+  ownerEmail,
+  token,
+  data,
+  reason,
+  description,
+  numberOfUpdates,
+  expireAt,
+  createdAt,
+  updatedAt,
+}
 
-class PostProjections implements BaseProjections {
+class TokenProjections implements BaseProjections {
   @override
-  final List<PostFields>? inclusions;
-  final List<PostFields>? exclusions;
+  final List<TokenFields>? inclusions;
+  final List<TokenFields>? exclusions;
   @override
   final Map<String, dynamic> fieldMappings = const {
     "id": "_id",
-    "body": "body",
-    "postNote": "post_note",
-    "schedule": "schedule",
-    "tags": "tags",
+    "ownerEmail": "owner_email",
+    "token": "token",
+    "data": "data",
+    "reason": "reason",
+    "description": "description",
+    "numberOfUpdates": "number_of_updates",
+    "expireAt": "expire_at",
     "createdAt": "created_at",
     "updatedAt": "updated_at",
   };
-  const PostProjections({this.inclusions, this.exclusions});
+  const TokenProjections({this.inclusions, this.exclusions});
 
   @override
   Map<String, int> toProjection() {
     return {
       '_id': 1,
-      'body': 1,
-      'post_note': 1,
-      'schedule': 1,
-      'tags': 1,
+      'owner_email': 1,
+      'token': 1,
+      'data': 1,
+      'reason': 1,
+      'description': 1,
+      'number_of_updates': 1,
+      'expire_at': 1,
       'created_at': 1,
       'updated_at': 1,
     };
   }
 }
 
-const _nestedCollections = <String, String>{'author': 'accounts'};
+const _nestedCollections = <String, String>{};
 
-enum PostAuthorFields {
-  id,
-  firstName,
-  lastName,
-  email,
-  password,
-  createdAt,
-  updatedAt,
-}
-
-class PostAuthorProjections implements BaseProjections {
-  @override
-  final List<PostAuthorFields>? inclusions;
-  final List<PostAuthorFields>? exclusions;
-  @override
-  final Map<String, dynamic> fieldMappings = const {
-    "id": "author._id",
-    "firstName": "author.first_name",
-    "lastName": "author.last_name",
-    "email": "author.email",
-    "password": "author.password",
-    "createdAt": "author.created_at",
-    "updatedAt": "author.updated_at",
-  };
-  const PostAuthorProjections({this.inclusions, this.exclusions});
-
-  @override
-  Map<String, int> toProjection() {
-    return {
-      'author._id': 1,
-      'author.first_name': 1,
-      'author.last_name': 1,
-      'author.email': 1,
-      'author.password': 1,
-      'author.created_at': 1,
-      'author.updated_at': 1,
-    };
-  }
-}
-
-class QPost {
+class QToken {
   final String _prefix;
-  QPost([this._prefix = '']);
+  QToken([this._prefix = '']);
 
   String _key(String field) => _prefix.isEmpty ? field : '$_prefix.$field';
 
   QueryField<ObjectId?> get id => QueryField<ObjectId?>(_key('_id'));
 
-  QueryField<String?> get body => QueryField<String?>(_key('body'));
+  QueryField<String?> get ownerEmail =>
+      QueryField<String?>(_key('owner_email'));
 
-  QueryField<String?> get postNote => QueryField<String?>(_key('post_note'));
+  QueryField<String?> get token => QueryField<String?>(_key('token'));
 
-  QUser get author => QUser(_key('author'));
+  QMap<dynamic> get data => QMap<dynamic>(_key('data'));
 
-  QueryField<Schedule?> get schedule => QueryField<Schedule?>(_key('schedule'));
+  QueryField<String?> get reason => QueryField<String?>(_key('reason'));
 
-  QList<String> get tags => QList<String>(_key('tags'));
+  QueryField<String?> get description =>
+      QueryField<String?>(_key('description'));
+
+  QueryField<int?> get numberOfUpdates =>
+      QueryField<int?>(_key('number_of_updates'));
+
+  QueryField<DateTime?> get expireAt =>
+      QueryField<DateTime?>(_key('expire_at'));
 
   QueryField<DateTime?> get createdAt =>
       QueryField<DateTime?>(_key('created_at'));
@@ -110,21 +95,21 @@ class QPost {
       QueryField<DateTime?>(_key('updated_at'));
 }
 
-extension $PostExtension on Post {
-  static String get _collection => 'posts';
+extension $TokenExtension on Token {
+  static String get _collection => 'tokens';
 
-  Future<Post?> save({Db? db}) async {
+  Future<Token?> save({Db? db}) async {
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
-    final postMap = toJson()..remove('_id');
-    postMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
-    postMap.update('updated_at', (v) => now, ifAbsent: () => now);
+    final tokenMap = toJson()..remove('_id');
+    tokenMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
+    tokenMap.update('updated_at', (v) => now, ifAbsent: () => now);
 
-    var post = sanitizedDocument({...postMap});
-    for (var entry in postMap.entries) {
+    var token = sanitizedDocument({...tokenMap});
+    for (var entry in tokenMap.entries) {
       final root = entry.key;
       if (_nestedCollections.containsKey(root)) {
         final Map<String, dynamic> value =
@@ -134,26 +119,26 @@ extension $PostExtension on Post {
         if (value.isEmpty) continue;
         final nestedId = value['_id'] as ObjectId?;
         if (nestedId == null) {
-          post.remove(root);
+          token.remove(root);
         } else {
-          post[root] = nestedId;
+          token[root] = nestedId;
         }
       }
     }
 
     if (isInsert) {
-      final result = await coll.insertOne(post);
+      final result = await coll.insertOne(token);
       if (!result.isSuccess) return null;
       final savedDoc = await coll.findOne(where.id(result.id));
-      return Post.fromJson(savedDoc!.withRefs());
+      return Token.fromJson(savedDoc!.withRefs());
     }
 
     var parentMod = modify.set('updated_at', now);
-    post.forEach((k, v) => parentMod = parentMod.set(k, v));
+    token.forEach((k, v) => parentMod = parentMod.set(k, v));
     final res = await coll.updateOne(where.eq(r'_id', id), parentMod);
     if (!res.isSuccess) return null;
     final savedDoc = await coll.findOne(where.id(id!));
-    return Post.fromJson(savedDoc!.withRefs());
+    return Token.fromJson(savedDoc!.withRefs());
   }
 
   Future<bool> delete({Db? db}) async {
@@ -165,17 +150,17 @@ extension $PostExtension on Post {
   }
 }
 
-class Posts {
-  static String get _collection => 'posts';
-  static Future<List<Post?>> saveMany(List<Post> posts, {Db? db}) async {
-    if (posts.isEmpty) return <Post>[];
+class Tokens {
+  static String get _collection => 'tokens';
+  static Future<List<Token?>> saveMany(List<Token> tokens, {Db? db}) async {
+    if (tokens.isEmpty) return <Token>[];
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
     final now = DateTime.now().toUtc();
     final List<Map<String, dynamic>> toInsert = [];
     final List<Map<String, dynamic>> toSave = [];
-    for (final p in posts) {
-      final json = sanitizedDocument(p.toJson());
+    for (final t in tokens) {
+      final json = sanitizedDocument(t.toJson());
       json.update('created_at', (v) => v ?? now, ifAbsent: () => now);
       json.update('updated_at', (v) => now, ifAbsent: () => now);
       final processed = json.map((key, value) {
@@ -214,13 +199,13 @@ class Posts {
       affectedIds.add(doc['_id']);
     }
     final uniqueIds = affectedIds.where((e) => e != null).toSet().toList();
-    if (uniqueIds.isEmpty) return <Post>[];
+    if (uniqueIds.isEmpty) return <Token>[];
     final insertedDocs =
         await coll.find(where.oneFrom('_id', uniqueIds)).toList();
-    return insertedDocs.map((doc) => Post.fromJson(doc.withRefs())).toList();
+    return insertedDocs.map((doc) => Token.fromJson(doc.withRefs())).toList();
   }
 
-  static Future<Post?> findById(
+  static Future<Token?> findById(
     dynamic id, {
     Db? db,
     List<BaseProjections> projections = const [],
@@ -263,7 +248,7 @@ class Posts {
         } else {
           projDoc.addAll(selected);
         }
-        projDoc.addAll(PostProjections().toProjection());
+        projDoc.addAll(TokenProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,
@@ -281,19 +266,19 @@ class Posts {
       }
       pipeline.add({r'$project': projDoc});
 
-      final posts = await coll.aggregateToStream(pipeline).toList();
-      if (posts.isEmpty) return null;
-      return Post.fromJson(posts.first.withRefs());
+      final tokens = await coll.aggregateToStream(pipeline).toList();
+      if (tokens.isEmpty) return null;
+      return Token.fromJson(tokens.first.withRefs());
     }
 
-    // fallback: return entire post
-    final post = await coll.findOne(where.eq(r'_id', id));
-    return post == null ? null : Post.fromJson(post.withRefs());
+    // fallback: return entire token
+    final token = await coll.findOne(where.eq(r'_id', id));
+    return token == null ? null : Token.fromJson(token.withRefs());
   }
 
   /// Type-safe findOne by predicate
-  static Future<Post?> findOne(
-    Expression Function(QPost p)? predicate, {
+  static Future<Token?> findOne(
+    Expression Function(QToken t)? predicate, {
     Db? db,
     List<BaseProjections> projections = const [],
   }) async {
@@ -301,11 +286,11 @@ class Posts {
     final coll = await database.collection(_collection);
 
     if (predicate == null) {
-      final post = await coll.modernFindOne(sort: {'created_at': -1});
-      if (post == null) return null;
-      return Post.fromJson(post.withRefs());
+      final token = await coll.modernFindOne(sort: {'created_at': -1});
+      if (token == null) return null;
+      return Token.fromJson(token.withRefs());
     }
-    final selectorBuilder = predicate(QPost()).toSelectorBuilder();
+    final selectorBuilder = predicate(QToken()).toSelectorBuilder();
     final selectorMap = selectorBuilder.map;
 
     final projDoc =
@@ -321,22 +306,24 @@ class Posts {
     if (foundLookups) {
       final results = await coll.aggregateToStream(pipeline).toList();
       if (results.isEmpty) return null;
-      return Post.fromJson(results.first.withRefs());
+      return Token.fromJson(results.first.withRefs());
     }
 
     // fallback to simple findOne
-    final postResult = await coll.findOne(selectorMap.cleaned());
-    return postResult == null ? null : Post.fromJson(postResult.withRefs());
+    final tokenResult = await coll.findOne(selectorMap.cleaned());
+    return tokenResult == null ? null : Token.fromJson(tokenResult.withRefs());
   }
 
   /// Type-safe findOne by named arguments
-  static Future<Post?> findOneByNamed({
+  static Future<Token?> findOneByNamed({
     ObjectId? id,
-    String? body,
-    String? postNote,
-    User? author,
-    Schedule? schedule,
-    List<String>? tags,
+    String? ownerEmail,
+    String? token,
+    Map<String, dynamic>? data,
+    String? reason,
+    String? description,
+    int? numberOfUpdates,
+    DateTime? expireAt,
     DateTime? createdAt,
     DateTime? updatedAt,
     Db? db,
@@ -347,17 +334,20 @@ class Posts {
 
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
-    if (body != null) selector['body'] = body;
-    if (postNote != null) selector['post_note'] = postNote;
-    if (author != null) selector['author'] = author.id;
-    if (schedule != null) selector['schedule'] = schedule;
-    if (tags != null) selector['tags'] = tags;
+    if (ownerEmail != null) selector['owner_email'] = ownerEmail;
+    if (token != null) selector['token'] = token;
+    if (data != null) selector['data'] = data;
+    if (reason != null) selector['reason'] = reason;
+    if (description != null) selector['description'] = description;
+    if (numberOfUpdates != null)
+      selector['number_of_updates'] = numberOfUpdates;
+    if (expireAt != null) selector['expire_at'] = expireAt;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
-      final post = await coll.modernFindOne(sort: {'created_at': -1});
-      if (post == null) return null;
-      return Post.fromJson(post.withRefs());
+      final token = await coll.modernFindOne(sort: {'created_at': -1});
+      if (token == null) return null;
+      return Token.fromJson(token.withRefs());
     }
     if (projections.isNotEmpty) {
       final pipeline = <Map<String, Object>>[];
@@ -387,7 +377,7 @@ class Posts {
         } else {
           projDoc.addAll(selected);
         }
-        projDoc.addAll(PostProjections().toProjection());
+        projDoc.addAll(TokenProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,
@@ -405,17 +395,17 @@ class Posts {
       }
       pipeline.add({r'$project': projDoc});
 
-      final posts = await coll.aggregateToStream(pipeline).toList();
-      if (posts.isEmpty) return null;
-      return Post.fromJson(posts.first.withRefs());
+      final tokens = await coll.aggregateToStream(pipeline).toList();
+      if (tokens.isEmpty) return null;
+      return Token.fromJson(tokens.first.withRefs());
     }
-    final postResult = await coll.findOne(selector);
-    return postResult == null ? null : Post.fromJson(postResult.withRefs());
+    final tokenResult = await coll.findOne(selector);
+    return tokenResult == null ? null : Token.fromJson(tokenResult.withRefs());
   }
 
   /// Type-safe findMany by predicate
-  static Future<List<Post>> findMany(
-    Expression Function(QPost p) predicate, {
+  static Future<List<Token>> findMany(
+    Expression Function(QToken t) predicate, {
     int? skip,
     int limit = 10,
     (String, int) sort = const ("created_at", -1),
@@ -425,7 +415,7 @@ class Posts {
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
 
-    var selectorBuilder = predicate(QPost()).toSelectorBuilder();
+    var selectorBuilder = predicate(QToken()).toSelectorBuilder();
     var selectorMap = selectorBuilder.map;
 
     final projDoc =
@@ -441,9 +431,9 @@ class Posts {
     );
 
     if (foundLookups) {
-      final posts = await coll.aggregateToStream(pipeline).toList();
-      if (posts.isEmpty) return [];
-      return posts.map((d) => Post.fromJson(d.withRefs())).toList();
+      final tokens = await coll.aggregateToStream(pipeline).toList();
+      if (tokens.isEmpty) return [];
+      return tokens.map((d) => Token.fromJson(d.withRefs())).toList();
     }
 
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
@@ -451,18 +441,20 @@ class Posts {
 
     selectorMap = selectorBuilder.map;
 
-    final posts = await coll.find(selectorMap.cleaned()).toList();
-    return posts.map((e) => Post.fromJson(e.withRefs())).toList();
+    final tokens = await coll.find(selectorMap.cleaned()).toList();
+    return tokens.map((e) => Token.fromJson(e.withRefs())).toList();
   }
 
   /// Type-safe findMany by named arguments
-  static Future<List<Post>> findManyByNamed({
+  static Future<List<Token>> findManyByNamed({
     ObjectId? id,
-    String? body,
-    String? postNote,
-    User? author,
-    Schedule? schedule,
-    List<String>? tags,
+    String? ownerEmail,
+    String? token,
+    Map<String, dynamic>? data,
+    String? reason,
+    String? description,
+    int? numberOfUpdates,
+    DateTime? expireAt,
     DateTime? createdAt,
     DateTime? updatedAt,
     Db? db,
@@ -476,18 +468,21 @@ class Posts {
 
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
-    if (body != null) selector['body'] = body;
-    if (postNote != null) selector['post_note'] = postNote;
-    if (author != null) selector['author'] = author.id;
-    if (schedule != null) selector['schedule'] = schedule;
-    if (tags != null) selector['tags'] = tags;
+    if (ownerEmail != null) selector['owner_email'] = ownerEmail;
+    if (token != null) selector['token'] = token;
+    if (data != null) selector['data'] = data;
+    if (reason != null) selector['reason'] = reason;
+    if (description != null) selector['description'] = description;
+    if (numberOfUpdates != null)
+      selector['number_of_updates'] = numberOfUpdates;
+    if (expireAt != null) selector['expire_at'] = expireAt;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
-      final posts =
+      final tokens =
           await coll.modernFind(sort: sort, limit: limit, skip: skip).toList();
-      if (posts.isEmpty) return [];
-      return posts.map((e) => Post.fromJson(e.withRefs())).toList();
+      if (tokens.isEmpty) return [];
+      return tokens.map((e) => Token.fromJson(e.withRefs())).toList();
     }
     if (projections.isNotEmpty) {
       final pipeline = <Map<String, Object>>[];
@@ -519,7 +514,7 @@ class Posts {
         } else {
           projDoc.addAll(selected);
         }
-        projDoc.addAll(PostProjections().toProjection());
+        projDoc.addAll(TokenProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,
@@ -537,23 +532,23 @@ class Posts {
       }
       pipeline.add({r'$project': projDoc});
 
-      final posts = await coll.aggregateToStream(pipeline).toList();
-      if (posts.isEmpty) return [];
-      return posts.map((d) => Post.fromJson(d.withRefs())).toList();
+      final tokens = await coll.aggregateToStream(pipeline).toList();
+      if (tokens.isEmpty) return [];
+      return tokens.map((d) => Token.fromJson(d.withRefs())).toList();
     }
-    final posts =
+    final tokens =
         await coll
             .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
             .toList();
-    return posts.map((e) => Post.fromJson(e.withRefs())).toList();
+    return tokens.map((e) => Token.fromJson(e.withRefs())).toList();
   }
 
   static Future<bool> deleteOne(
-    Expression Function(QPost p) predicate, {
+    Expression Function(QToken t) predicate, {
     Db? db,
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final expr = predicate(QPost());
+    final expr = predicate(QToken());
     final selector = expr.toSelectorBuilder();
     final coll = await database.collection(_collection);
     final result = await coll.deleteOne(selector.map.cleaned());
@@ -563,22 +558,27 @@ class Posts {
   /// Type-safe deleteOne by named arguments
   static Future<bool> deleteOneByNamed({
     ObjectId? id,
-    String? body,
-    String? postNote,
-    User? author,
-    Schedule? schedule,
-    List<String>? tags,
+    String? ownerEmail,
+    String? token,
+    Map<String, dynamic>? data,
+    String? reason,
+    String? description,
+    int? numberOfUpdates,
+    DateTime? expireAt,
     DateTime? createdAt,
     DateTime? updatedAt,
     Db? db,
   }) async {
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
-    if (body != null) selector['body'] = body;
-    if (postNote != null) selector['post_note'] = postNote;
-    if (author != null) selector['author'] = author.id;
-    if (schedule != null) selector['schedule'] = schedule;
-    if (tags != null) selector['tags'] = tags;
+    if (ownerEmail != null) selector['owner_email'] = ownerEmail;
+    if (token != null) selector['token'] = token;
+    if (data != null) selector['data'] = data;
+    if (reason != null) selector['reason'] = reason;
+    if (description != null) selector['description'] = description;
+    if (numberOfUpdates != null)
+      selector['number_of_updates'] = numberOfUpdates;
+    if (expireAt != null) selector['expire_at'] = expireAt;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) return false;
@@ -590,11 +590,11 @@ class Posts {
 
   /// Type-safe deleteMany
   static Future<bool> deleteMany(
-    Expression Function(QPost p) predicate, {
+    Expression Function(QToken t) predicate, {
     Db? db,
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final expr = predicate(QPost());
+    final expr = predicate(QToken());
     final selector = expr.toSelectorBuilder();
     final coll = await database.collection(_collection);
     final result = await coll.deleteMany(selector.map.cleaned());
@@ -604,22 +604,27 @@ class Posts {
   /// Type-safe deleteMany by named arguments
   static Future<bool> deleteManyByNamed({
     ObjectId? id,
-    String? body,
-    String? postNote,
-    User? author,
-    Schedule? schedule,
-    List<String>? tags,
+    String? ownerEmail,
+    String? token,
+    Map<String, dynamic>? data,
+    String? reason,
+    String? description,
+    int? numberOfUpdates,
+    DateTime? expireAt,
     DateTime? createdAt,
     DateTime? updatedAt,
     Db? db,
   }) async {
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
-    if (body != null) selector['body'] = body;
-    if (postNote != null) selector['post_note'] = postNote;
-    if (author != null) selector['author'] = author.id;
-    if (schedule != null) selector['schedule'] = schedule;
-    if (tags != null) selector['tags'] = tags;
+    if (ownerEmail != null) selector['owner_email'] = ownerEmail;
+    if (token != null) selector['token'] = token;
+    if (data != null) selector['data'] = data;
+    if (reason != null) selector['reason'] = reason;
+    if (description != null) selector['description'] = description;
+    if (numberOfUpdates != null)
+      selector['number_of_updates'] = numberOfUpdates;
+    if (expireAt != null) selector['expire_at'] = expireAt;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) return false;
@@ -630,14 +635,16 @@ class Posts {
   }
 
   /// Type-safe updateOne
-  static Future<Post?> updateOne(
-    Expression Function(QPost p) predicate, {
+  static Future<Token?> updateOne(
+    Expression Function(QToken t) predicate, {
     ObjectId? id,
-    String? body,
-    String? postNote,
-    User? author,
-    Schedule? schedule,
-    List<String>? tags,
+    String? ownerEmail,
+    String? token,
+    Map<String, dynamic>? data,
+    String? reason,
+    String? description,
+    int? numberOfUpdates,
+    DateTime? expireAt,
     DateTime? createdAt,
     DateTime? updatedAt,
     Db? db,
@@ -645,11 +652,13 @@ class Posts {
     final modifier = _buildModifier(
       sanitizedDocument({
         if (id != null) '_id': id,
-        if (body != null) 'body': body,
-        if (postNote != null) 'post_note': postNote,
-        if (author != null) 'author': author.id,
-        if (schedule != null) 'schedule': schedule,
-        if (tags != null) 'tags': tags,
+        if (ownerEmail != null) 'owner_email': ownerEmail,
+        if (token != null) 'token': token,
+        if (data != null) 'data': data,
+        if (reason != null) 'reason': reason,
+        if (description != null) 'description': description,
+        if (numberOfUpdates != null) 'number_of_updates': numberOfUpdates,
+        if (expireAt != null) 'expire_at': expireAt,
         if (createdAt != null) 'created_at': createdAt,
         if (updatedAt != null) 'updated_at': updatedAt,
       }),
@@ -662,18 +671,20 @@ class Posts {
     if (!result.isSuccess) return null;
     final updatedDoc = await coll.findOne({'_id': retrieved.id});
     if (updatedDoc == null) return null;
-    return Post.fromJson(updatedDoc.withRefs());
+    return Token.fromJson(updatedDoc.withRefs());
   }
 
   /// Type-safe updateMany
-  static Future<List<Post>> updateMany(
-    Expression Function(QPost p) predicate, {
+  static Future<List<Token>> updateMany(
+    Expression Function(QToken t) predicate, {
     ObjectId? id,
-    String? body,
-    String? postNote,
-    User? author,
-    Schedule? schedule,
-    List<String>? tags,
+    String? ownerEmail,
+    String? token,
+    Map<String, dynamic>? data,
+    String? reason,
+    String? description,
+    int? numberOfUpdates,
+    DateTime? expireAt,
     DateTime? createdAt,
     DateTime? updatedAt,
     Db? db,
@@ -681,11 +692,13 @@ class Posts {
     final modifier = _buildModifier(
       sanitizedDocument({
         if (id != null) '_id': id,
-        if (body != null) 'body': body,
-        if (postNote != null) 'post_note': postNote,
-        if (author != null) 'author': author.id,
-        if (schedule != null) 'schedule': schedule,
-        if (tags != null) 'tags': tags,
+        if (ownerEmail != null) 'owner_email': ownerEmail,
+        if (token != null) 'token': token,
+        if (data != null) 'data': data,
+        if (reason != null) 'reason': reason,
+        if (description != null) 'description': description,
+        if (numberOfUpdates != null) 'number_of_updates': numberOfUpdates,
+        if (expireAt != null) 'expire_at': expireAt,
         if (createdAt != null) 'created_at': createdAt,
         if (updatedAt != null) 'updated_at': updatedAt,
       }),
@@ -700,7 +713,7 @@ class Posts {
     final updatedCursor = coll.find(where.oneFrom('_id', ids));
     final updatedDocs = await updatedCursor.toList();
     if (updatedDocs.isEmpty) return [];
-    return updatedDocs.map((doc) => Post.fromJson(doc.withRefs())).toList();
+    return updatedDocs.map((doc) => Token.fromJson(doc.withRefs())).toList();
   }
 
   static ModifierBuilder _buildModifier(Map<String, dynamic> updateMap) {
@@ -712,7 +725,7 @@ class Posts {
 
   /// Prioritize `updateOne` whenever possible to avoid type mismatch.
   /// This method is a fallback for cases where you just had to use a map.
-  static Future<Post?> updateOneFromMap(
+  static Future<Token?> updateOneFromMap(
     ObjectId id,
     Map<String, dynamic> updateMap, {
     Db? db,
@@ -725,11 +738,11 @@ class Posts {
     final result = await coll.updateOne(where.id(id), mod);
     if (!result.isSuccess) return null;
     final updatedDoc = await coll.findOne({'_id': id});
-    return updatedDoc == null ? null : Post.fromJson(updatedDoc.withRefs());
+    return updatedDoc == null ? null : Token.fromJson(updatedDoc.withRefs());
   }
 
   static Future<int> count(
-    Expression Function(QPost p)? predicate, {
+    Expression Function(QToken t)? predicate, {
     Db? db,
   }) async {
     final database = db ?? await MongoDbConnection.instance;
@@ -738,7 +751,7 @@ class Posts {
     final selectorMap =
         predicate == null
             ? <String, dynamic>{}
-            : predicate(QPost()).toSelectorBuilder().map;
+            : predicate(QToken()).toSelectorBuilder().map;
 
     final (foundLookups, pipelineWithoutCount) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,

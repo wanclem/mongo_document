@@ -1,3 +1,9 @@
+## 1.5.7
+
+### Fixed
+
+Bug fixes around datetimes
+
 ## 1.5.6
 
 ### Fixed

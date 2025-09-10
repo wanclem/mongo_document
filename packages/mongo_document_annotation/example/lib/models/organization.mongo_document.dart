@@ -136,7 +136,7 @@ extension $OrganizationExtension on Organization {
     organizationMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
     organizationMap.update('updated_at', (v) => now, ifAbsent: () => now);
 
-    var organization = {...organizationMap};
+    var organization = sanitizedDocument({...organizationMap});
     for (var entry in organizationMap.entries) {
       final root = entry.key;
       if (_nestedCollections.containsKey(root)) {
@@ -191,7 +191,7 @@ class Organizations {
     final List<Map<String, dynamic>> toInsert = [];
     final List<Map<String, dynamic>> toSave = [];
     for (final o in organizations) {
-      final json = o.toJson();
+      final json = sanitizedDocument(o.toJson());
       json.update('created_at', (v) => v ?? now, ifAbsent: () => now);
       json.update('updated_at', (v) => now, ifAbsent: () => now);
       final processed = json.map((key, value) {
@@ -685,17 +685,19 @@ class Organizations {
     DateTime? updatedAt,
     Db? db,
   }) async {
-    final modifier = _buildModifier({
-      if (id != null) '_id': id,
-      if (tempId != null) 'temp_id': tempId,
-      if (owner != null) 'owner': owner.id,
-      if (name != null) 'name': name,
-      if (avatar != null) 'avatar': avatar,
-      if (ephemeralData != null) 'ephemeral_data': ephemeralData,
-      if (active != null) 'active': active,
-      if (createdAt != null) 'created_at': createdAt,
-      if (updatedAt != null) 'updated_at': updatedAt,
-    });
+    final modifier = _buildModifier(
+      sanitizedDocument({
+        if (id != null) '_id': id,
+        if (tempId != null) 'temp_id': tempId,
+        if (owner != null) 'owner': owner.id,
+        if (name != null) 'name': name,
+        if (avatar != null) 'avatar': avatar,
+        if (ephemeralData != null) 'ephemeral_data': ephemeralData,
+        if (active != null) 'active': active,
+        if (createdAt != null) 'created_at': createdAt,
+        if (updatedAt != null) 'updated_at': updatedAt,
+      }),
+    );
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
     final retrieved = await findOne(predicate);
@@ -721,17 +723,19 @@ class Organizations {
     DateTime? updatedAt,
     Db? db,
   }) async {
-    final modifier = _buildModifier({
-      if (id != null) '_id': id,
-      if (tempId != null) 'temp_id': tempId,
-      if (owner != null) 'owner': owner.id,
-      if (name != null) 'name': name,
-      if (avatar != null) 'avatar': avatar,
-      if (ephemeralData != null) 'ephemeral_data': ephemeralData,
-      if (active != null) 'active': active,
-      if (createdAt != null) 'created_at': createdAt,
-      if (updatedAt != null) 'updated_at': updatedAt,
-    });
+    final modifier = _buildModifier(
+      sanitizedDocument({
+        if (id != null) '_id': id,
+        if (tempId != null) 'temp_id': tempId,
+        if (owner != null) 'owner': owner.id,
+        if (name != null) 'name': name,
+        if (avatar != null) 'avatar': avatar,
+        if (ephemeralData != null) 'ephemeral_data': ephemeralData,
+        if (active != null) 'active': active,
+        if (createdAt != null) 'created_at': createdAt,
+        if (updatedAt != null) 'updated_at': updatedAt,
+      }),
+    );
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
     final retrieved = await findMany(predicate);
@@ -761,7 +765,9 @@ class Organizations {
     Map<String, dynamic> updateMap, {
     Db? db,
   }) async {
-    final mod = _buildModifier(updateMap.withValidObjectReferences());
+    final mod = _buildModifier(
+      sanitizedDocument(updateMap.withValidObjectReferences()),
+    );
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
     final result = await coll.updateOne(where.id(id), mod);

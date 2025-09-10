@@ -14,7 +14,7 @@ class CreateTemplates {
     ${classNameVar}Map.update('created_at', (v) => v ?? now, ifAbsent: () => now);
     ${classNameVar}Map.update('updated_at', (v) => now,    ifAbsent: () => now);
 
-    var $classNameVar = {...${classNameVar}Map};
+    var $classNameVar = sanitizedDocument({...${classNameVar}Map});
     for (var entry in ${classNameVar}Map.entries) {
       final root = entry.key;
       if (_nestedCollections.containsKey(root)) {
@@ -60,7 +60,7 @@ class CreateTemplates {
     final List<Map<String, dynamic>> toInsert = [];
     final List<Map<String, dynamic>> toSave = [];
     for (final ${classNameVar[0]} in ${classNameVar}s) {
-      final json = ${classNameVar[0]}.toJson();
+      final json = sanitizedDocument(${classNameVar[0]}.toJson());
       json.update('created_at', (v) => v ?? now, ifAbsent: () => now);
       json.update('updated_at', (v) => now, ifAbsent: () => now);
       final processed = json.map((key, value) {
