@@ -231,6 +231,7 @@ class Tokens {
         final allProjections = p.toProjection();
         final localField = allProjections.keys.first.split(".").first;
         final foreignColl = _nestedCollections[localField];
+        if (foreignColl == null) continue;
         if (inclusions.isNotEmpty) {
           for (var f in inclusions) {
             final path = p.fieldMappings[(f as Enum).name]!;
@@ -360,6 +361,7 @@ class Tokens {
         final allProjections = p.toProjection();
         final localField = allProjections.keys.first.split(".").first;
         final foreignColl = _nestedCollections[localField];
+        if (foreignColl == null) continue;
         if (inclusions.isNotEmpty) {
           for (var f in inclusions) {
             final path = p.fieldMappings[(f as Enum).name]!;
@@ -497,6 +499,7 @@ class Tokens {
         final allProjections = p.toProjection();
         final localField = allProjections.keys.first.split(".").first;
         final foreignColl = _nestedCollections[localField];
+        if (foreignColl == null) continue;
         if (inclusions.isNotEmpty) {
           for (var f in inclusions) {
             final path = p.fieldMappings[(f as Enum).name]!;

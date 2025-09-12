@@ -1,3 +1,9 @@
+## 1.5.8
+
+### Fixed
+
+Bug fixes around projections
+
 ## 1.5.7
 
 ### Fixed
