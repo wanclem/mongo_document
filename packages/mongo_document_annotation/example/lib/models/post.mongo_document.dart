@@ -11,7 +11,16 @@ part of 'post.dart';
 // MongoDocumentGenerator
 // **************************************************************************
 
-enum PostFields { id, body, postNote, schedule, tags, createdAt, updatedAt }
+enum PostFields {
+  id,
+  body,
+  postNote,
+  schedule,
+  targetPlatforms,
+  tags,
+  createdAt,
+  updatedAt,
+}
 
 class PostProjections implements BaseProjections {
   @override
@@ -23,6 +32,7 @@ class PostProjections implements BaseProjections {
     "body": "body",
     "postNote": "post_note",
     "schedule": "schedule",
+    "targetPlatforms": "target_platforms",
     "tags": "tags",
     "createdAt": "created_at",
     "updatedAt": "updated_at",
@@ -36,6 +46,7 @@ class PostProjections implements BaseProjections {
       'body': 1,
       'post_note': 1,
       'schedule': 1,
+      'target_platforms': 1,
       'tags': 1,
       'created_at': 1,
       'updated_at': 1,
@@ -100,6 +111,9 @@ class QPost {
   QUser get author => QUser(_key('author'));
 
   QueryField<Schedule?> get schedule => QueryField<Schedule?>(_key('schedule'));
+
+  QList<dynamic> get targetPlatforms =>
+      QList<dynamic>(_key('target_platforms'));
 
   QList<String> get tags => QList<String>(_key('tags'));
 
@@ -337,6 +351,7 @@ class Posts {
     String? postNote,
     User? author,
     Schedule? schedule,
+    List<dynamic>? targetPlatforms,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -352,6 +367,7 @@ class Posts {
     if (postNote != null) selector['post_note'] = postNote;
     if (author != null) selector['author'] = author.id;
     if (schedule != null) selector['schedule'] = schedule;
+    if (targetPlatforms != null) selector['target_platforms'] = targetPlatforms;
     if (tags != null) selector['tags'] = tags;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
@@ -464,6 +480,7 @@ class Posts {
     String? postNote,
     User? author,
     Schedule? schedule,
+    List<dynamic>? targetPlatforms,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -482,6 +499,7 @@ class Posts {
     if (postNote != null) selector['post_note'] = postNote;
     if (author != null) selector['author'] = author.id;
     if (schedule != null) selector['schedule'] = schedule;
+    if (targetPlatforms != null) selector['target_platforms'] = targetPlatforms;
     if (tags != null) selector['tags'] = tags;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
@@ -570,6 +588,7 @@ class Posts {
     String? postNote,
     User? author,
     Schedule? schedule,
+    List<dynamic>? targetPlatforms,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -581,6 +600,7 @@ class Posts {
     if (postNote != null) selector['post_note'] = postNote;
     if (author != null) selector['author'] = author.id;
     if (schedule != null) selector['schedule'] = schedule;
+    if (targetPlatforms != null) selector['target_platforms'] = targetPlatforms;
     if (tags != null) selector['tags'] = tags;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
@@ -611,6 +631,7 @@ class Posts {
     String? postNote,
     User? author,
     Schedule? schedule,
+    List<dynamic>? targetPlatforms,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -622,6 +643,7 @@ class Posts {
     if (postNote != null) selector['post_note'] = postNote;
     if (author != null) selector['author'] = author.id;
     if (schedule != null) selector['schedule'] = schedule;
+    if (targetPlatforms != null) selector['target_platforms'] = targetPlatforms;
     if (tags != null) selector['tags'] = tags;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
@@ -640,6 +662,7 @@ class Posts {
     String? postNote,
     User? author,
     Schedule? schedule,
+    List<dynamic>? targetPlatforms,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -652,6 +675,7 @@ class Posts {
         if (postNote != null) 'post_note': postNote,
         if (author != null) 'author': author.id,
         if (schedule != null) 'schedule': schedule,
+        if (targetPlatforms != null) 'target_platforms': targetPlatforms,
         if (tags != null) 'tags': tags,
         if (createdAt != null) 'created_at': createdAt,
         if (updatedAt != null) 'updated_at': updatedAt,
@@ -676,6 +700,7 @@ class Posts {
     String? postNote,
     User? author,
     Schedule? schedule,
+    List<dynamic>? targetPlatforms,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -688,6 +713,7 @@ class Posts {
         if (postNote != null) 'post_note': postNote,
         if (author != null) 'author': author.id,
         if (schedule != null) 'schedule': schedule,
+        if (targetPlatforms != null) 'target_platforms': targetPlatforms,
         if (tags != null) 'tags': tags,
         if (createdAt != null) 'created_at': createdAt,
         if (updatedAt != null) 'updated_at': updatedAt,

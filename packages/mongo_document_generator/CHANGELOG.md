@@ -1,3 +1,9 @@
+## 1.5.9
+
+### Added
+
+Added support for deep search within collections
+
 ## 1.5.8
 
 ### Fixed
@@ -8,7 +14,7 @@ Bug fixes around projections
 
 ### Fixed
 
-Bug fixes around datetimes
+Bug fixes around Date times
 
 ## 1.5.6
 

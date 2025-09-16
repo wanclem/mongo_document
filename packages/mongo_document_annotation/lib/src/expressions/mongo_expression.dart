@@ -300,19 +300,16 @@ class QList<T> with MoreExMixin {
   });
 
   Expression isNotEmpty() => RawExpression({
-    _prefix: {
-      r'$exists': true,
-      r'$ne': [],
-    },
+    _prefix: {r'$exists': true, r'$ne': []},
   });
 
   ///Check if the list is empty
   Expression isEmpty() => RawExpression({
-    _prefix: {
-      r'$exists': true,
-      r'$eq': [],
-    },
+    _prefix: {r'$exists': true, r'$eq': []},
   });
+
+  Expression deepSearch(String fieldName, String value) =>
+      RawExpression({"$_prefix.$fieldName": value});
 }
 
 class QueryLink<T> {
