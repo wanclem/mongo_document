@@ -1,3 +1,9 @@
+## 1.6.0
+
+### Added
+
+Added support for deep inner collection emptiness checks
+
 ## 1.5.9
 
 ### Added

@@ -308,8 +308,16 @@ class QList<T> with MoreExMixin {
     _prefix: {r'$exists': true, r'$eq': []},
   });
 
-  Expression deepSearch(String fieldName, String value) =>
+  Expression innerEqual(String fieldName, dynamic value) =>
       RawExpression({"$_prefix.$fieldName": value});
+
+  Expression withNonEmptyInner(String fieldName) => RawExpression({
+    "$_prefix.$fieldName": {r'$exists': true, r'$ne': []},
+  });
+
+  Expression withEmptyInner(String fieldName) => RawExpression({
+    "$_prefix.$fieldName": {r'$exists': true, r'$eq': []},
+  });
 }
 
 class QueryLink<T> {
