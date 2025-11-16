@@ -1,3 +1,9 @@
+## 1.6.2
+
+### Fixed
+
+Add automatic reconnection with retry logic for connection failures
+
 ## 1.6.1
 
 ### Fixed

@@ -2,7 +2,7 @@ import 'package:mongo_dart/mongo_dart.dart';
 
 class MongoDbConnection {
   static Db? _instance;
-
+  static late final String _databaseUri;
   static late final bool _secure;
   static late final bool _tlsAllowInvalidCertificates;
   static late final String? _tlsCAFile;
@@ -24,15 +24,22 @@ class MongoDbConnection {
       throw Exception("Database already initialized.");
     }
 
+    _databaseUri = databaseUri;
     _secure = secure;
     _tlsAllowInvalidCertificates = tlsAllowInvalidCertificates;
     _tlsCAFile = tlsCAFile;
     _tlsCertificateKeyFile = tlsCertificateKeyFile;
     _tlsCertificateKeyFilePassword = tlsCertificateKeyFilePassword;
 
-    _instance = databaseUri.startsWith('mongodb+srv://')
-        ? await Db.create(databaseUri)
-        : Db(databaseUri);
+    await _connect();
+    print('✅ MongoDB connected');
+  }
+
+  static Future<void> _connect() async {
+    _instance =
+        _databaseUri.startsWith('mongodb+srv://')
+            ? await Db.create(_databaseUri)
+            : Db(_databaseUri);
 
     await _instance!.open(
       secure: _secure,
@@ -41,8 +48,6 @@ class MongoDbConnection {
       tlsCertificateKeyFile: _tlsCertificateKeyFile,
       tlsCertificateKeyFilePassword: _tlsCertificateKeyFilePassword,
     );
-
-    print('✅ MongoDB connected');
   }
 
   static Future<Db> get instance async {
@@ -53,23 +58,37 @@ class MongoDbConnection {
     }
 
     if (!_instance!.isConnected) {
-      await _instance!.open(
-        secure: _secure,
-        tlsAllowInvalidCertificates: _tlsAllowInvalidCertificates,
-        tlsCAFile: _tlsCAFile,
-        tlsCertificateKeyFile: _tlsCertificateKeyFile,
-        tlsCertificateKeyFilePassword: _tlsCertificateKeyFilePassword,
-      );
-      print('🔄 MongoDB reconnected');
+      print('🔄 MongoDB disconnected, attempting to reconnect...');
+
+      int maxRetries = 3;
+      int retryDelay = 2; // seconds
+
+      for (int i = 0; i < maxRetries; i++) {
+        try {
+          await _instance!.close().catchError((_) {});
+          await _connect();
+          print('✅ MongoDB reconnected successfully');
+          return _instance!;
+        } catch (e) {
+          print('❌ Reconnection attempt ${i + 1}/$maxRetries failed: $e');
+          if (i < maxRetries - 1) {
+            await Future.delayed(Duration(seconds: retryDelay * (i + 1)));
+          } else {
+            print('❌ All reconnection attempts exhausted');
+            rethrow;
+          }
+        }
+      }
     }
 
     return _instance!;
   }
 
   static Future<void> shutdownDb() async {
-    final db = await instance;
-    await db.close();
-    print('🛑 MongoDB connection closed');
+    if (_instance != null && _instance!.isConnected) {
+      await _instance!.close();
+      print('🛑 MongoDB connection closed');
+    }
   }
 
   static Future<DbCollection> getCollection(String collectionName) async {
