@@ -330,7 +330,6 @@ class OrganizationMembers {
         } else {
           projDoc.addAll(selected);
         }
-        projDoc.addAll(OrganizationMemberProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,
@@ -345,6 +344,12 @@ class OrganizationMembers {
             "preserveNullAndEmptyArrays": true,
           },
         });
+      }
+      final _hasBaseType = projections.any(
+        (p) => p is OrganizationMemberProjections,
+      );
+      if (!_hasBaseType) {
+        projDoc.addAll(OrganizationMemberProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
 
@@ -465,7 +470,6 @@ class OrganizationMembers {
         } else {
           projDoc.addAll(selected);
         }
-        projDoc.addAll(OrganizationMemberProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,
@@ -480,6 +484,12 @@ class OrganizationMembers {
             "preserveNullAndEmptyArrays": true,
           },
         });
+      }
+      final _hasBaseType = projections.any(
+        (p) => p is OrganizationMemberProjections,
+      );
+      if (!_hasBaseType) {
+        projDoc.addAll(OrganizationMemberProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
 
@@ -608,7 +618,6 @@ class OrganizationMembers {
         } else {
           projDoc.addAll(selected);
         }
-        projDoc.addAll(OrganizationMemberProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,
@@ -623,6 +632,12 @@ class OrganizationMembers {
             "preserveNullAndEmptyArrays": true,
           },
         });
+      }
+      final _hasBaseType = projections.any(
+        (p) => p is OrganizationMemberProjections,
+      );
+      if (!_hasBaseType) {
+        projDoc.addAll(OrganizationMemberProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
 

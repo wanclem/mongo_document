@@ -249,7 +249,6 @@ class Tokens {
         } else {
           projDoc.addAll(selected);
         }
-        projDoc.addAll(TokenProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,
@@ -264,6 +263,10 @@ class Tokens {
             "preserveNullAndEmptyArrays": true,
           },
         });
+      }
+      final _hasBaseType = projections.any((p) => p is TokenProjections);
+      if (!_hasBaseType) {
+        projDoc.addAll(TokenProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
 
@@ -379,7 +382,6 @@ class Tokens {
         } else {
           projDoc.addAll(selected);
         }
-        projDoc.addAll(TokenProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,
@@ -394,6 +396,10 @@ class Tokens {
             "preserveNullAndEmptyArrays": true,
           },
         });
+      }
+      final _hasBaseType = projections.any((p) => p is TokenProjections);
+      if (!_hasBaseType) {
+        projDoc.addAll(TokenProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
 
@@ -517,7 +523,6 @@ class Tokens {
         } else {
           projDoc.addAll(selected);
         }
-        projDoc.addAll(TokenProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,
@@ -532,6 +537,10 @@ class Tokens {
             "preserveNullAndEmptyArrays": true,
           },
         });
+      }
+      final _hasBaseType = projections.any((p) => p is TokenProjections);
+      if (!_hasBaseType) {
+        projDoc.addAll(TokenProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
 

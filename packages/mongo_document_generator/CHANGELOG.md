@@ -1,3 +1,9 @@
+## 1.6.1
+
+### Fixed
+
+Bug fixes around base projection checks when projections are empty in aggregation pipelines
+
 ## 1.6.0
 
 ### Added

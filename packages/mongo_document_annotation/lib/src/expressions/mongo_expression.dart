@@ -318,6 +318,23 @@ class QList<T> with MoreExMixin {
   Expression withEmptyInner(String fieldName) => RawExpression({
     "$_prefix.$fieldName": {r'$exists': true, r'$eq': []},
   });
+
+  Expression containsIgnoreCase(String value) => RawExpression({
+    _prefix: {
+      r'$in': [
+        {r'$regex': RegExp.escape(value), r'$options': 'i'},
+      ],
+    },
+  });
+
+  Expression elemMatchString(String fieldName, String pattern) =>
+      RawExpression({
+        _prefix: {
+          r'$elemMatch': {
+            fieldName: {r'$regex': RegExp.escape(pattern), r'$options': 'i'},
+          },
+        },
+      });
 }
 
 class QueryLink<T> {

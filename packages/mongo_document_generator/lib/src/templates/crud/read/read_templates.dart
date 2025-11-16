@@ -287,7 +287,6 @@ final pipeline = <Map<String, Object>>[];
         }else {
           projDoc.addAll(selected);
         }
-        projDoc.addAll($baseProjection.toProjection());
         pipeline.add({
           r'\$lookup': {
             'from': foreignColl,
@@ -297,6 +296,10 @@ final pipeline = <Map<String, Object>>[];
           }
         });
         pipeline.add({r'\$unwind': {"path":"\\\$\${localField}","preserveNullAndEmptyArrays": true}});
+      }
+      final _hasBaseType = projections.any((p) => p is ${baseProjection.replaceAll("(", "").replaceAll(")", "")});
+      if (!_hasBaseType) {
+        projDoc.addAll($baseProjection.toProjection());
       }
       pipeline.add({r'\$project': projDoc});
 ''';

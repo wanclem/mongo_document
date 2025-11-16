@@ -278,7 +278,6 @@ class Posts {
         } else {
           projDoc.addAll(selected);
         }
-        projDoc.addAll(PostProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,
@@ -293,6 +292,10 @@ class Posts {
             "preserveNullAndEmptyArrays": true,
           },
         });
+      }
+      final _hasBaseType = projections.any((p) => p is PostProjections);
+      if (!_hasBaseType) {
+        projDoc.addAll(PostProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
 
@@ -405,7 +408,6 @@ class Posts {
         } else {
           projDoc.addAll(selected);
         }
-        projDoc.addAll(PostProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,
@@ -420,6 +422,10 @@ class Posts {
             "preserveNullAndEmptyArrays": true,
           },
         });
+      }
+      final _hasBaseType = projections.any((p) => p is PostProjections);
+      if (!_hasBaseType) {
+        projDoc.addAll(PostProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
 
@@ -540,7 +546,6 @@ class Posts {
         } else {
           projDoc.addAll(selected);
         }
-        projDoc.addAll(PostProjections().toProjection());
         pipeline.add({
           r'$lookup': {
             'from': foreignColl,
@@ -555,6 +560,10 @@ class Posts {
             "preserveNullAndEmptyArrays": true,
           },
         });
+      }
+      final _hasBaseType = projections.any((p) => p is PostProjections);
+      if (!_hasBaseType) {
+        projDoc.addAll(PostProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
 
