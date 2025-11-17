@@ -24,9 +24,8 @@ class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
   final _formatter = DartFormatter(languageVersion: Version.parse('3.0.0'));
   final AnnotationChecker checker;
 
-  MongoDocumentGenerator({
-    AnnotationChecker? checker,
-  }) : checker = checker ?? DefaultAnnotationChecker();
+  MongoDocumentGenerator({AnnotationChecker? checker})
+    : checker = checker ?? DefaultAnnotationChecker();
 
   @override
   Future<String> generateForAnnotatedElement(
@@ -36,10 +35,15 @@ class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
   ) async {
     if (element is! ClassElement) return '';
     final ctor = element.unnamedConstructor!;
-    final idParam = ctor.parameters.firstWhere((p) => p.name == 'id',
-        orElse: () => throw InvalidGenerationSourceError(
-            'Missing required `id` parameter…',
-            element: element));
+    final idParam = ctor.parameters.firstWhere(
+      (p) => p.name == 'id',
+      orElse:
+          () =>
+              throw InvalidGenerationSourceError(
+                'Missing required `id` parameter…',
+                element: element,
+              ),
+    );
 
     if (!checker.hasObjectIdConverter(idParam) ||
         !checker.hasJsonKeyWithId(idParam)) {
@@ -63,31 +67,10 @@ class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
       fieldRename,
     );
     final template = '''
-${ClassProjection.buildClassProjection(
-      className,
-      _jsonSerializableChecker,
-      _jsonKeyChecker,
-      params,
-      fieldRename,
-      nestedCollectionMap,
-    )}
-${ObjectReferences.buildNestedCollectiontionsMapLiteral(
-      nestedCollectionMap,
-    )}
-${ObjectReferences.buildNestedCollectionProjectionClasses(
-      className,
-      _jsonSerializableChecker,
-      _jsonKeyChecker,
-      nestedCollectionMap,
-      params,
-      fieldRename,
-    )}
-${QueryTemplates.buildQueryClass(
-      _jsonKeyChecker,
-      className,
-      fieldRename,
-      params,
-    )}
+${ClassProjection.buildClassProjection(className, _jsonSerializableChecker, _jsonKeyChecker, params, fieldRename, nestedCollectionMap)}
+${ObjectReferences.buildNestedCollectiontionsMapLiteral(nestedCollectionMap)}
+${ObjectReferences.buildNestedCollectionProjectionClasses(className, _jsonSerializableChecker, _jsonKeyChecker, nestedCollectionMap, params, fieldRename)}
+${QueryTemplates.buildQueryClass(_jsonKeyChecker, className, fieldRename, params)}
 
 extension \$${className}Extension on $className {
   static String get _collection => '$collection';
@@ -100,6 +83,8 @@ extension \$${className}Extension on $className {
 class ${className}s {
   
   static String get _collection => '$collection';
+  static String get collection => _collection;
+
   ${CreateTemplates.saveMany(className)}
   ${ReadTemplates.findById(className)}
   ${ReadTemplates.findOne(className)}

@@ -1,3 +1,9 @@
+## 1.6.3
+
+### Added
+
+Added support for type safe advanced lookups
+
 ## 1.6.2
 
 ### Fixed

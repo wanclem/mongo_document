@@ -16,6 +16,7 @@ enum PostFields {
   body,
   postNote,
   schedule,
+  authorFollowsYou,
   targetPlatforms,
   tags,
   createdAt,
@@ -32,6 +33,7 @@ class PostProjections implements BaseProjections {
     "body": "body",
     "postNote": "post_note",
     "schedule": "schedule",
+    "authorFollowsYou": "author_follows_you",
     "targetPlatforms": "target_platforms",
     "tags": "tags",
     "createdAt": "created_at",
@@ -46,6 +48,7 @@ class PostProjections implements BaseProjections {
       'body': 1,
       'post_note': 1,
       'schedule': 1,
+      'author_follows_you': 1,
       'target_platforms': 1,
       'tags': 1,
       'created_at': 1,
@@ -111,6 +114,9 @@ class QPost {
   QUser get author => QUser(_key('author'));
 
   QueryField<Schedule?> get schedule => QueryField<Schedule?>(_key('schedule'));
+
+  QueryField<bool> get authorFollowsYou =>
+      QueryField<bool>(_key('author_follows_you'));
 
   QList<dynamic> get targetPlatforms =>
       QList<dynamic>(_key('target_platforms'));
@@ -181,6 +187,8 @@ extension $PostExtension on Post {
 
 class Posts {
   static String get _collection => 'posts';
+  static String get collection => _collection;
+
   static Future<List<Post?>> saveMany(List<Post> posts, {Db? db}) async {
     if (posts.isEmpty) return <Post>[];
     final database = db ?? await MongoDbConnection.instance;
@@ -237,6 +245,7 @@ class Posts {
   static Future<Post?> findById(
     dynamic id, {
     Db? db,
+    List<Lookup> lookups = const [],
     List<BaseProjections> projections = const [],
   }) async {
     if (id == null) return null;
@@ -246,9 +255,10 @@ class Posts {
     }
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
-
+    bool foundLookups = false;
+    List<Map<String, Object>> pipeline = [];
     if (projections.isNotEmpty) {
-      final pipeline = <Map<String, Object>>[];
+      foundLookups = true;
       final projDoc = <String, int>{};
       pipeline.add({
         r"$match": {'_id': id},
@@ -298,12 +308,25 @@ class Posts {
         projDoc.addAll(PostProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
-
-      final posts = await coll.aggregateToStream(pipeline).toList();
-      if (posts.isEmpty) return null;
-      return Post.fromJson(posts.first.withRefs());
     }
-
+    if (lookups.isNotEmpty) {
+      bool hasMatch = pipeline.any((stage) => stage.containsKey(r"\$match"));
+      if (!hasMatch) {
+        pipeline.add({
+          r"\$match": {'_id': id},
+        });
+      }
+      (foundLookups, pipeline) = mergeLookups(
+        lookups: lookups,
+        existingPipeline: foundLookups ? pipeline : null,
+        limit: 1,
+      );
+    }
+    if (foundLookups) {
+      final results = await coll.aggregateToStream(pipeline).toList();
+      if (results.isEmpty) return null;
+      return Post.fromJson(results.first.withRefs());
+    }
     // fallback: return entire post
     final post = await coll.findOne(where.eq(r'_id', id));
     return post == null ? null : Post.fromJson(post.withRefs());
@@ -313,6 +336,7 @@ class Posts {
   static Future<Post?> findOne(
     Expression Function(QPost p)? predicate, {
     Db? db,
+    List<Lookup> lookups = const [],
     List<BaseProjections> projections = const [],
   }) async {
     final database = db ?? await MongoDbConnection.instance;
@@ -323,18 +347,29 @@ class Posts {
       if (post == null) return null;
       return Post.fromJson(post.withRefs());
     }
+
     final selectorBuilder = predicate(QPost()).toSelectorBuilder();
     final selectorMap = selectorBuilder.map;
 
     final projDoc =
         projections.isNotEmpty ? buildProjectionDoc(projections) : null;
-    final (foundLookups, pipeline) = toAggregationPipelineWithMap(
+
+    var (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
       projections: projDoc,
       limit: 1,
       raw: selectorMap.raw(),
       cleaned: selectorMap.cleaned(),
     );
+
+    if (lookups.isNotEmpty) {
+      (foundLookups, pipeline) = mergeLookups(
+        lookups: lookups,
+        existingPipeline: foundLookups ? pipeline : null,
+        queryMap: foundLookups ? null : selectorMap.cleaned(),
+        limit: 1,
+      );
+    }
 
     if (foundLookups) {
       final results = await coll.aggregateToStream(pipeline).toList();
@@ -354,22 +389,27 @@ class Posts {
     String? postNote,
     User? author,
     Schedule? schedule,
+    bool? authorFollowsYou,
     List<dynamic>? targetPlatforms,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
     Db? db,
+    List<Lookup> lookups = const [],
     List<BaseProjections> projections = const [],
   }) async {
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
 
     final selector = <String, dynamic>{};
+
     if (id != null) selector['_id'] = id;
     if (body != null) selector['body'] = body;
     if (postNote != null) selector['post_note'] = postNote;
     if (author != null) selector['author'] = author.id;
     if (schedule != null) selector['schedule'] = schedule;
+    if (authorFollowsYou != null)
+      selector['author_follows_you'] = authorFollowsYou;
     if (targetPlatforms != null) selector['target_platforms'] = targetPlatforms;
     if (tags != null) selector['tags'] = tags;
     if (createdAt != null) selector['created_at'] = createdAt;
@@ -379,8 +419,12 @@ class Posts {
       if (post == null) return null;
       return Post.fromJson(post.withRefs());
     }
+
+    bool foundLookups = false;
+    List<Map<String, Object>> pipeline = [];
+
     if (projections.isNotEmpty) {
-      final pipeline = <Map<String, Object>>[];
+      foundLookups = true;
       final projDoc = <String, int>{};
       pipeline.add({r"$match": selector});
       for (var p in projections) {
@@ -428,11 +472,23 @@ class Posts {
         projDoc.addAll(PostProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
+    }
 
+    if (lookups.isNotEmpty) {
+      (foundLookups, pipeline) = mergeLookups(
+        lookups: lookups,
+        existingPipeline: foundLookups ? pipeline : null,
+        queryMap: foundLookups ? null : selector,
+        limit: 1,
+      );
+    }
+
+    if (foundLookups) {
       final posts = await coll.aggregateToStream(pipeline).toList();
       if (posts.isEmpty) return null;
-      return Post.fromJson(posts.first.withRefs());
+      return posts.map((d) => Post.fromJson(d.withRefs())).toList().first;
     }
+
     final postResult = await coll.findOne(selector);
     return postResult == null ? null : Post.fromJson(postResult.withRefs());
   }
@@ -440,6 +496,7 @@ class Posts {
   /// Type-safe findMany by predicate
   static Future<List<Post>> findMany(
     Expression Function(QPost p) predicate, {
+    List<Lookup> lookups = const [],
     int? skip,
     int limit = 10,
     (String, int) sort = const ("created_at", -1),
@@ -454,7 +511,8 @@ class Posts {
 
     final projDoc =
         projections.isNotEmpty ? buildProjectionDoc(projections) : null;
-    final (foundLookups, pipeline) = toAggregationPipelineWithMap(
+
+    var (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
       projections: projDoc,
       raw: selectorMap.raw(),
@@ -463,6 +521,17 @@ class Posts {
       skip: skip,
       cleaned: selectorMap.cleaned(),
     );
+
+    if (lookups.isNotEmpty) {
+      (foundLookups, pipeline) = mergeLookups(
+        lookups: lookups,
+        existingPipeline: foundLookups ? pipeline : null,
+        queryMap: foundLookups ? null : selectorMap.cleaned(),
+        sort: foundLookups ? null : sort,
+        skip: foundLookups ? null : skip,
+        limit: foundLookups ? null : limit,
+      );
+    }
 
     if (foundLookups) {
       final posts = await coll.aggregateToStream(pipeline).toList();
@@ -486,11 +555,13 @@ class Posts {
     String? postNote,
     User? author,
     Schedule? schedule,
+    bool? authorFollowsYou,
     List<dynamic>? targetPlatforms,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
     Db? db,
+    List<Lookup> lookups = const [],
     List<BaseProjections> projections = const [],
     Map<String, Object> sort = const {'created_at': -1},
     int? skip,
@@ -500,23 +571,31 @@ class Posts {
     final coll = await database.collection(_collection);
 
     final selector = <String, dynamic>{};
+
     if (id != null) selector['_id'] = id;
     if (body != null) selector['body'] = body;
     if (postNote != null) selector['post_note'] = postNote;
     if (author != null) selector['author'] = author.id;
     if (schedule != null) selector['schedule'] = schedule;
+    if (authorFollowsYou != null)
+      selector['author_follows_you'] = authorFollowsYou;
     if (targetPlatforms != null) selector['target_platforms'] = targetPlatforms;
     if (tags != null) selector['tags'] = tags;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
+
     if (selector.isEmpty) {
       final posts =
           await coll.modernFind(sort: sort, limit: limit, skip: skip).toList();
       if (posts.isEmpty) return [];
       return posts.map((e) => Post.fromJson(e.withRefs())).toList();
     }
+
+    bool foundLookups = false;
+    List<Map<String, Object>> pipeline = [];
+
     if (projections.isNotEmpty) {
-      final pipeline = <Map<String, Object>>[];
+      foundLookups = true;
       final projDoc = <String, int>{};
       pipeline.add({r"$match": selector});
       pipeline.add({r"$sort": sort});
@@ -566,11 +645,25 @@ class Posts {
         projDoc.addAll(PostProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
+    }
 
+    if (lookups.isNotEmpty) {
+      (foundLookups, pipeline) = mergeLookups(
+        lookups: lookups,
+        existingPipeline: foundLookups ? pipeline : null,
+        queryMap: foundLookups ? null : selector.cleaned(),
+        sort: foundLookups ? null : firstEntryToTuple(sort),
+        skip: foundLookups ? null : skip,
+        limit: foundLookups ? null : limit,
+      );
+    }
+
+    if (foundLookups && pipeline.isNotEmpty) {
       final posts = await coll.aggregateToStream(pipeline).toList();
       if (posts.isEmpty) return [];
       return posts.map((d) => Post.fromJson(d.withRefs())).toList();
     }
+
     final posts =
         await coll
             .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
@@ -597,6 +690,7 @@ class Posts {
     String? postNote,
     User? author,
     Schedule? schedule,
+    bool? authorFollowsYou,
     List<dynamic>? targetPlatforms,
     List<String>? tags,
     DateTime? createdAt,
@@ -609,6 +703,8 @@ class Posts {
     if (postNote != null) selector['post_note'] = postNote;
     if (author != null) selector['author'] = author.id;
     if (schedule != null) selector['schedule'] = schedule;
+    if (authorFollowsYou != null)
+      selector['author_follows_you'] = authorFollowsYou;
     if (targetPlatforms != null) selector['target_platforms'] = targetPlatforms;
     if (tags != null) selector['tags'] = tags;
     if (createdAt != null) selector['created_at'] = createdAt;
@@ -640,6 +736,7 @@ class Posts {
     String? postNote,
     User? author,
     Schedule? schedule,
+    bool? authorFollowsYou,
     List<dynamic>? targetPlatforms,
     List<String>? tags,
     DateTime? createdAt,
@@ -652,6 +749,8 @@ class Posts {
     if (postNote != null) selector['post_note'] = postNote;
     if (author != null) selector['author'] = author.id;
     if (schedule != null) selector['schedule'] = schedule;
+    if (authorFollowsYou != null)
+      selector['author_follows_you'] = authorFollowsYou;
     if (targetPlatforms != null) selector['target_platforms'] = targetPlatforms;
     if (tags != null) selector['tags'] = tags;
     if (createdAt != null) selector['created_at'] = createdAt;
@@ -671,6 +770,7 @@ class Posts {
     String? postNote,
     User? author,
     Schedule? schedule,
+    bool? authorFollowsYou,
     List<dynamic>? targetPlatforms,
     List<String>? tags,
     DateTime? createdAt,
@@ -684,6 +784,7 @@ class Posts {
         if (postNote != null) 'post_note': postNote,
         if (author != null) 'author': author.id,
         if (schedule != null) 'schedule': schedule,
+        if (authorFollowsYou != null) 'author_follows_you': authorFollowsYou,
         if (targetPlatforms != null) 'target_platforms': targetPlatforms,
         if (tags != null) 'tags': tags,
         if (createdAt != null) 'created_at': createdAt,
@@ -709,6 +810,7 @@ class Posts {
     String? postNote,
     User? author,
     Schedule? schedule,
+    bool? authorFollowsYou,
     List<dynamic>? targetPlatforms,
     List<String>? tags,
     DateTime? createdAt,
@@ -722,6 +824,7 @@ class Posts {
         if (postNote != null) 'post_note': postNote,
         if (author != null) 'author': author.id,
         if (schedule != null) 'schedule': schedule,
+        if (authorFollowsYou != null) 'author_follows_you': authorFollowsYou,
         if (targetPlatforms != null) 'target_platforms': targetPlatforms,
         if (tags != null) 'tags': tags,
         if (createdAt != null) 'created_at': createdAt,

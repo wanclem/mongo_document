@@ -185,3 +185,9 @@ Map<String, dynamic> ensureSpecificDateFields(
   }
   return result;
 }
+
+(String, Object)? firstEntryToTuple(Map<String, Object>? map) {
+  if (map == null || map.isEmpty) return null;
+  final entry = map.entries.first;
+  return (entry.key, entry.value);
+}

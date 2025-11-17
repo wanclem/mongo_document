@@ -180,6 +180,8 @@ extension $OrganizationExtension on Organization {
 
 class Organizations {
   static String get _collection => 'organizations';
+  static String get collection => _collection;
+
   static Future<List<Organization?>> saveMany(
     List<Organization> organizations, {
     Db? db,
@@ -241,6 +243,7 @@ class Organizations {
   static Future<Organization?> findById(
     dynamic id, {
     Db? db,
+    List<Lookup> lookups = const [],
     List<BaseProjections> projections = const [],
   }) async {
     if (id == null) return null;
@@ -250,9 +253,10 @@ class Organizations {
     }
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
-
+    bool foundLookups = false;
+    List<Map<String, Object>> pipeline = [];
     if (projections.isNotEmpty) {
-      final pipeline = <Map<String, Object>>[];
+      foundLookups = true;
       final projDoc = <String, int>{};
       pipeline.add({
         r"$match": {'_id': id},
@@ -302,12 +306,25 @@ class Organizations {
         projDoc.addAll(OrganizationProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
-
-      final organizations = await coll.aggregateToStream(pipeline).toList();
-      if (organizations.isEmpty) return null;
-      return Organization.fromJson(organizations.first.withRefs());
     }
-
+    if (lookups.isNotEmpty) {
+      bool hasMatch = pipeline.any((stage) => stage.containsKey(r"\$match"));
+      if (!hasMatch) {
+        pipeline.add({
+          r"\$match": {'_id': id},
+        });
+      }
+      (foundLookups, pipeline) = mergeLookups(
+        lookups: lookups,
+        existingPipeline: foundLookups ? pipeline : null,
+        limit: 1,
+      );
+    }
+    if (foundLookups) {
+      final results = await coll.aggregateToStream(pipeline).toList();
+      if (results.isEmpty) return null;
+      return Organization.fromJson(results.first.withRefs());
+    }
     // fallback: return entire organization
     final organization = await coll.findOne(where.eq(r'_id', id));
     return organization == null
@@ -319,6 +336,7 @@ class Organizations {
   static Future<Organization?> findOne(
     Expression Function(QOrganization o)? predicate, {
     Db? db,
+    List<Lookup> lookups = const [],
     List<BaseProjections> projections = const [],
   }) async {
     final database = db ?? await MongoDbConnection.instance;
@@ -329,18 +347,29 @@ class Organizations {
       if (organization == null) return null;
       return Organization.fromJson(organization.withRefs());
     }
+
     final selectorBuilder = predicate(QOrganization()).toSelectorBuilder();
     final selectorMap = selectorBuilder.map;
 
     final projDoc =
         projections.isNotEmpty ? buildProjectionDoc(projections) : null;
-    final (foundLookups, pipeline) = toAggregationPipelineWithMap(
+
+    var (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
       projections: projDoc,
       limit: 1,
       raw: selectorMap.raw(),
       cleaned: selectorMap.cleaned(),
     );
+
+    if (lookups.isNotEmpty) {
+      (foundLookups, pipeline) = mergeLookups(
+        lookups: lookups,
+        existingPipeline: foundLookups ? pipeline : null,
+        queryMap: foundLookups ? null : selectorMap.cleaned(),
+        limit: 1,
+      );
+    }
 
     if (foundLookups) {
       final results = await coll.aggregateToStream(pipeline).toList();
@@ -367,12 +396,14 @@ class Organizations {
     DateTime? createdAt,
     DateTime? updatedAt,
     Db? db,
+    List<Lookup> lookups = const [],
     List<BaseProjections> projections = const [],
   }) async {
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
 
     final selector = <String, dynamic>{};
+
     if (id != null) selector['_id'] = id;
     if (tempId != null) selector['temp_id'] = tempId;
     if (owner != null) selector['owner'] = owner.id;
@@ -387,8 +418,12 @@ class Organizations {
       if (organization == null) return null;
       return Organization.fromJson(organization.withRefs());
     }
+
+    bool foundLookups = false;
+    List<Map<String, Object>> pipeline = [];
+
     if (projections.isNotEmpty) {
-      final pipeline = <Map<String, Object>>[];
+      foundLookups = true;
       final projDoc = <String, int>{};
       pipeline.add({r"$match": selector});
       for (var p in projections) {
@@ -436,11 +471,26 @@ class Organizations {
         projDoc.addAll(OrganizationProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
+    }
 
+    if (lookups.isNotEmpty) {
+      (foundLookups, pipeline) = mergeLookups(
+        lookups: lookups,
+        existingPipeline: foundLookups ? pipeline : null,
+        queryMap: foundLookups ? null : selector,
+        limit: 1,
+      );
+    }
+
+    if (foundLookups) {
       final organizations = await coll.aggregateToStream(pipeline).toList();
       if (organizations.isEmpty) return null;
-      return Organization.fromJson(organizations.first.withRefs());
+      return organizations
+          .map((d) => Organization.fromJson(d.withRefs()))
+          .toList()
+          .first;
     }
+
     final organizationResult = await coll.findOne(selector);
     return organizationResult == null
         ? null
@@ -450,6 +500,7 @@ class Organizations {
   /// Type-safe findMany by predicate
   static Future<List<Organization>> findMany(
     Expression Function(QOrganization o) predicate, {
+    List<Lookup> lookups = const [],
     int? skip,
     int limit = 10,
     (String, int) sort = const ("created_at", -1),
@@ -464,7 +515,8 @@ class Organizations {
 
     final projDoc =
         projections.isNotEmpty ? buildProjectionDoc(projections) : null;
-    final (foundLookups, pipeline) = toAggregationPipelineWithMap(
+
+    var (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
       projections: projDoc,
       raw: selectorMap.raw(),
@@ -473,6 +525,17 @@ class Organizations {
       skip: skip,
       cleaned: selectorMap.cleaned(),
     );
+
+    if (lookups.isNotEmpty) {
+      (foundLookups, pipeline) = mergeLookups(
+        lookups: lookups,
+        existingPipeline: foundLookups ? pipeline : null,
+        queryMap: foundLookups ? null : selectorMap.cleaned(),
+        sort: foundLookups ? null : sort,
+        skip: foundLookups ? null : skip,
+        limit: foundLookups ? null : limit,
+      );
+    }
 
     if (foundLookups) {
       final organizations = await coll.aggregateToStream(pipeline).toList();
@@ -505,6 +568,7 @@ class Organizations {
     DateTime? createdAt,
     DateTime? updatedAt,
     Db? db,
+    List<Lookup> lookups = const [],
     List<BaseProjections> projections = const [],
     Map<String, Object> sort = const {'created_at': -1},
     int? skip,
@@ -514,6 +578,7 @@ class Organizations {
     final coll = await database.collection(_collection);
 
     final selector = <String, dynamic>{};
+
     if (id != null) selector['_id'] = id;
     if (tempId != null) selector['temp_id'] = tempId;
     if (owner != null) selector['owner'] = owner.id;
@@ -523,6 +588,7 @@ class Organizations {
     if (active != null) selector['active'] = active;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
+
     if (selector.isEmpty) {
       final organizations =
           await coll.modernFind(sort: sort, limit: limit, skip: skip).toList();
@@ -531,8 +597,12 @@ class Organizations {
           .map((e) => Organization.fromJson(e.withRefs()))
           .toList();
     }
+
+    bool foundLookups = false;
+    List<Map<String, Object>> pipeline = [];
+
     if (projections.isNotEmpty) {
-      final pipeline = <Map<String, Object>>[];
+      foundLookups = true;
       final projDoc = <String, int>{};
       pipeline.add({r"$match": selector});
       pipeline.add({r"$sort": sort});
@@ -582,13 +652,27 @@ class Organizations {
         projDoc.addAll(OrganizationProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
+    }
 
+    if (lookups.isNotEmpty) {
+      (foundLookups, pipeline) = mergeLookups(
+        lookups: lookups,
+        existingPipeline: foundLookups ? pipeline : null,
+        queryMap: foundLookups ? null : selector.cleaned(),
+        sort: foundLookups ? null : firstEntryToTuple(sort),
+        skip: foundLookups ? null : skip,
+        limit: foundLookups ? null : limit,
+      );
+    }
+
+    if (foundLookups && pipeline.isNotEmpty) {
       final organizations = await coll.aggregateToStream(pipeline).toList();
       if (organizations.isEmpty) return [];
       return organizations
           .map((d) => Organization.fromJson(d.withRefs()))
           .toList();
     }
+
     final organizations =
         await coll
             .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)

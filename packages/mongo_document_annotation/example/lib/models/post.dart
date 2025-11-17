@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:example/models/schedule.dart';
 import 'package:example/models/user.dart';
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
@@ -21,6 +19,7 @@ abstract class Post with _$Post {
     String? postNote,
     User? author,
     Schedule? schedule,
+    @Default(false) bool authorFollowsYou,
     @Default([]) List<dynamic> targetPlatforms,
     @Default(<String>[]) List<String> tags,
     @DateTimeConverter() DateTime? createdAt,

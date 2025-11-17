@@ -152,6 +152,8 @@ extension $TokenExtension on Token {
 
 class Tokens {
   static String get _collection => 'tokens';
+  static String get collection => _collection;
+
   static Future<List<Token?>> saveMany(List<Token> tokens, {Db? db}) async {
     if (tokens.isEmpty) return <Token>[];
     final database = db ?? await MongoDbConnection.instance;
@@ -208,6 +210,7 @@ class Tokens {
   static Future<Token?> findById(
     dynamic id, {
     Db? db,
+    List<Lookup> lookups = const [],
     List<BaseProjections> projections = const [],
   }) async {
     if (id == null) return null;
@@ -217,9 +220,10 @@ class Tokens {
     }
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
-
+    bool foundLookups = false;
+    List<Map<String, Object>> pipeline = [];
     if (projections.isNotEmpty) {
-      final pipeline = <Map<String, Object>>[];
+      foundLookups = true;
       final projDoc = <String, int>{};
       pipeline.add({
         r"$match": {'_id': id},
@@ -269,12 +273,25 @@ class Tokens {
         projDoc.addAll(TokenProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
-
-      final tokens = await coll.aggregateToStream(pipeline).toList();
-      if (tokens.isEmpty) return null;
-      return Token.fromJson(tokens.first.withRefs());
     }
-
+    if (lookups.isNotEmpty) {
+      bool hasMatch = pipeline.any((stage) => stage.containsKey(r"\$match"));
+      if (!hasMatch) {
+        pipeline.add({
+          r"\$match": {'_id': id},
+        });
+      }
+      (foundLookups, pipeline) = mergeLookups(
+        lookups: lookups,
+        existingPipeline: foundLookups ? pipeline : null,
+        limit: 1,
+      );
+    }
+    if (foundLookups) {
+      final results = await coll.aggregateToStream(pipeline).toList();
+      if (results.isEmpty) return null;
+      return Token.fromJson(results.first.withRefs());
+    }
     // fallback: return entire token
     final token = await coll.findOne(where.eq(r'_id', id));
     return token == null ? null : Token.fromJson(token.withRefs());
@@ -284,6 +301,7 @@ class Tokens {
   static Future<Token?> findOne(
     Expression Function(QToken t)? predicate, {
     Db? db,
+    List<Lookup> lookups = const [],
     List<BaseProjections> projections = const [],
   }) async {
     final database = db ?? await MongoDbConnection.instance;
@@ -294,18 +312,29 @@ class Tokens {
       if (token == null) return null;
       return Token.fromJson(token.withRefs());
     }
+
     final selectorBuilder = predicate(QToken()).toSelectorBuilder();
     final selectorMap = selectorBuilder.map;
 
     final projDoc =
         projections.isNotEmpty ? buildProjectionDoc(projections) : null;
-    final (foundLookups, pipeline) = toAggregationPipelineWithMap(
+
+    var (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
       projections: projDoc,
       limit: 1,
       raw: selectorMap.raw(),
       cleaned: selectorMap.cleaned(),
     );
+
+    if (lookups.isNotEmpty) {
+      (foundLookups, pipeline) = mergeLookups(
+        lookups: lookups,
+        existingPipeline: foundLookups ? pipeline : null,
+        queryMap: foundLookups ? null : selectorMap.cleaned(),
+        limit: 1,
+      );
+    }
 
     if (foundLookups) {
       final results = await coll.aggregateToStream(pipeline).toList();
@@ -331,12 +360,14 @@ class Tokens {
     DateTime? createdAt,
     DateTime? updatedAt,
     Db? db,
+    List<Lookup> lookups = const [],
     List<BaseProjections> projections = const [],
   }) async {
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
 
     final selector = <String, dynamic>{};
+
     if (id != null) selector['_id'] = id;
     if (ownerEmail != null) selector['owner_email'] = ownerEmail;
     if (token != null) selector['token'] = token;
@@ -353,8 +384,12 @@ class Tokens {
       if (token == null) return null;
       return Token.fromJson(token.withRefs());
     }
+
+    bool foundLookups = false;
+    List<Map<String, Object>> pipeline = [];
+
     if (projections.isNotEmpty) {
-      final pipeline = <Map<String, Object>>[];
+      foundLookups = true;
       final projDoc = <String, int>{};
       pipeline.add({r"$match": selector});
       for (var p in projections) {
@@ -402,11 +437,23 @@ class Tokens {
         projDoc.addAll(TokenProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
+    }
 
+    if (lookups.isNotEmpty) {
+      (foundLookups, pipeline) = mergeLookups(
+        lookups: lookups,
+        existingPipeline: foundLookups ? pipeline : null,
+        queryMap: foundLookups ? null : selector,
+        limit: 1,
+      );
+    }
+
+    if (foundLookups) {
       final tokens = await coll.aggregateToStream(pipeline).toList();
       if (tokens.isEmpty) return null;
-      return Token.fromJson(tokens.first.withRefs());
+      return tokens.map((d) => Token.fromJson(d.withRefs())).toList().first;
     }
+
     final tokenResult = await coll.findOne(selector);
     return tokenResult == null ? null : Token.fromJson(tokenResult.withRefs());
   }
@@ -414,6 +461,7 @@ class Tokens {
   /// Type-safe findMany by predicate
   static Future<List<Token>> findMany(
     Expression Function(QToken t) predicate, {
+    List<Lookup> lookups = const [],
     int? skip,
     int limit = 10,
     (String, int) sort = const ("created_at", -1),
@@ -428,7 +476,8 @@ class Tokens {
 
     final projDoc =
         projections.isNotEmpty ? buildProjectionDoc(projections) : null;
-    final (foundLookups, pipeline) = toAggregationPipelineWithMap(
+
+    var (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
       projections: projDoc,
       raw: selectorMap.raw(),
@@ -437,6 +486,17 @@ class Tokens {
       skip: skip,
       cleaned: selectorMap.cleaned(),
     );
+
+    if (lookups.isNotEmpty) {
+      (foundLookups, pipeline) = mergeLookups(
+        lookups: lookups,
+        existingPipeline: foundLookups ? pipeline : null,
+        queryMap: foundLookups ? null : selectorMap.cleaned(),
+        sort: foundLookups ? null : sort,
+        skip: foundLookups ? null : skip,
+        limit: foundLookups ? null : limit,
+      );
+    }
 
     if (foundLookups) {
       final tokens = await coll.aggregateToStream(pipeline).toList();
@@ -466,6 +526,7 @@ class Tokens {
     DateTime? createdAt,
     DateTime? updatedAt,
     Db? db,
+    List<Lookup> lookups = const [],
     List<BaseProjections> projections = const [],
     Map<String, Object> sort = const {'created_at': -1},
     int? skip,
@@ -475,6 +536,7 @@ class Tokens {
     final coll = await database.collection(_collection);
 
     final selector = <String, dynamic>{};
+
     if (id != null) selector['_id'] = id;
     if (ownerEmail != null) selector['owner_email'] = ownerEmail;
     if (token != null) selector['token'] = token;
@@ -486,14 +548,19 @@ class Tokens {
     if (expireAt != null) selector['expire_at'] = expireAt;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
+
     if (selector.isEmpty) {
       final tokens =
           await coll.modernFind(sort: sort, limit: limit, skip: skip).toList();
       if (tokens.isEmpty) return [];
       return tokens.map((e) => Token.fromJson(e.withRefs())).toList();
     }
+
+    bool foundLookups = false;
+    List<Map<String, Object>> pipeline = [];
+
     if (projections.isNotEmpty) {
-      final pipeline = <Map<String, Object>>[];
+      foundLookups = true;
       final projDoc = <String, int>{};
       pipeline.add({r"$match": selector});
       pipeline.add({r"$sort": sort});
@@ -543,11 +610,25 @@ class Tokens {
         projDoc.addAll(TokenProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
+    }
 
+    if (lookups.isNotEmpty) {
+      (foundLookups, pipeline) = mergeLookups(
+        lookups: lookups,
+        existingPipeline: foundLookups ? pipeline : null,
+        queryMap: foundLookups ? null : selector.cleaned(),
+        sort: foundLookups ? null : firstEntryToTuple(sort),
+        skip: foundLookups ? null : skip,
+        limit: foundLookups ? null : limit,
+      );
+    }
+
+    if (foundLookups && pipeline.isNotEmpty) {
       final tokens = await coll.aggregateToStream(pipeline).toList();
       if (tokens.isEmpty) return [];
       return tokens.map((d) => Token.fromJson(d.withRefs())).toList();
     }
+
     final tokens =
         await coll
             .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
