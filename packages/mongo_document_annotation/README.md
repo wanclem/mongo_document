@@ -1,4 +1,4 @@
-[![pub package](https://img.shields.io/pub/v/mongo_document_annotation.svg)](https://pub.dev/packages/mongo_document_annotation) [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![pub package](https://img.shields.io/pub/v/mongo_document.svg)](https://pub.dev/packages/mongo_document_annotation) [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 <!-- TOC -->
 
