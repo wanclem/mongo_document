@@ -5,64 +5,46 @@
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 // Author: Wan Clem <wannclem@gmail.com>
 
-part of 'post.dart';
+part of 'comment.dart';
 
 // **************************************************************************
 // MongoDocumentGenerator
 // **************************************************************************
 
-enum PostFields {
-  id,
-  body,
-  postNote,
-  schedule,
-  comments,
-  authorFollowsYou,
-  targetPlatforms,
-  tags,
-  createdAt,
-  updatedAt,
-}
+enum CommentFields { id, text, deleted, createdAt, updatedAt }
 
-class PostProjections implements BaseProjections {
+class CommentProjections implements BaseProjections {
   @override
-  final List<PostFields>? inclusions;
-  final List<PostFields>? exclusions;
+  final List<CommentFields>? inclusions;
+  final List<CommentFields>? exclusions;
   @override
   final Map<String, dynamic> fieldMappings = const {
     "id": "_id",
-    "body": "body",
-    "postNote": "post_note",
-    "schedule": "schedule",
-    "comments": "comments",
-    "authorFollowsYou": "author_follows_you",
-    "targetPlatforms": "target_platforms",
-    "tags": "tags",
+    "text": "text",
+    "deleted": "deleted",
     "createdAt": "created_at",
     "updatedAt": "updated_at",
   };
-  const PostProjections({this.inclusions, this.exclusions});
+  const CommentProjections({this.inclusions, this.exclusions});
 
   @override
   Map<String, int> toProjection() {
     return {
       '_id': 1,
-      'body': 1,
-      'post_note': 1,
-      'schedule': 1,
-      'comments': 1,
-      'author_follows_you': 1,
-      'target_platforms': 1,
-      'tags': 1,
+      'text': 1,
+      'deleted': 1,
       'created_at': 1,
       'updated_at': 1,
     };
   }
 }
 
-const _nestedCollections = <String, String>{'author': 'accounts'};
+const _nestedCollections = <String, String>{
+  'author': 'accounts',
+  'post': 'posts',
+};
 
-enum PostAuthorFields {
+enum CommentAuthorFields {
   id,
   firstName,
   lastName,
@@ -72,10 +54,10 @@ enum PostAuthorFields {
   updatedAt,
 }
 
-class PostAuthorProjections implements BaseProjections {
+class CommentAuthorProjections implements BaseProjections {
   @override
-  final List<PostAuthorFields>? inclusions;
-  final List<PostAuthorFields>? exclusions;
+  final List<CommentAuthorFields>? inclusions;
+  final List<CommentAuthorFields>? exclusions;
   @override
   final Map<String, dynamic> fieldMappings = const {
     "id": "author._id",
@@ -86,7 +68,7 @@ class PostAuthorProjections implements BaseProjections {
     "createdAt": "author.created_at",
     "updatedAt": "author.updated_at",
   };
-  const PostAuthorProjections({this.inclusions, this.exclusions});
+  const CommentAuthorProjections({this.inclusions, this.exclusions});
 
   @override
   Map<String, int> toProjection() {
@@ -102,31 +84,73 @@ class PostAuthorProjections implements BaseProjections {
   }
 }
 
-class QPost {
+enum CommentPostFields {
+  id,
+  body,
+  postNote,
+  author,
+  schedule,
+  comments,
+  authorFollowsYou,
+  targetPlatforms,
+  tags,
+  createdAt,
+  updatedAt,
+}
+
+class CommentPostProjections implements BaseProjections {
+  @override
+  final List<CommentPostFields>? inclusions;
+  final List<CommentPostFields>? exclusions;
+  @override
+  final Map<String, dynamic> fieldMappings = const {
+    "id": "post._id",
+    "body": "post.body",
+    "postNote": "post.post_note",
+    "author": "post.author",
+    "schedule": "post.schedule",
+    "comments": "post.comments",
+    "authorFollowsYou": "post.author_follows_you",
+    "targetPlatforms": "post.target_platforms",
+    "tags": "post.tags",
+    "createdAt": "post.created_at",
+    "updatedAt": "post.updated_at",
+  };
+  const CommentPostProjections({this.inclusions, this.exclusions});
+
+  @override
+  Map<String, int> toProjection() {
+    return {
+      'post._id': 1,
+      'post.body': 1,
+      'post.post_note': 1,
+      'post.author': 1,
+      'post.schedule': 1,
+      'post.comments': 1,
+      'post.author_follows_you': 1,
+      'post.target_platforms': 1,
+      'post.tags': 1,
+      'post.created_at': 1,
+      'post.updated_at': 1,
+    };
+  }
+}
+
+class QComment {
   final String _prefix;
-  QPost([this._prefix = '']);
+  QComment([this._prefix = '']);
 
   String _key(String field) => _prefix.isEmpty ? field : '$_prefix.$field';
 
   QueryField<ObjectId?> get id => QueryField<ObjectId?>(_key('_id'));
 
-  QueryField<String?> get body => QueryField<String?>(_key('body'));
-
-  QueryField<String?> get postNote => QueryField<String?>(_key('post_note'));
-
   QUser get author => QUser(_key('author'));
 
-  QueryField<Schedule?> get schedule => QueryField<Schedule?>(_key('schedule'));
+  QPost get post => QPost(_key('post'));
 
-  QList<Comment> get comments => QList<Comment>(_key('comments'));
+  QueryField<String?> get text => QueryField<String?>(_key('text'));
 
-  QueryField<bool> get authorFollowsYou =>
-      QueryField<bool>(_key('author_follows_you'));
-
-  QList<dynamic> get targetPlatforms =>
-      QList<dynamic>(_key('target_platforms'));
-
-  QList<String> get tags => QList<String>(_key('tags'));
+  QueryField<bool> get deleted => QueryField<bool>(_key('deleted'));
 
   QueryField<DateTime?> get createdAt =>
       QueryField<DateTime?>(_key('created_at'));
@@ -135,21 +159,21 @@ class QPost {
       QueryField<DateTime?>(_key('updated_at'));
 }
 
-extension $PostExtension on Post {
-  static String get _collection => 'posts';
+extension $CommentExtension on Comment {
+  static String get _collection => 'comments';
 
-  Future<Post?> save({Db? db}) async {
+  Future<Comment?> save({Db? db}) async {
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
-    final postMap = toJson()..remove('_id');
-    postMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
-    postMap.update('updated_at', (v) => now, ifAbsent: () => now);
+    final commentMap = toJson()..remove('_id');
+    commentMap.update('created_at', (v) => v ?? now, ifAbsent: () => now);
+    commentMap.update('updated_at', (v) => now, ifAbsent: () => now);
 
-    var post = sanitizedDocument({...postMap});
-    for (var entry in postMap.entries) {
+    var comment = sanitizedDocument({...commentMap});
+    for (var entry in commentMap.entries) {
       final root = entry.key;
       if (_nestedCollections.containsKey(root)) {
         final Map<String, dynamic> value =
@@ -159,26 +183,26 @@ extension $PostExtension on Post {
         if (value.isEmpty) continue;
         final nestedId = value['_id'] as ObjectId?;
         if (nestedId == null) {
-          post.remove(root);
+          comment.remove(root);
         } else {
-          post[root] = nestedId;
+          comment[root] = nestedId;
         }
       }
     }
 
     if (isInsert) {
-      final result = await coll.insertOne(post);
+      final result = await coll.insertOne(comment);
       if (!result.isSuccess) return null;
       final savedDoc = await coll.findOne(where.id(result.id));
-      return Post.fromJson(savedDoc!.withRefs());
+      return Comment.fromJson(savedDoc!.withRefs());
     }
 
     var parentMod = modify.set('updated_at', now);
-    post.forEach((k, v) => parentMod = parentMod.set(k, v));
+    comment.forEach((k, v) => parentMod = parentMod.set(k, v));
     final res = await coll.updateOne(where.eq(r'_id', id), parentMod);
     if (!res.isSuccess) return null;
     final savedDoc = await coll.findOne(where.id(id!));
-    return Post.fromJson(savedDoc!.withRefs());
+    return Comment.fromJson(savedDoc!.withRefs());
   }
 
   Future<bool> delete({Db? db}) async {
@@ -190,19 +214,22 @@ extension $PostExtension on Post {
   }
 }
 
-class Posts {
-  static String get _collection => 'posts';
+class Comments {
+  static String get _collection => 'comments';
   static String get collection => _collection;
 
-  static Future<List<Post?>> saveMany(List<Post> posts, {Db? db}) async {
-    if (posts.isEmpty) return <Post>[];
+  static Future<List<Comment?>> saveMany(
+    List<Comment> comments, {
+    Db? db,
+  }) async {
+    if (comments.isEmpty) return <Comment>[];
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
     final now = DateTime.now().toUtc();
     final List<Map<String, dynamic>> toInsert = [];
     final List<Map<String, dynamic>> toSave = [];
-    for (final p in posts) {
-      final json = sanitizedDocument(p.toJson());
+    for (final c in comments) {
+      final json = sanitizedDocument(c.toJson());
       json.update('created_at', (v) => v ?? now, ifAbsent: () => now);
       json.update('updated_at', (v) => now, ifAbsent: () => now);
       final processed = json.map((key, value) {
@@ -241,13 +268,13 @@ class Posts {
       affectedIds.add(doc['_id']);
     }
     final uniqueIds = affectedIds.where((e) => e != null).toSet().toList();
-    if (uniqueIds.isEmpty) return <Post>[];
+    if (uniqueIds.isEmpty) return <Comment>[];
     final insertedDocs =
         await coll.find(where.oneFrom('_id', uniqueIds)).toList();
-    return insertedDocs.map((doc) => Post.fromJson(doc.withRefs())).toList();
+    return insertedDocs.map((doc) => Comment.fromJson(doc.withRefs())).toList();
   }
 
-  static Future<Post?> findById(
+  static Future<Comment?> findById(
     dynamic id, {
     Db? db,
     List<Lookup> lookups = const [],
@@ -308,9 +335,9 @@ class Posts {
           },
         });
       }
-      final _hasBaseType = projections.any((p) => p is PostProjections);
+      final _hasBaseType = projections.any((p) => p is CommentProjections);
       if (!_hasBaseType) {
-        projDoc.addAll(PostProjections().toProjection());
+        projDoc.addAll(CommentProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
     }
@@ -330,16 +357,16 @@ class Posts {
     if (foundLookups) {
       final results = await coll.aggregateToStream(pipeline).toList();
       if (results.isEmpty) return null;
-      return Post.fromJson(results.first.withRefs());
+      return Comment.fromJson(results.first.withRefs());
     }
-    // fallback: return entire post
-    final post = await coll.findOne(where.eq(r'_id', id));
-    return post == null ? null : Post.fromJson(post.withRefs());
+    // fallback: return entire comment
+    final comment = await coll.findOne(where.eq(r'_id', id));
+    return comment == null ? null : Comment.fromJson(comment.withRefs());
   }
 
   /// Type-safe findOne by predicate
-  static Future<Post?> findOne(
-    Expression Function(QPost p)? predicate, {
+  static Future<Comment?> findOne(
+    Expression Function(QComment c)? predicate, {
     Db? db,
     List<Lookup> lookups = const [],
     List<BaseProjections> projections = const [],
@@ -348,12 +375,12 @@ class Posts {
     final coll = await database.collection(_collection);
 
     if (predicate == null) {
-      final post = await coll.modernFindOne(sort: {'created_at': -1});
-      if (post == null) return null;
-      return Post.fromJson(post.withRefs());
+      final comment = await coll.modernFindOne(sort: {'created_at': -1});
+      if (comment == null) return null;
+      return Comment.fromJson(comment.withRefs());
     }
 
-    final selectorBuilder = predicate(QPost()).toSelectorBuilder();
+    final selectorBuilder = predicate(QComment()).toSelectorBuilder();
     final selectorMap = selectorBuilder.map;
 
     final projDoc =
@@ -379,25 +406,23 @@ class Posts {
     if (foundLookups) {
       final results = await coll.aggregateToStream(pipeline).toList();
       if (results.isEmpty) return null;
-      return Post.fromJson(results.first.withRefs());
+      return Comment.fromJson(results.first.withRefs());
     }
 
     // fallback to simple findOne
-    final postResult = await coll.findOne(selectorMap.cleaned());
-    return postResult == null ? null : Post.fromJson(postResult.withRefs());
+    final commentResult = await coll.findOne(selectorMap.cleaned());
+    return commentResult == null
+        ? null
+        : Comment.fromJson(commentResult.withRefs());
   }
 
   /// Type-safe findOne by named arguments
-  static Future<Post?> findOneByNamed({
+  static Future<Comment?> findOneByNamed({
     ObjectId? id,
-    String? body,
-    String? postNote,
     User? author,
-    Schedule? schedule,
-    List<Comment>? comments,
-    bool? authorFollowsYou,
-    List<dynamic>? targetPlatforms,
-    List<String>? tags,
+    Post? post,
+    String? text,
+    bool? deleted,
     DateTime? createdAt,
     DateTime? updatedAt,
     Db? db,
@@ -410,21 +435,16 @@ class Posts {
     final selector = <String, dynamic>{};
 
     if (id != null) selector['_id'] = id;
-    if (body != null) selector['body'] = body;
-    if (postNote != null) selector['post_note'] = postNote;
     if (author != null) selector['author'] = author.id;
-    if (schedule != null) selector['schedule'] = schedule;
-    if (comments != null) selector['comments'] = comments;
-    if (authorFollowsYou != null)
-      selector['author_follows_you'] = authorFollowsYou;
-    if (targetPlatforms != null) selector['target_platforms'] = targetPlatforms;
-    if (tags != null) selector['tags'] = tags;
+    if (post != null) selector['post'] = post.id;
+    if (text != null) selector['text'] = text;
+    if (deleted != null) selector['deleted'] = deleted;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) {
-      final post = await coll.modernFindOne(sort: {'created_at': -1});
-      if (post == null) return null;
-      return Post.fromJson(post.withRefs());
+      final comment = await coll.modernFindOne(sort: {'created_at': -1});
+      if (comment == null) return null;
+      return Comment.fromJson(comment.withRefs());
     }
 
     bool foundLookups = false;
@@ -474,9 +494,9 @@ class Posts {
           },
         });
       }
-      final _hasBaseType = projections.any((p) => p is PostProjections);
+      final _hasBaseType = projections.any((p) => p is CommentProjections);
       if (!_hasBaseType) {
-        projDoc.addAll(PostProjections().toProjection());
+        projDoc.addAll(CommentProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
     }
@@ -491,18 +511,20 @@ class Posts {
     }
 
     if (foundLookups) {
-      final posts = await coll.aggregateToStream(pipeline).toList();
-      if (posts.isEmpty) return null;
-      return posts.map((d) => Post.fromJson(d.withRefs())).toList().first;
+      final comments = await coll.aggregateToStream(pipeline).toList();
+      if (comments.isEmpty) return null;
+      return comments.map((d) => Comment.fromJson(d.withRefs())).toList().first;
     }
 
-    final postResult = await coll.findOne(selector);
-    return postResult == null ? null : Post.fromJson(postResult.withRefs());
+    final commentResult = await coll.findOne(selector);
+    return commentResult == null
+        ? null
+        : Comment.fromJson(commentResult.withRefs());
   }
 
   /// Type-safe findMany by predicate
-  static Future<List<Post>> findMany(
-    Expression Function(QPost p) predicate, {
+  static Future<List<Comment>> findMany(
+    Expression Function(QComment c) predicate, {
     List<Lookup> lookups = const [],
     int? skip,
     int limit = 10,
@@ -513,7 +535,7 @@ class Posts {
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
 
-    var selectorBuilder = predicate(QPost()).toSelectorBuilder();
+    var selectorBuilder = predicate(QComment()).toSelectorBuilder();
     var selectorMap = selectorBuilder.map;
 
     final projDoc =
@@ -541,9 +563,9 @@ class Posts {
     }
 
     if (foundLookups) {
-      final posts = await coll.aggregateToStream(pipeline).toList();
-      if (posts.isEmpty) return [];
-      return posts.map((d) => Post.fromJson(d.withRefs())).toList();
+      final comments = await coll.aggregateToStream(pipeline).toList();
+      if (comments.isEmpty) return [];
+      return comments.map((d) => Comment.fromJson(d.withRefs())).toList();
     }
 
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
@@ -551,21 +573,17 @@ class Posts {
 
     selectorMap = selectorBuilder.map;
 
-    final posts = await coll.find(selectorMap.cleaned()).toList();
-    return posts.map((e) => Post.fromJson(e.withRefs())).toList();
+    final comments = await coll.find(selectorMap.cleaned()).toList();
+    return comments.map((e) => Comment.fromJson(e.withRefs())).toList();
   }
 
   /// Type-safe findMany by named arguments
-  static Future<List<Post>> findManyByNamed({
+  static Future<List<Comment>> findManyByNamed({
     ObjectId? id,
-    String? body,
-    String? postNote,
     User? author,
-    Schedule? schedule,
-    List<Comment>? comments,
-    bool? authorFollowsYou,
-    List<dynamic>? targetPlatforms,
-    List<String>? tags,
+    Post? post,
+    String? text,
+    bool? deleted,
     DateTime? createdAt,
     DateTime? updatedAt,
     Db? db,
@@ -581,23 +599,18 @@ class Posts {
     final selector = <String, dynamic>{};
 
     if (id != null) selector['_id'] = id;
-    if (body != null) selector['body'] = body;
-    if (postNote != null) selector['post_note'] = postNote;
     if (author != null) selector['author'] = author.id;
-    if (schedule != null) selector['schedule'] = schedule;
-    if (comments != null) selector['comments'] = comments;
-    if (authorFollowsYou != null)
-      selector['author_follows_you'] = authorFollowsYou;
-    if (targetPlatforms != null) selector['target_platforms'] = targetPlatforms;
-    if (tags != null) selector['tags'] = tags;
+    if (post != null) selector['post'] = post.id;
+    if (text != null) selector['text'] = text;
+    if (deleted != null) selector['deleted'] = deleted;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
 
     if (selector.isEmpty) {
-      final posts =
+      final comments =
           await coll.modernFind(sort: sort, limit: limit, skip: skip).toList();
-      if (posts.isEmpty) return [];
-      return posts.map((e) => Post.fromJson(e.withRefs())).toList();
+      if (comments.isEmpty) return [];
+      return comments.map((e) => Comment.fromJson(e.withRefs())).toList();
     }
 
     bool foundLookups = false;
@@ -649,9 +662,9 @@ class Posts {
           },
         });
       }
-      final _hasBaseType = projections.any((p) => p is PostProjections);
+      final _hasBaseType = projections.any((p) => p is CommentProjections);
       if (!_hasBaseType) {
-        projDoc.addAll(PostProjections().toProjection());
+        projDoc.addAll(CommentProjections().toProjection());
       }
       pipeline.add({r'$project': projDoc});
     }
@@ -668,24 +681,24 @@ class Posts {
     }
 
     if (foundLookups && pipeline.isNotEmpty) {
-      final posts = await coll.aggregateToStream(pipeline).toList();
-      if (posts.isEmpty) return [];
-      return posts.map((d) => Post.fromJson(d.withRefs())).toList();
+      final comments = await coll.aggregateToStream(pipeline).toList();
+      if (comments.isEmpty) return [];
+      return comments.map((d) => Comment.fromJson(d.withRefs())).toList();
     }
 
-    final posts =
+    final comments =
         await coll
             .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
             .toList();
-    return posts.map((e) => Post.fromJson(e.withRefs())).toList();
+    return comments.map((e) => Comment.fromJson(e.withRefs())).toList();
   }
 
   static Future<bool> deleteOne(
-    Expression Function(QPost p) predicate, {
+    Expression Function(QComment c) predicate, {
     Db? db,
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final expr = predicate(QPost());
+    final expr = predicate(QComment());
     final selector = expr.toSelectorBuilder();
     final coll = await database.collection(_collection);
     final result = await coll.deleteOne(selector.map.cleaned());
@@ -695,29 +708,20 @@ class Posts {
   /// Type-safe deleteOne by named arguments
   static Future<bool> deleteOneByNamed({
     ObjectId? id,
-    String? body,
-    String? postNote,
     User? author,
-    Schedule? schedule,
-    List<Comment>? comments,
-    bool? authorFollowsYou,
-    List<dynamic>? targetPlatforms,
-    List<String>? tags,
+    Post? post,
+    String? text,
+    bool? deleted,
     DateTime? createdAt,
     DateTime? updatedAt,
     Db? db,
   }) async {
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
-    if (body != null) selector['body'] = body;
-    if (postNote != null) selector['post_note'] = postNote;
     if (author != null) selector['author'] = author.id;
-    if (schedule != null) selector['schedule'] = schedule;
-    if (comments != null) selector['comments'] = comments;
-    if (authorFollowsYou != null)
-      selector['author_follows_you'] = authorFollowsYou;
-    if (targetPlatforms != null) selector['target_platforms'] = targetPlatforms;
-    if (tags != null) selector['tags'] = tags;
+    if (post != null) selector['post'] = post.id;
+    if (text != null) selector['text'] = text;
+    if (deleted != null) selector['deleted'] = deleted;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) return false;
@@ -729,11 +733,11 @@ class Posts {
 
   /// Type-safe deleteMany
   static Future<bool> deleteMany(
-    Expression Function(QPost p) predicate, {
+    Expression Function(QComment c) predicate, {
     Db? db,
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final expr = predicate(QPost());
+    final expr = predicate(QComment());
     final selector = expr.toSelectorBuilder();
     final coll = await database.collection(_collection);
     final result = await coll.deleteMany(selector.map.cleaned());
@@ -743,29 +747,20 @@ class Posts {
   /// Type-safe deleteMany by named arguments
   static Future<bool> deleteManyByNamed({
     ObjectId? id,
-    String? body,
-    String? postNote,
     User? author,
-    Schedule? schedule,
-    List<Comment>? comments,
-    bool? authorFollowsYou,
-    List<dynamic>? targetPlatforms,
-    List<String>? tags,
+    Post? post,
+    String? text,
+    bool? deleted,
     DateTime? createdAt,
     DateTime? updatedAt,
     Db? db,
   }) async {
     final selector = <String, dynamic>{};
     if (id != null) selector['_id'] = id;
-    if (body != null) selector['body'] = body;
-    if (postNote != null) selector['post_note'] = postNote;
     if (author != null) selector['author'] = author.id;
-    if (schedule != null) selector['schedule'] = schedule;
-    if (comments != null) selector['comments'] = comments;
-    if (authorFollowsYou != null)
-      selector['author_follows_you'] = authorFollowsYou;
-    if (targetPlatforms != null) selector['target_platforms'] = targetPlatforms;
-    if (tags != null) selector['tags'] = tags;
+    if (post != null) selector['post'] = post.id;
+    if (text != null) selector['text'] = text;
+    if (deleted != null) selector['deleted'] = deleted;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) return false;
@@ -776,17 +771,13 @@ class Posts {
   }
 
   /// Type-safe updateOne
-  static Future<Post?> updateOne(
-    Expression Function(QPost p) predicate, {
+  static Future<Comment?> updateOne(
+    Expression Function(QComment c) predicate, {
     ObjectId? id,
-    String? body,
-    String? postNote,
     User? author,
-    Schedule? schedule,
-    List<Comment>? comments,
-    bool? authorFollowsYou,
-    List<dynamic>? targetPlatforms,
-    List<String>? tags,
+    Post? post,
+    String? text,
+    bool? deleted,
     DateTime? createdAt,
     DateTime? updatedAt,
     Db? db,
@@ -794,14 +785,10 @@ class Posts {
     final modifier = _buildModifier(
       sanitizedDocument({
         if (id != null) '_id': id,
-        if (body != null) 'body': body,
-        if (postNote != null) 'post_note': postNote,
         if (author != null) 'author': author.id,
-        if (schedule != null) 'schedule': schedule,
-        if (comments != null) 'comments': comments,
-        if (authorFollowsYou != null) 'author_follows_you': authorFollowsYou,
-        if (targetPlatforms != null) 'target_platforms': targetPlatforms,
-        if (tags != null) 'tags': tags,
+        if (post != null) 'post': post.id,
+        if (text != null) 'text': text,
+        if (deleted != null) 'deleted': deleted,
         if (createdAt != null) 'created_at': createdAt,
         if (updatedAt != null) 'updated_at': updatedAt,
       }),
@@ -814,21 +801,17 @@ class Posts {
     if (!result.isSuccess) return null;
     final updatedDoc = await coll.findOne({'_id': retrieved.id});
     if (updatedDoc == null) return null;
-    return Post.fromJson(updatedDoc.withRefs());
+    return Comment.fromJson(updatedDoc.withRefs());
   }
 
   /// Type-safe updateMany
-  static Future<List<Post>> updateMany(
-    Expression Function(QPost p) predicate, {
+  static Future<List<Comment>> updateMany(
+    Expression Function(QComment c) predicate, {
     ObjectId? id,
-    String? body,
-    String? postNote,
     User? author,
-    Schedule? schedule,
-    List<Comment>? comments,
-    bool? authorFollowsYou,
-    List<dynamic>? targetPlatforms,
-    List<String>? tags,
+    Post? post,
+    String? text,
+    bool? deleted,
     DateTime? createdAt,
     DateTime? updatedAt,
     Db? db,
@@ -836,14 +819,10 @@ class Posts {
     final modifier = _buildModifier(
       sanitizedDocument({
         if (id != null) '_id': id,
-        if (body != null) 'body': body,
-        if (postNote != null) 'post_note': postNote,
         if (author != null) 'author': author.id,
-        if (schedule != null) 'schedule': schedule,
-        if (comments != null) 'comments': comments,
-        if (authorFollowsYou != null) 'author_follows_you': authorFollowsYou,
-        if (targetPlatforms != null) 'target_platforms': targetPlatforms,
-        if (tags != null) 'tags': tags,
+        if (post != null) 'post': post.id,
+        if (text != null) 'text': text,
+        if (deleted != null) 'deleted': deleted,
         if (createdAt != null) 'created_at': createdAt,
         if (updatedAt != null) 'updated_at': updatedAt,
       }),
@@ -858,7 +837,7 @@ class Posts {
     final updatedCursor = coll.find(where.oneFrom('_id', ids));
     final updatedDocs = await updatedCursor.toList();
     if (updatedDocs.isEmpty) return [];
-    return updatedDocs.map((doc) => Post.fromJson(doc.withRefs())).toList();
+    return updatedDocs.map((doc) => Comment.fromJson(doc.withRefs())).toList();
   }
 
   static ModifierBuilder _buildModifier(Map<String, dynamic> updateMap) {
@@ -870,7 +849,7 @@ class Posts {
 
   /// Prioritize `updateOne` whenever possible to avoid type mismatch.
   /// This method is a fallback for cases where you just had to use a map.
-  static Future<Post?> updateOneFromMap(
+  static Future<Comment?> updateOneFromMap(
     ObjectId id,
     Map<String, dynamic> updateMap, {
     Db? db,
@@ -883,11 +862,11 @@ class Posts {
     final result = await coll.updateOne(where.id(id), mod);
     if (!result.isSuccess) return null;
     final updatedDoc = await coll.findOne({'_id': id});
-    return updatedDoc == null ? null : Post.fromJson(updatedDoc.withRefs());
+    return updatedDoc == null ? null : Comment.fromJson(updatedDoc.withRefs());
   }
 
   static Future<int> count(
-    Expression Function(QPost p)? predicate, {
+    Expression Function(QComment c)? predicate, {
     Db? db,
   }) async {
     final database = db ?? await MongoDbConnection.instance;
@@ -896,7 +875,7 @@ class Posts {
     final selectorMap =
         predicate == null
             ? <String, dynamic>{}
-            : predicate(QPost()).toSelectorBuilder().map;
+            : predicate(QComment()).toSelectorBuilder().map;
 
     final (foundLookups, pipelineWithoutCount) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,

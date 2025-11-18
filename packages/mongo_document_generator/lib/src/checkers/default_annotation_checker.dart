@@ -6,15 +6,15 @@ import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 import 'annotation_checker.dart';
 
 class DefaultAnnotationChecker implements AnnotationChecker {
-  final _objectIdChecker = TypeChecker.fromRuntime(ObjectIdConverter);
-  final _jsonKeyChecker = TypeChecker.fromRuntime(JsonKey);
+  final _objectIdChecker = TypeChecker.typeNamed(ObjectIdConverter);
+  final _jsonKeyChecker = TypeChecker.typeNamed(JsonKey);
 
   @override
-  bool hasObjectIdConverter(ParameterElement element) =>
+  bool hasObjectIdConverter(FormalParameterElement element) =>
       _objectIdChecker.hasAnnotationOf(element);
 
   @override
-  bool hasJsonKeyWithId(ParameterElement element) {
+  bool hasJsonKeyWithId(FormalParameterElement element) {
     final annotation = _jsonKeyChecker.firstAnnotationOf(element);
     if (annotation == null) return false;
     final nameField = annotation.getField('name');

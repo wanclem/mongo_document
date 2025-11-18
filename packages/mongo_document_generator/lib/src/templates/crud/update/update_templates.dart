@@ -19,7 +19,7 @@ class UpdateTemplates {
     String className,
     Map<String, dynamic> nestedCollectionMap,
     TypeChecker typeChecker,
-    List<ParameterElement> params,
+    List<FormalParameterElement> params,
     FieldRename? fieldRename,
   ) {
     return '''
@@ -58,7 +58,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
     String className,
     Map<String, dynamic> nestedCollectionMap,
     TypeChecker typeChecker,
-    List<ParameterElement> params,
+    List<FormalParameterElement> params,
     FieldRename? fieldRename,
   ) {
     return '''

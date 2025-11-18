@@ -20,5 +20,5 @@ FieldRename? getFieldRenamePolicy(
   return fieldRename;
 }
 
-bool isNonNullable(ParameterElement param) =>
+bool isNonNullable(FormalParameterElement param) =>
     !param.type.nullabilitySuffix.toString().contains('question');

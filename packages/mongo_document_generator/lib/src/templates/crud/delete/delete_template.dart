@@ -51,7 +51,7 @@ class DeleteTemplates {
   static deleteOneByNamed(
     String className,
     TypeChecker typeChecker,
-    List<ParameterElement> params,
+    List<FormalParameterElement> params,
     FieldRename? fieldRename,
     Map<String, dynamic> nestedCollectionMap,
   ) {
@@ -79,7 +79,7 @@ class DeleteTemplates {
   static deleteManyByNamed(
     String className,
     TypeChecker typeChecker,
-    List<ParameterElement> params,
+    List<FormalParameterElement> params,
     FieldRename? fieldRename,
     Map<String, dynamic> nestedCollectionMap,
   ) {

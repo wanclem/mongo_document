@@ -9,45 +9,48 @@ class QueryTemplates {
     TypeChecker jsonKeyChecker,
     String className,
     FieldRename? fieldRename,
-    List<ParameterElement> params,
+    List<FormalParameterElement> params,
   ) {
-    final qFields = params.map((p) {
-      // ignore: deprecated_member_use
-      final dartType = p.type.getDisplayString(withNullability: true);
-      final key =
-          ParameterTemplates.getParameterKey(jsonKeyChecker, p, fieldRename);
-      final name = p.name;
-      if (p.type is InterfaceType &&
-          (p.type as InterfaceType).element.metadata.any((md) {
-            return md.computeConstantValue()?.type?.getDisplayString(
+    final qFields = params
+        .map((p) {
+          // ignore: deprecated_member_use
+          final dartType = p.type.getDisplayString(withNullability: true);
+          final key = ParameterTemplates.getParameterKey(
+            jsonKeyChecker,
+            p,
+            fieldRename,
+          );
+          final name = p.name;
+          if (p.type is InterfaceType &&
+              (p.type as InterfaceType).element.metadata.annotations.any((md) {
+                return md.computeConstantValue()?.type?.getDisplayString(
                       // ignore: deprecated_member_use
                       withNullability: false,
                     ) ==
-                'MongoDocument';
-          })) {
-        final nested = (p.type as InterfaceType).element.name;
-        return '''
+                    'MongoDocument';
+              })) {
+            final nested = (p.type as InterfaceType).element.name;
+            return '''
   Q$nested get $name => Q$nested(_key('$key'));
 ''';
-      } else if (_isMapStringDynamic(p)) {
-        return '''
+          } else if (_isMapStringDynamic(p)) {
+            return '''
   QMap<dynamic> get $name => QMap<dynamic>(_key('$key'));
 ''';
-      } else if (_isListOrSet(p)) {
-        final itemType = (p.type as InterfaceType)
-            .typeArguments
-            .first
+          } else if (_isListOrSet(p)) {
+            final itemType = (p.type as InterfaceType).typeArguments.first
             // ignore: deprecated_member_use
             .getDisplayString(withNullability: true);
-        return """
+            return """
   QList<$itemType> get $name => QList<$itemType>(_key('$key'));
 """;
-      } else {
-        return '''
+          } else {
+            return '''
   QueryField<$dartType> get $name => QueryField<$dartType>(_key('$key'));
 ''';
-      }
-    }).join('\n');
+          }
+        })
+        .join('\n');
 
     final qClass = '''
 class Q$className {
@@ -64,7 +67,7 @@ $qFields
     return qClass;
   }
 
-  static bool _isMapStringDynamic(ParameterElement p) {
+  static bool _isMapStringDynamic(FormalParameterElement p) {
     final t = p.type;
     if (t is InterfaceType && t.element.name == 'Map') {
       final args = t.typeArguments;
@@ -77,7 +80,7 @@ $qFields
     return false;
   }
 
-  static bool _isListOrSet(ParameterElement p) {
+  static bool _isListOrSet(FormalParameterElement p) {
     final t = p.type;
     if (t is InterfaceType) {
       final name = t.element.name;

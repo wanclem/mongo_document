@@ -17,8 +17,8 @@ import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 import 'package:source_gen/source_gen.dart';
 import 'package:pub_semver/pub_semver.dart';
 
-const _jsonKeyChecker = TypeChecker.fromRuntime(JsonKey);
-const _jsonSerializableChecker = TypeChecker.fromRuntime(JsonSerializable);
+const _jsonKeyChecker = TypeChecker.typeNamed(JsonKey);
+const _jsonSerializableChecker = TypeChecker.typeNamed(JsonSerializable);
 
 class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
   final _formatter = DartFormatter(languageVersion: Version.parse('3.0.0'));
@@ -35,7 +35,7 @@ class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
   ) async {
     if (element is! ClassElement) return '';
     final ctor = element.unnamedConstructor!;
-    final idParam = ctor.parameters.firstWhere(
+    final idParam = ctor.formalParameters.firstWhere(
       (p) => p.name == 'id',
       orElse:
           () =>
@@ -58,9 +58,9 @@ class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
       _jsonSerializableChecker,
       element,
     );
-    final className = element.name;
+    final className = element.name ?? '';
     final collection = annotation.peek('collection')!.stringValue;
-    final params = element.unnamedConstructor?.parameters ?? [];
+    final params = element.unnamedConstructor?.formalParameters ?? [];
     final nestedCollectionMap = ParameterTemplates.getNestedCollectionMap(
       params,
       _jsonKeyChecker,

@@ -12,36 +12,27 @@ class ObjectReferences {
     TypeChecker jsonSerializableChecker,
     TypeChecker jsonKeyChecker,
     Map<String, String> nestedCollectionMap,
-    List<ParameterElement> params,
+    List<FormalParameterElement> params,
     FieldRename? fieldRename,
   ) {
     final projectionTemplate = '''
 ${nestedCollectionMap.keys.map((root) {
-      final param = params.firstWhere((p) =>
-          ParameterTemplates.getParameterKey(
-            jsonKeyChecker,
-            p,
-            fieldRename,
-          ) ==
-          root);
-      final paramRC = ReCase(param.name).pascalCase;
+      final param = params.firstWhere((p) => ParameterTemplates.getParameterKey(jsonKeyChecker, p, fieldRename) == root);
+      final paramRC = ReCase(param.name ?? '').pascalCase;
       final classRC = ReCase(className).pascalCase;
       final typeName = "$classRC$paramRC";
       final enumName = '${typeName}Fields';
       final projName = '${typeName}Projections';
       final nestedClass = (param.type as InterfaceType).element as ClassElement;
-      FieldRename? nestedRename =
-          getFieldRenamePolicy(jsonSerializableChecker, nestedClass);
-      var nestedClassParams = nestedClass.unnamedConstructor?.parameters ?? [];
+      FieldRename? nestedRename = getFieldRenamePolicy(jsonSerializableChecker, nestedClass);
+      var nestedClassParams = nestedClass.unnamedConstructor?.formalParameters ?? [];
       final entries = nestedClassParams.map((p) {
-        final jsonKey =
-            ParameterTemplates.getParameterKey(jsonKeyChecker, p, nestedRename);
+        final jsonKey = ParameterTemplates.getParameterKey(jsonKeyChecker, p, nestedRename);
         return "'$root.$jsonKey': 1";
       }).join(', ');
       final enumValues = nestedClassParams.map((f) => f.name).join(', ');
       final mappingEntries = nestedClassParams.map((p) {
-        final jsonKey =
-            ParameterTemplates.getParameterKey(jsonKeyChecker, p, nestedRename);
+        final jsonKey = ParameterTemplates.getParameterKey(jsonKeyChecker, p, nestedRename);
         return '    "${p.name}": "$root.$jsonKey"';
       }).join(',\n');
 

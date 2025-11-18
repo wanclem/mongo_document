@@ -1,3 +1,9 @@
+## 1.6.4
+
+### Upgrade
+
+Updated analyzer and migrated ParamElems to FormalParams
+
 ## 1.6.3
 
 ### Added

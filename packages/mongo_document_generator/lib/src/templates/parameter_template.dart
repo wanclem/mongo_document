@@ -8,30 +8,32 @@ import 'package:source_gen/source_gen.dart';
 
 class ParameterTemplates {
   static String buildNullableParams(
-    List<ParameterElement> params,
+    List<FormalParameterElement> params,
     FieldRename? fieldRename,
   ) {
-    return params.map((p) {
-      final dartType = p.type.getDisplayString();
-      final needsQuestion =
-          p.type.nullabilitySuffix != NullabilitySuffix.question;
-      final typeWithNull =
-          needsQuestion && dartType != 'dynamic' ? '$dartType?' : dartType;
-      return '    $typeWithNull ${p.name},';
-    }).join('\n');
+    return params
+        .map((p) {
+          final dartType = p.type.getDisplayString();
+          final needsQuestion =
+              p.type.nullabilitySuffix != NullabilitySuffix.question;
+          final typeWithNull =
+              needsQuestion && dartType != 'dynamic' ? '$dartType?' : dartType;
+          return '    $typeWithNull ${p.name},';
+        })
+        .join('\n');
   }
 
   static String getParameterKey(
     TypeChecker typeChecker,
-    ParameterElement param,
+    FormalParameterElement param,
     FieldRename? fieldRename,
   ) {
+    final name = param.name ?? '';
     final jsonKey = typeChecker.firstAnnotationOf(param);
     if (jsonKey != null) {
-      return jsonKey.getField('name')?.toStringValue() ?? param.name;
+      return jsonKey.getField('name')?.toStringValue() ?? name;
     }
-    final paramName =
-        param.name.startsWith('_') ? param.name.substring(1) : param.name;
+    final paramName = name.startsWith('_') ? name.substring(1) : name;
     final rc = ReCase(paramName);
     switch (fieldRename) {
       case FieldRename.snake:
@@ -47,7 +49,7 @@ class ParameterTemplates {
   }
 
   static Map<String, String> getNestedCollectionMap(
-    List<ParameterElement> params,
+    List<FormalParameterElement> params,
     TypeChecker typeChecker,
     FieldRename? fieldRename,
   ) {
@@ -56,16 +58,12 @@ class ParameterTemplates {
       final pType = p.type;
       if (pType is InterfaceType) {
         final nestedClassElem = pType.element;
-        final mongoAnn = TypeChecker.fromRuntime(
+        final mongoAnn = TypeChecker.typeNamed(
           MongoDocument,
         ).firstAnnotationOf(nestedClassElem);
         if (mongoAnn != null) {
           final collName = mongoAnn.getField('collection')!.toStringValue()!;
-          String paramName = getParameterKey(
-            typeChecker,
-            p,
-            fieldRename,
-          );
+          String paramName = getParameterKey(typeChecker, p, fieldRename);
           nestedCollectionMap[paramName] = collName;
         }
       }

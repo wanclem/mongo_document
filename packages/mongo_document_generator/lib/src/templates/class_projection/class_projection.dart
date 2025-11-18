@@ -8,7 +8,7 @@ class ClassProjection {
     String className,
     TypeChecker jsonSerializableChecker,
     TypeChecker jsonKeyChecker,
-    List<ParameterElement> params,
+    List<FormalParameterElement> params,
     FieldRename? fieldRename,
     Map<String, String> nestedCollectionMap,
   ) {

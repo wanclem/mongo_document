@@ -11,7 +11,7 @@ import 'package:build/build.dart';
   MockSpec<ConstantReader>(),
   MockSpec<DartObject>(),
   MockSpec<BuildStep>(),
-  MockSpec<ParameterElement>(),
+  MockSpec<FormalParameterElement>(),
   MockSpec<ConstructorElement>(),
   MockSpec<DartType>(),
   MockSpec<ElementAnnotation>(),

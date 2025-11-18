@@ -112,7 +112,7 @@ class ReadTemplates {
   static String findOneByNamed(
     TypeChecker typeChecker,
     FieldRename? fieldRename,
-    List<ParameterElement> params,
+    List<FormalParameterElement> params,
     String className,
     Map<String, dynamic> nestedCollectionMap,
   ) {
@@ -230,7 +230,7 @@ class ReadTemplates {
   static String findManyByNamed(
     TypeChecker typeChecker,
     FieldRename? fieldRename,
-    List<ParameterElement> params,
+    List<FormalParameterElement> params,
     String className,
     Map<String, dynamic> nestedCollectionMap,
   ) {
