@@ -1,3 +1,9 @@
+## 1.6.7
+
+### Added
+
+Add support for nested lookups
+
 ## 1.6.6
 
 ### Fixed

@@ -25,6 +25,12 @@ class Lookup {
   /// How to return the result (array, single, boolean, or count)
   final LookupResultType resultType;
 
+  /// Nested lookups to perform on the results of this lookup
+  final List<Lookup>? nestedLookups;
+
+  /// Fields to exclude from the lookup results (e.g., ['email', 'password'])
+  final List<String>? unsetFields;
+
   const Lookup({
     required this.from,
     this.localField,
@@ -34,6 +40,8 @@ class Lookup {
     this.sort,
     this.where,
     this.resultType = LookupResultType.array,
+    this.nestedLookups,
+    this.unsetFields,
   });
 
   int get _effectiveLimit => limit ?? 1;
@@ -49,6 +57,7 @@ class Lookup {
 
   Map<String, Object> _buildLookupStage() {
     final pipeline = <Map<String, Object>>[];
+
     pipeline.add(
       Map<String, Object>.from({
         '\$match': Map<String, Object>.from({
@@ -58,6 +67,7 @@ class Lookup {
         }),
       }),
     );
+
     if (where != null && where!.isNotEmpty) {
       final lastStage = pipeline.last;
       final matchStage = lastStage['\$match'] as Map<String, Object>;
@@ -77,6 +87,16 @@ class Lookup {
     }
 
     pipeline.add({'\$limit': _effectiveLimit});
+
+    if (nestedLookups != null && nestedLookups!.isNotEmpty) {
+      for (final nestedLookup in nestedLookups!) {
+        pipeline.addAll(nestedLookup.buildPipeline());
+      }
+    }
+
+    if (unsetFields != null && unsetFields!.isNotEmpty) {
+      pipeline.add({'\$unset': unsetFields!});
+    }
 
     return {
       '\$lookup': {
