@@ -302,7 +302,6 @@ class Comments {
         final allProjections = p.toProjection();
         final localField = allProjections.keys.first.split(".").first;
         final foreignColl = _nestedCollections[localField];
-        if (foreignColl == null) continue;
         if (inclusions.isNotEmpty) {
           for (var f in inclusions) {
             final path = p.fieldMappings[(f as Enum).name]!;
@@ -320,20 +319,22 @@ class Comments {
         } else {
           projDoc.addAll(selected);
         }
-        pipeline.add({
-          r'$lookup': {
-            'from': foreignColl,
-            'localField': localField,
-            'foreignField': '_id',
-            'as': localField,
-          },
-        });
-        pipeline.add({
-          r'$unwind': {
-            "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true,
-          },
-        });
+        if (foreignColl != null) {
+          pipeline.add({
+            r'$lookup': {
+              'from': foreignColl,
+              'localField': localField,
+              'foreignField': '_id',
+              'as': localField,
+            },
+          });
+          pipeline.add({
+            r'$unwind': {
+              "path": "\$${localField}",
+              "preserveNullAndEmptyArrays": true,
+            },
+          });
+        }
       }
       final _hasBaseType = projections.any((p) => p is CommentProjections);
       if (!_hasBaseType) {
@@ -355,7 +356,9 @@ class Comments {
       );
     }
     if (foundLookups) {
-      final results = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      final results =
+          await coll.aggregateToStream(collisionFreePipeline).toList();
       if (results.isEmpty) return null;
       return Comment.fromJson(results.first.withRefs());
     }
@@ -404,7 +407,9 @@ class Comments {
     }
 
     if (foundLookups) {
-      final results = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      final results =
+          await coll.aggregateToStream(collisionFreePipeline).toList();
       if (results.isEmpty) return null;
       return Comment.fromJson(results.first.withRefs());
     }
@@ -461,7 +466,6 @@ class Comments {
         final allProjections = p.toProjection();
         final localField = allProjections.keys.first.split(".").first;
         final foreignColl = _nestedCollections[localField];
-        if (foreignColl == null) continue;
         if (inclusions.isNotEmpty) {
           for (var f in inclusions) {
             final path = p.fieldMappings[(f as Enum).name]!;
@@ -479,20 +483,22 @@ class Comments {
         } else {
           projDoc.addAll(selected);
         }
-        pipeline.add({
-          r'$lookup': {
-            'from': foreignColl,
-            'localField': localField,
-            'foreignField': '_id',
-            'as': localField,
-          },
-        });
-        pipeline.add({
-          r'$unwind': {
-            "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true,
-          },
-        });
+        if (foreignColl != null) {
+          pipeline.add({
+            r'$lookup': {
+              'from': foreignColl,
+              'localField': localField,
+              'foreignField': '_id',
+              'as': localField,
+            },
+          });
+          pipeline.add({
+            r'$unwind': {
+              "path": "\$${localField}",
+              "preserveNullAndEmptyArrays": true,
+            },
+          });
+        }
       }
       final _hasBaseType = projections.any((p) => p is CommentProjections);
       if (!_hasBaseType) {
@@ -511,7 +517,9 @@ class Comments {
     }
 
     if (foundLookups) {
-      final comments = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      final comments =
+          await coll.aggregateToStream(collisionFreePipeline).toList();
       if (comments.isEmpty) return null;
       return comments.map((d) => Comment.fromJson(d.withRefs())).toList().first;
     }
@@ -563,7 +571,9 @@ class Comments {
     }
 
     if (foundLookups) {
-      final comments = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      final comments =
+          await coll.aggregateToStream(collisionFreePipeline).toList();
       if (comments.isEmpty) return [];
       return comments.map((d) => Comment.fromJson(d.withRefs())).toList();
     }
@@ -629,7 +639,6 @@ class Comments {
         final allProjections = p.toProjection();
         final localField = allProjections.keys.first.split(".").first;
         final foreignColl = _nestedCollections[localField];
-        if (foreignColl == null) continue;
         if (inclusions.isNotEmpty) {
           for (var f in inclusions) {
             final path = p.fieldMappings[(f as Enum).name]!;
@@ -647,20 +656,22 @@ class Comments {
         } else {
           projDoc.addAll(selected);
         }
-        pipeline.add({
-          r'$lookup': {
-            'from': foreignColl,
-            'localField': localField,
-            'foreignField': '_id',
-            'as': localField,
-          },
-        });
-        pipeline.add({
-          r'$unwind': {
-            "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true,
-          },
-        });
+        if (foreignColl != null) {
+          pipeline.add({
+            r'$lookup': {
+              'from': foreignColl,
+              'localField': localField,
+              'foreignField': '_id',
+              'as': localField,
+            },
+          });
+          pipeline.add({
+            r'$unwind': {
+              "path": "\$${localField}",
+              "preserveNullAndEmptyArrays": true,
+            },
+          });
+        }
       }
       final _hasBaseType = projections.any((p) => p is CommentProjections);
       if (!_hasBaseType) {
@@ -681,7 +692,9 @@ class Comments {
     }
 
     if (foundLookups && pipeline.isNotEmpty) {
-      final comments = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      final comments =
+          await coll.aggregateToStream(collisionFreePipeline).toList();
       if (comments.isEmpty) return [];
       return comments.map((d) => Comment.fromJson(d.withRefs())).toList();
     }

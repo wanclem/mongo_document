@@ -10,3 +10,4 @@ export 'dart:async';
 export 'package:mongo_dart/mongo_dart.dart' hide Lookup;
 export 'src/lookups/lookup.dart';
 export 'src/utils/lookup_utils.dart';
+export 'src/utils/map_list.dart';

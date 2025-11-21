@@ -41,6 +41,7 @@ class PostProjections implements BaseProjections {
     "createdAt": "created_at",
     "updatedAt": "updated_at",
   };
+
   const PostProjections({this.inclusions, this.exclusions});
 
   @override
@@ -86,6 +87,7 @@ class PostAuthorProjections implements BaseProjections {
     "createdAt": "author.created_at",
     "updatedAt": "author.updated_at",
   };
+
   const PostAuthorProjections({this.inclusions, this.exclusions});
 
   @override
@@ -104,6 +106,7 @@ class PostAuthorProjections implements BaseProjections {
 
 class QPost {
   final String _prefix;
+
   QPost([this._prefix = '']);
 
   String _key(String field) => _prefix.isEmpty ? field : '$_prefix.$field';
@@ -192,6 +195,7 @@ extension $PostExtension on Post {
 
 class Posts {
   static String get _collection => 'posts';
+
   static String get collection => _collection;
 
   static Future<List<Post?>> saveMany(List<Post> posts, {Db? db}) async {
@@ -275,7 +279,6 @@ class Posts {
         final allProjections = p.toProjection();
         final localField = allProjections.keys.first.split(".").first;
         final foreignColl = _nestedCollections[localField];
-        if (foreignColl == null) continue;
         if (inclusions.isNotEmpty) {
           for (var f in inclusions) {
             final path = p.fieldMappings[(f as Enum).name]!;
@@ -293,20 +296,22 @@ class Posts {
         } else {
           projDoc.addAll(selected);
         }
-        pipeline.add({
-          r'$lookup': {
-            'from': foreignColl,
-            'localField': localField,
-            'foreignField': '_id',
-            'as': localField,
-          },
-        });
-        pipeline.add({
-          r'$unwind': {
-            "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true,
-          },
-        });
+        if (foreignColl != null) {
+          pipeline.add({
+            r'$lookup': {
+              'from': foreignColl,
+              'localField': localField,
+              'foreignField': '_id',
+              'as': localField,
+            },
+          });
+          pipeline.add({
+            r'$unwind': {
+              "path": "\$${localField}",
+              "preserveNullAndEmptyArrays": true,
+            },
+          });
+        }
       }
       final _hasBaseType = projections.any((p) => p is PostProjections);
       if (!_hasBaseType) {
@@ -328,7 +333,12 @@ class Posts {
       );
     }
     if (foundLookups) {
-      final results = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      print(
+        "Pipeline ${JsonEncoder.withIndent(' ').convert(collisionFreePipeline)}",
+      );
+      final results =
+          await coll.aggregateToStream(collisionFreePipeline).toList();
       if (results.isEmpty) return null;
       return Post.fromJson(results.first.withRefs());
     }
@@ -377,7 +387,9 @@ class Posts {
     }
 
     if (foundLookups) {
-      final results = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      final results =
+          await coll.aggregateToStream(collisionFreePipeline).toList();
       if (results.isEmpty) return null;
       return Post.fromJson(results.first.withRefs());
     }
@@ -441,7 +453,6 @@ class Posts {
         final allProjections = p.toProjection();
         final localField = allProjections.keys.first.split(".").first;
         final foreignColl = _nestedCollections[localField];
-        if (foreignColl == null) continue;
         if (inclusions.isNotEmpty) {
           for (var f in inclusions) {
             final path = p.fieldMappings[(f as Enum).name]!;
@@ -459,20 +470,22 @@ class Posts {
         } else {
           projDoc.addAll(selected);
         }
-        pipeline.add({
-          r'$lookup': {
-            'from': foreignColl,
-            'localField': localField,
-            'foreignField': '_id',
-            'as': localField,
-          },
-        });
-        pipeline.add({
-          r'$unwind': {
-            "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true,
-          },
-        });
+        if (foreignColl != null) {
+          pipeline.add({
+            r'$lookup': {
+              'from': foreignColl,
+              'localField': localField,
+              'foreignField': '_id',
+              'as': localField,
+            },
+          });
+          pipeline.add({
+            r'$unwind': {
+              "path": "\$${localField}",
+              "preserveNullAndEmptyArrays": true,
+            },
+          });
+        }
       }
       final _hasBaseType = projections.any((p) => p is PostProjections);
       if (!_hasBaseType) {
@@ -491,7 +504,9 @@ class Posts {
     }
 
     if (foundLookups) {
-      final posts = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      final posts =
+          await coll.aggregateToStream(collisionFreePipeline).toList();
       if (posts.isEmpty) return null;
       return posts.map((d) => Post.fromJson(d.withRefs())).toList().first;
     }
@@ -541,7 +556,9 @@ class Posts {
     }
 
     if (foundLookups) {
-      final posts = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      final posts =
+          await coll.aggregateToStream(collisionFreePipeline).toList();
       if (posts.isEmpty) return [];
       return posts.map((d) => Post.fromJson(d.withRefs())).toList();
     }
@@ -616,7 +633,6 @@ class Posts {
         final allProjections = p.toProjection();
         final localField = allProjections.keys.first.split(".").first;
         final foreignColl = _nestedCollections[localField];
-        if (foreignColl == null) continue;
         if (inclusions.isNotEmpty) {
           for (var f in inclusions) {
             final path = p.fieldMappings[(f as Enum).name]!;
@@ -634,20 +650,22 @@ class Posts {
         } else {
           projDoc.addAll(selected);
         }
-        pipeline.add({
-          r'$lookup': {
-            'from': foreignColl,
-            'localField': localField,
-            'foreignField': '_id',
-            'as': localField,
-          },
-        });
-        pipeline.add({
-          r'$unwind': {
-            "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true,
-          },
-        });
+        if (foreignColl != null) {
+          pipeline.add({
+            r'$lookup': {
+              'from': foreignColl,
+              'localField': localField,
+              'foreignField': '_id',
+              'as': localField,
+            },
+          });
+          pipeline.add({
+            r'$unwind': {
+              "path": "\$${localField}",
+              "preserveNullAndEmptyArrays": true,
+            },
+          });
+        }
       }
       final _hasBaseType = projections.any((p) => p is PostProjections);
       if (!_hasBaseType) {
@@ -668,7 +686,9 @@ class Posts {
     }
 
     if (foundLookups && pipeline.isNotEmpty) {
-      final posts = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      final posts =
+          await coll.aggregateToStream(collisionFreePipeline).toList();
       if (posts.isEmpty) return [];
       return posts.map((d) => Post.fromJson(d.withRefs())).toList();
     }

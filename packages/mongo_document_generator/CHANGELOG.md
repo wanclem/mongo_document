@@ -1,3 +1,15 @@
+## 1.6.6
+
+### Fixed
+
+Add support for collision free projections
+
+## 1.6.5
+
+### Fixed
+
+Updated analyzer and migrated ParamElems to FormalParams
+
 ## 1.6.4
 
 ### Upgrade

@@ -191,7 +191,6 @@ class VanillaUsers {
         final allProjections = p.toProjection();
         final localField = allProjections.keys.first.split(".").first;
         final foreignColl = _nestedCollections[localField];
-        if (foreignColl == null) continue;
         if (inclusions.isNotEmpty) {
           for (var f in inclusions) {
             final path = p.fieldMappings[(f as Enum).name]!;
@@ -209,20 +208,22 @@ class VanillaUsers {
         } else {
           projDoc.addAll(selected);
         }
-        pipeline.add({
-          r'$lookup': {
-            'from': foreignColl,
-            'localField': localField,
-            'foreignField': '_id',
-            'as': localField,
-          },
-        });
-        pipeline.add({
-          r'$unwind': {
-            "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true,
-          },
-        });
+        if (foreignColl != null) {
+          pipeline.add({
+            r'$lookup': {
+              'from': foreignColl,
+              'localField': localField,
+              'foreignField': '_id',
+              'as': localField,
+            },
+          });
+          pipeline.add({
+            r'$unwind': {
+              "path": "\$${localField}",
+              "preserveNullAndEmptyArrays": true,
+            },
+          });
+        }
       }
       final _hasBaseType = projections.any((p) => p is VanillaUserProjections);
       if (!_hasBaseType) {
@@ -244,7 +245,9 @@ class VanillaUsers {
       );
     }
     if (foundLookups) {
-      final results = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      final results =
+          await coll.aggregateToStream(collisionFreePipeline).toList();
       if (results.isEmpty) return null;
       return VanillaUser.fromJson(results.first.withRefs());
     }
@@ -295,7 +298,9 @@ class VanillaUsers {
     }
 
     if (foundLookups) {
-      final results = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      final results =
+          await coll.aggregateToStream(collisionFreePipeline).toList();
       if (results.isEmpty) return null;
       return VanillaUser.fromJson(results.first.withRefs());
     }
@@ -344,7 +349,6 @@ class VanillaUsers {
         final allProjections = p.toProjection();
         final localField = allProjections.keys.first.split(".").first;
         final foreignColl = _nestedCollections[localField];
-        if (foreignColl == null) continue;
         if (inclusions.isNotEmpty) {
           for (var f in inclusions) {
             final path = p.fieldMappings[(f as Enum).name]!;
@@ -362,20 +366,22 @@ class VanillaUsers {
         } else {
           projDoc.addAll(selected);
         }
-        pipeline.add({
-          r'$lookup': {
-            'from': foreignColl,
-            'localField': localField,
-            'foreignField': '_id',
-            'as': localField,
-          },
-        });
-        pipeline.add({
-          r'$unwind': {
-            "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true,
-          },
-        });
+        if (foreignColl != null) {
+          pipeline.add({
+            r'$lookup': {
+              'from': foreignColl,
+              'localField': localField,
+              'foreignField': '_id',
+              'as': localField,
+            },
+          });
+          pipeline.add({
+            r'$unwind': {
+              "path": "\$${localField}",
+              "preserveNullAndEmptyArrays": true,
+            },
+          });
+        }
       }
       final _hasBaseType = projections.any((p) => p is VanillaUserProjections);
       if (!_hasBaseType) {
@@ -394,7 +400,9 @@ class VanillaUsers {
     }
 
     if (foundLookups) {
-      final vanillaUsers = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      final vanillaUsers =
+          await coll.aggregateToStream(collisionFreePipeline).toList();
       if (vanillaUsers.isEmpty) return null;
       return vanillaUsers
           .map((d) => VanillaUser.fromJson(d.withRefs()))
@@ -449,7 +457,9 @@ class VanillaUsers {
     }
 
     if (foundLookups) {
-      final vanillaUsers = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      final vanillaUsers =
+          await coll.aggregateToStream(collisionFreePipeline).toList();
       if (vanillaUsers.isEmpty) return [];
       return vanillaUsers
           .map((d) => VanillaUser.fromJson(d.withRefs()))
@@ -511,7 +521,6 @@ class VanillaUsers {
         final allProjections = p.toProjection();
         final localField = allProjections.keys.first.split(".").first;
         final foreignColl = _nestedCollections[localField];
-        if (foreignColl == null) continue;
         if (inclusions.isNotEmpty) {
           for (var f in inclusions) {
             final path = p.fieldMappings[(f as Enum).name]!;
@@ -529,20 +538,22 @@ class VanillaUsers {
         } else {
           projDoc.addAll(selected);
         }
-        pipeline.add({
-          r'$lookup': {
-            'from': foreignColl,
-            'localField': localField,
-            'foreignField': '_id',
-            'as': localField,
-          },
-        });
-        pipeline.add({
-          r'$unwind': {
-            "path": "\$${localField}",
-            "preserveNullAndEmptyArrays": true,
-          },
-        });
+        if (foreignColl != null) {
+          pipeline.add({
+            r'$lookup': {
+              'from': foreignColl,
+              'localField': localField,
+              'foreignField': '_id',
+              'as': localField,
+            },
+          });
+          pipeline.add({
+            r'$unwind': {
+              "path": "\$${localField}",
+              "preserveNullAndEmptyArrays": true,
+            },
+          });
+        }
       }
       final _hasBaseType = projections.any((p) => p is VanillaUserProjections);
       if (!_hasBaseType) {
@@ -563,7 +574,9 @@ class VanillaUsers {
     }
 
     if (foundLookups && pipeline.isNotEmpty) {
-      final vanillaUsers = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      final vanillaUsers =
+          await coll.aggregateToStream(collisionFreePipeline).toList();
       if (vanillaUsers.isEmpty) return [];
       return vanillaUsers
           .map((d) => VanillaUser.fromJson(d.withRefs()))

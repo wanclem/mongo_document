@@ -43,7 +43,8 @@ class ReadTemplates {
       );
     }
     if (foundLookups) {
-      final results = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      final results = await coll.aggregateToStream(collisionFreePipeline).toList();
       if (results.isEmpty) return null;
       return $className.fromJson(results.first.withRefs());
     }
@@ -97,7 +98,8 @@ class ReadTemplates {
     }
     
     if (foundLookups) {
-      final results = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      final results = await coll.aggregateToStream(collisionFreePipeline).toList();
       if (results.isEmpty) return null;
       return $className.fromJson(results.first.withRefs());
     }
@@ -156,7 +158,8 @@ class ReadTemplates {
     }
     
     if (foundLookups) {
-      final ${classNameVar}s = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      final ${classNameVar}s = await coll.aggregateToStream(collisionFreePipeline).toList();
       if (${classNameVar}s.isEmpty) return null;
       return ${classNameVar}s.map((d)=>$className.fromJson(d.withRefs())).toList().first;
     }
@@ -211,7 +214,8 @@ class ReadTemplates {
     }
   
     if (foundLookups) {
-      final ${classNameVar}s = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      final ${classNameVar}s = await coll.aggregateToStream(collisionFreePipeline).toList();
       if (${classNameVar}s.isEmpty) return [];
       return ${classNameVar}s.map((d)=>$className.fromJson(d.withRefs())).toList();
     }
@@ -283,7 +287,8 @@ class ReadTemplates {
     }
     
     if(foundLookups && pipeline.isNotEmpty){
-     final ${classNameVar}s = await coll.aggregateToStream(pipeline).toList();
+      final collisionFreePipeline = withNoCollisions(pipeline);
+      final ${classNameVar}s = await coll.aggregateToStream(collisionFreePipeline).toList();
       if (${classNameVar}s.isEmpty) return [];
       return ${classNameVar}s.map((d)=>$className.fromJson(d.withRefs())).toList();
     }
@@ -352,7 +357,6 @@ String buildAggregationPipeline(String baseProjection, List<dynamic> stages) {
         final allProjections = p.toProjection();
         final localField = allProjections.keys.first.split(".").first;
         final foreignColl = _nestedCollections[localField];
-        if (foreignColl == null) continue;
         if(inclusions.isNotEmpty){
          for (var f in inclusions) {
             final path = p.fieldMappings[(f as Enum).name]!;
@@ -370,15 +374,17 @@ String buildAggregationPipeline(String baseProjection, List<dynamic> stages) {
         }else {
           projDoc.addAll(selected);
         }
-        pipeline.add({
-          r'\$lookup': {
-            'from': foreignColl,
-            'localField': localField,
-            'foreignField': '_id',
-            'as': localField,
-          }
-        });
-        pipeline.add({r'\$unwind': {"path":"\\\$\${localField}","preserveNullAndEmptyArrays": true}});
+        if(foreignColl != null){
+          pipeline.add({
+            r'\$lookup': {
+              'from': foreignColl,
+              'localField': localField,
+              'foreignField': '_id',
+              'as': localField,
+            }
+          });
+          pipeline.add({r'\$unwind': {"path":"\\\$\${localField}","preserveNullAndEmptyArrays": true}});
+       }
       }
       final _hasBaseType = projections.any((p) => p is ${baseProjection.replaceAll("(", "").replaceAll(")", "")});
       if (!_hasBaseType) {
