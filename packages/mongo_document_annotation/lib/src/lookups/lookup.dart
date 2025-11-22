@@ -124,7 +124,22 @@ class Lookup {
         break;
       case LookupResultType.single:
         stages.add({
-          '\$unwind': {'path': '\$$as', 'preserveNullAndEmptyArrays': true},
+          '\$addFields': {
+            as: {
+              '\$cond': {
+                'if': {
+                  '\$gt': [
+                    {'\$size': '\$$as'},
+                    0,
+                  ],
+                },
+                'then': {
+                  '\$arrayElemAt': ['\$$as', 0],
+                },
+                'else': null,
+              },
+            },
+          },
         });
         break;
       case LookupResultType.boolean:

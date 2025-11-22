@@ -359,7 +359,7 @@ class OrganizationMembers {
       pipeline.add({r'$project': projDoc});
     }
     if (lookups.isNotEmpty) {
-      bool hasMatch = pipeline.any((stage) => stage.containsKey(r"\$match"));
+      bool hasMatch = pipeline.any((stage) => stage.containsKey('\$match'));
       if (!hasMatch) {
         pipeline.add({
           r"\$match": {'_id': id},

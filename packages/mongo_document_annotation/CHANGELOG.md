@@ -1,3 +1,9 @@
+## 1.6.8
+
+### Fixed
+
+Preserve nulls in singe lookups
+
 ## 1.6.7
 
 ### Added

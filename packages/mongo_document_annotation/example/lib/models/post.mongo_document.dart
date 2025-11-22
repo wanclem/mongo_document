@@ -41,7 +41,6 @@ class PostProjections implements BaseProjections {
     "createdAt": "created_at",
     "updatedAt": "updated_at",
   };
-
   const PostProjections({this.inclusions, this.exclusions});
 
   @override
@@ -87,7 +86,6 @@ class PostAuthorProjections implements BaseProjections {
     "createdAt": "author.created_at",
     "updatedAt": "author.updated_at",
   };
-
   const PostAuthorProjections({this.inclusions, this.exclusions});
 
   @override
@@ -106,7 +104,6 @@ class PostAuthorProjections implements BaseProjections {
 
 class QPost {
   final String _prefix;
-
   QPost([this._prefix = '']);
 
   String _key(String field) => _prefix.isEmpty ? field : '$_prefix.$field';
@@ -195,7 +192,6 @@ extension $PostExtension on Post {
 
 class Posts {
   static String get _collection => 'posts';
-
   static String get collection => _collection;
 
   static Future<List<Post?>> saveMany(List<Post> posts, {Db? db}) async {
@@ -320,7 +316,7 @@ class Posts {
       pipeline.add({r'$project': projDoc});
     }
     if (lookups.isNotEmpty) {
-      bool hasMatch = pipeline.any((stage) => stage.containsKey(r"\$match"));
+      bool hasMatch = pipeline.any((stage) => stage.containsKey('\$match'));
       if (!hasMatch) {
         pipeline.add({
           r"\$match": {'_id': id},
@@ -334,9 +330,6 @@ class Posts {
     }
     if (foundLookups) {
       final collisionFreePipeline = withNoCollisions(pipeline);
-      print(
-        "Pipeline ${JsonEncoder.withIndent(' ').convert(collisionFreePipeline)}",
-      );
       final results =
           await coll.aggregateToStream(collisionFreePipeline).toList();
       if (results.isEmpty) return null;
