@@ -53,7 +53,7 @@ class CreateTemplates {
     final classNamePlural = Pluralize().plural(classNameVar);
     return '''
   static Future<List<$className?>> saveMany(
-    List<$className> ${classNameVar}s,{Db? db}
+    List<$className> $classNamePlural,{Db? db}
   ) async {
     if ($classNamePlural.isEmpty) return <$className>[];
     final database = db ?? await MongoDbConnection.instance;
