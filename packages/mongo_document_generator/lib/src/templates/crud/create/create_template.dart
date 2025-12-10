@@ -1,3 +1,4 @@
+import 'package:pluralize/pluralize.dart';
 import 'package:recase/recase.dart';
 
 class CreateTemplates {
@@ -49,17 +50,18 @@ class CreateTemplates {
 
   static saveMany(String className) {
     String classNameVar = ReCase(className).camelCase;
+    final classNamePlural = Pluralize().plural(classNameVar);
     return '''
   static Future<List<$className?>> saveMany(
     List<$className> ${classNameVar}s,{Db? db}
   ) async {
-    if (${classNameVar}s.isEmpty) return <$className>[];
+    if ($classNamePlural.isEmpty) return <$className>[];
     final database = db ?? await MongoDbConnection.instance;
     final coll = await database.collection(_collection);
     final now = DateTime.now().toUtc();
     final List<Map<String, dynamic>> toInsert = [];
     final List<Map<String, dynamic>> toSave = [];
-    for (final ${classNameVar[0]} in ${classNameVar}s) {
+    for (final ${classNameVar[0]} in $classNamePlural) {
       final json = sanitizedDocument(${classNameVar[0]}.toJson());
       json.update('created_at', (v) => v ?? now, ifAbsent: () => now);
       json.update('updated_at', (v) => now, ifAbsent: () => now);

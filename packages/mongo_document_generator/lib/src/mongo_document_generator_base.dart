@@ -14,6 +14,7 @@ import 'package:mongo_document/src/templates/crud/update/update_templates.dart';
 import 'package:mongo_document/src/templates/object_references/object_references.dart';
 import 'package:mongo_document/src/templates/parameter_template.dart';
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
+import 'package:pluralize/pluralize.dart';
 import 'package:source_gen/source_gen.dart';
 import 'package:pub_semver/pub_semver.dart';
 
@@ -59,6 +60,7 @@ class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
       element,
     );
     final className = element.name ?? '';
+    String classNamePlural = Pluralize().plural(className);
     final collection = annotation.peek('collection')!.stringValue;
     final params = element.unnamedConstructor?.formalParameters ?? [];
     final nestedCollectionMap = ParameterTemplates.getNestedCollectionMap(
@@ -80,7 +82,7 @@ extension \$${className}Extension on $className {
   
 }
 
-class ${className}s {
+class $classNamePlural {
   
   static String get _collection => '$collection';
   static String get collection => _collection;

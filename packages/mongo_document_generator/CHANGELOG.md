@@ -1,3 +1,9 @@
+## 1.6.9
+
+### Fixed
+
+Properly pluralize classes
+
 ## 1.6.8
 
 ### Fixed

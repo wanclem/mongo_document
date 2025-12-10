@@ -1,6 +1,7 @@
 import 'package:analyzer/dart/element/element.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mongo_document/src/templates/parameter_template.dart';
+import 'package:pluralize/pluralize.dart';
 import 'package:recase/recase.dart';
 import 'package:source_gen/source_gen.dart';
 
@@ -119,6 +120,7 @@ class ReadTemplates {
     Map<String, dynamic> nestedCollectionMap,
   ) {
     String classNameVar = ReCase(className).camelCase;
+    String classNamePlural = Pluralize().plural(classNameVar);
     return '''
 /// Type-safe findOne by named arguments
   static Future<$className?> findOneByNamed({${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db,List<Lookup>lookups=const [],List<BaseProjections> projections=const [],})async{
@@ -159,9 +161,9 @@ class ReadTemplates {
     
     if (foundLookups) {
       final collisionFreePipeline = withNoCollisions(pipeline);
-      final ${classNameVar}s = await coll.aggregateToStream(collisionFreePipeline).toList();
-      if (${classNameVar}s.isEmpty) return null;
-      return ${classNameVar}s.map((d)=>$className.fromJson(d.withRefs())).toList().first;
+      final $classNamePlural = await coll.aggregateToStream(collisionFreePipeline).toList();
+      if ($classNamePlural.isEmpty) return null;
+      return $classNamePlural.map((d)=>$className.fromJson(d.withRefs())).toList().first;
     }
     
     final ${classNameVar}Result = await coll.findOne(selector);
@@ -172,6 +174,7 @@ class ReadTemplates {
 
   static String findMany(String className) {
     String classNameVar = ReCase(className).camelCase;
+    String classNamePlural = Pluralize().plural(classNameVar);
     return '''
   /// Type-safe findMany by predicate
   static Future<List<$className>> findMany(
@@ -215,9 +218,9 @@ class ReadTemplates {
   
     if (foundLookups) {
       final collisionFreePipeline = withNoCollisions(pipeline);
-      final ${classNameVar}s = await coll.aggregateToStream(collisionFreePipeline).toList();
-      if (${classNameVar}s.isEmpty) return [];
-      return ${classNameVar}s.map((d)=>$className.fromJson(d.withRefs())).toList();
+      final $classNamePlural = await coll.aggregateToStream(collisionFreePipeline).toList();
+      if ($classNamePlural.isEmpty) return [];
+      return $classNamePlural.map((d)=>$className.fromJson(d.withRefs())).toList();
     }
 
     if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
@@ -225,8 +228,8 @@ class ReadTemplates {
 
     selectorMap=selectorBuilder.map;
 
-    final ${classNameVar}s = await coll.find(selectorMap.cleaned()).toList();
-    return ${classNameVar}s.map((e) => $className.fromJson(e.withRefs())).toList();
+    final $classNamePlural = await coll.find(selectorMap.cleaned()).toList();
+    return $classNamePlural.map((e) => $className.fromJson(e.withRefs())).toList();
  }
 ''';
   }
@@ -239,6 +242,7 @@ class ReadTemplates {
     Map<String, dynamic> nestedCollectionMap,
   ) {
     String classNameVar = ReCase(className).camelCase;
+    String classNamePlural = Pluralize().plural(classNameVar);
     return '''
 /// Type-safe findMany by named arguments
   static Future<List<$className>> findManyByNamed({${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db,List<Lookup>lookups=const [],List<BaseProjections> projections=const [],Map<String,Object>sort=const{'created_at':-1},int? skip,int limit=10,
@@ -256,9 +260,9 @@ class ReadTemplates {
     }).join('\n')}
     
     if (selector.isEmpty) {
-      final ${classNameVar}s = await coll.modernFind(sort: sort ,limit:limit,skip:skip).toList();
-      if (${classNameVar}s.isEmpty) return [];
-     return ${classNameVar}s.map((e) => $className.fromJson(e.withRefs())).toList();
+      final $classNamePlural = await coll.modernFind(sort: sort ,limit:limit,skip:skip).toList();
+      if ($classNamePlural.isEmpty) return [];
+     return $classNamePlural.map((e) => $className.fromJson(e.withRefs())).toList();
     }
     
     bool foundLookups = false;
@@ -288,13 +292,13 @@ class ReadTemplates {
     
     if(foundLookups && pipeline.isNotEmpty){
       final collisionFreePipeline = withNoCollisions(pipeline);
-      final ${classNameVar}s = await coll.aggregateToStream(collisionFreePipeline).toList();
-      if (${classNameVar}s.isEmpty) return [];
-      return ${classNameVar}s.map((d)=>$className.fromJson(d.withRefs())).toList();
+      final $classNamePlural = await coll.aggregateToStream(collisionFreePipeline).toList();
+      if ($classNamePlural.isEmpty) return [];
+      return $classNamePlural.map((d)=>$className.fromJson(d.withRefs())).toList();
     }
     
-    final ${classNameVar}s = await coll.modernFind(filter:selector,limit:limit,skip:skip,sort:sort).toList();
-    return ${classNameVar}s.map((e) => $className.fromJson(e.withRefs())).toList();
+    final $classNamePlural = await coll.modernFind(filter:selector,limit:limit,skip:skip,sort:sort).toList();
+    return $classNamePlural.map((e) => $className.fromJson(e.withRefs())).toList();
   }
 ''';
   }
