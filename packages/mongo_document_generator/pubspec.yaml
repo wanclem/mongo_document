@@ -15,7 +15,7 @@ dependencies:
   source_gen: ^4.0.2
   build: ^4.0.0
   mongo_document_annotation: ^1.7.2
-  mongo_dart: ^0.10.6
+  mongo_dart: ^0.10.5
   json_annotation: ^4.9.0
   dart_style: ">=2.3.8 <4.0.0"
   path: ^1.9.1
