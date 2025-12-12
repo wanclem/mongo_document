@@ -1,3 +1,9 @@
+## 1.7.2
+
+### Fixed
+
+Handle disconnections more proactively
+
 ## 1.7.1
 
 ### Fixed
