@@ -1,3 +1,9 @@
+## 1.7.1
+
+### Fixed
+
+Revise connector
+
 ## 1.7.0
 
 ### Fixed
