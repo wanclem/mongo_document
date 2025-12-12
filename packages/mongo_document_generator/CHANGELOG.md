@@ -1,3 +1,9 @@
+## 1.7.3
+
+### Fixed
+
+Reduce ping heartbeat to 15s for some environments
+
 ## 1.7.2
 
 ### Fixed

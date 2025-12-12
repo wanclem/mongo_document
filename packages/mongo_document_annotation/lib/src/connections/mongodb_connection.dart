@@ -13,7 +13,7 @@ class MongoDbConnection {
   static late final String? _tlsCertificateKeyFilePassword;
 
   static Timer? _heartbeatTimer;
-  static const Duration _heartbeatInterval = Duration(seconds: 30);
+  static const Duration _heartbeatInterval = Duration(seconds: 15);
   static const int _maxReconnectAttempts = 5;
 
   MongoDbConnection._();
@@ -87,6 +87,7 @@ class MongoDbConnection {
     }
 
     if (_instance!.isConnected) {
+      await _instance!.pingCommand().timeout(Duration(seconds: 5));
       return _instance!;
     }
 
