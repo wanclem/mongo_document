@@ -806,11 +806,11 @@ class Posts {
   }) async {
     final modifier = _buildModifier(
       sanitizedDocument({
-        if (id != null) '_id': id,
+        if (id != null) '_id': id.toJson(),
         if (body != null) 'body': body,
         if (postNote != null) 'post_note': postNote,
         if (author != null) 'author': author.id,
-        if (schedule != null) 'schedule': schedule,
+        if (schedule != null) 'schedule': schedule.toJson(),
         if (comments != null) 'comments': comments,
         if (authorFollowsYou != null) 'author_follows_you': authorFollowsYou,
         if (targetPlatforms != null) 'target_platforms': targetPlatforms,
@@ -848,11 +848,11 @@ class Posts {
   }) async {
     final modifier = _buildModifier(
       sanitizedDocument({
-        if (id != null) '_id': id,
+        if (id != null) '_id': id.toJson(),
         if (body != null) 'body': body,
         if (postNote != null) 'post_note': postNote,
         if (author != null) 'author': author.id,
-        if (schedule != null) 'schedule': schedule,
+        if (schedule != null) 'schedule': schedule.toJson(),
         if (comments != null) 'comments': comments,
         if (authorFollowsYou != null) 'author_follows_you': authorFollowsYou,
         if (targetPlatforms != null) 'target_platforms': targetPlatforms,

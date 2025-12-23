@@ -797,7 +797,7 @@ class Comments {
   }) async {
     final modifier = _buildModifier(
       sanitizedDocument({
-        if (id != null) '_id': id,
+        if (id != null) '_id': id.toJson(),
         if (author != null) 'author': author.id,
         if (post != null) 'post': post.id,
         if (text != null) 'text': text,
@@ -831,7 +831,7 @@ class Comments {
   }) async {
     final modifier = _buildModifier(
       sanitizedDocument({
-        if (id != null) '_id': id,
+        if (id != null) '_id': id.toJson(),
         if (author != null) 'author': author.id,
         if (post != null) 'post': post.id,
         if (text != null) 'text': text,

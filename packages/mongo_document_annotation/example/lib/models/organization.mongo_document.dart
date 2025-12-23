@@ -796,7 +796,7 @@ class Organizations {
   }) async {
     final modifier = _buildModifier(
       sanitizedDocument({
-        if (id != null) '_id': id,
+        if (id != null) '_id': id.toJson(),
         if (tempId != null) 'temp_id': tempId,
         if (owner != null) 'owner': owner.id,
         if (name != null) 'name': name,
@@ -834,7 +834,7 @@ class Organizations {
   }) async {
     final modifier = _buildModifier(
       sanitizedDocument({
-        if (id != null) '_id': id,
+        if (id != null) '_id': id.toJson(),
         if (tempId != null) 'temp_id': tempId,
         if (owner != null) 'owner': owner.id,
         if (name != null) 'name': name,

@@ -661,7 +661,7 @@ class VanillaUsers {
   }) async {
     final modifier = _buildModifier(
       sanitizedDocument({
-        if (id != null) '_id': id,
+        if (id != null) '_id': id.toJson(),
         if (firstName != null) 'first_name': firstName,
         if (lastName != null) 'last_name': lastName,
       }),
@@ -687,7 +687,7 @@ class VanillaUsers {
   }) async {
     final modifier = _buildModifier(
       sanitizedDocument({
-        if (id != null) '_id': id,
+        if (id != null) '_id': id.toJson(),
         if (firstName != null) 'first_name': firstName,
         if (lastName != null) 'last_name': lastName,
       }),

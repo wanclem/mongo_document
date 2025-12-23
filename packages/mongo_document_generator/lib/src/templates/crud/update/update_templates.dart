@@ -1,4 +1,5 @@
 import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/type.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mongo_document/src/templates/parameter_template.dart';
 import 'package:source_gen/source_gen.dart';
@@ -30,13 +31,20 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
   }) async {
     final modifier = _buildModifier(sanitizedDocument({
       ${params.map((p) {
-      final key =
-          ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
+      final key = ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
       final name = p.name;
       if (nestedCollectionMap.containsKey(key)) {
         return "if ($name != null) '$key': $name.id,";
       } else {
-        return "if ($name != null) '$key': $name,";
+        var valueExpr = '$name';
+        if (p.type is InterfaceType) {
+          final interfaceType = p.type as InterfaceType;
+          final hasToJson = interfaceType.lookUpMethod('toJson', interfaceType.element.library!) != null;
+          if (hasToJson) {
+            valueExpr = '$name.toJson()';
+          }
+        }
+        return "if ($name != null) '$key': $valueExpr,";
       }
     }).join('\n    ')}
     }));
@@ -69,13 +77,20 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
   }) async {
     final modifier = _buildModifier(sanitizedDocument({
       ${params.map((p) {
-      final key =
-          ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
+      final key = ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
       final name = p.name;
       if (nestedCollectionMap.containsKey(key)) {
         return "if ($name != null) '$key': $name.id,";
       } else {
-        return "if ($name != null) '$key': $name,";
+        var valueExpr = '$name';
+        if (p.type is InterfaceType) {
+          final interfaceType = p.type as InterfaceType;
+          final hasToJson = interfaceType.lookUpMethod('toJson', interfaceType.element.library) != null;
+          if (hasToJson) {
+            valueExpr = '$name.toJson()';
+          }
+        }
+        return "if ($name != null) '$key': $valueExpr,";
       }
     }).join('\n    ')}
     }));

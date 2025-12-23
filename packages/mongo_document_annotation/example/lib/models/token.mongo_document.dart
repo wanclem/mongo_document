@@ -757,7 +757,7 @@ class Tokens {
   }) async {
     final modifier = _buildModifier(
       sanitizedDocument({
-        if (id != null) '_id': id,
+        if (id != null) '_id': id.toJson(),
         if (ownerEmail != null) 'owner_email': ownerEmail,
         if (token != null) 'token': token,
         if (data != null) 'data': data,
@@ -797,7 +797,7 @@ class Tokens {
   }) async {
     final modifier = _buildModifier(
       sanitizedDocument({
-        if (id != null) '_id': id,
+        if (id != null) '_id': id.toJson(),
         if (ownerEmail != null) 'owner_email': ownerEmail,
         if (token != null) 'token': token,
         if (data != null) 'data': data,

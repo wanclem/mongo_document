@@ -1,7 +1,10 @@
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+
 part 'user.freezed.dart';
+
 part 'user.g.dart';
+
 part 'user.mongo_document.dart';
 
 @MongoDocument(collection: 'accounts')
