@@ -26,9 +26,7 @@ class MongoDbConnection {
     String? tlsCertificateKeyFile,
     String? tlsCertificateKeyFilePassword,
   }) async {
-    if (_instance != null) {
-      throw Exception("Database already initialized.");
-    }
+    if (_instance != null) return;
 
     _databaseUri = databaseUri;
     _secure = secure;
@@ -37,8 +35,9 @@ class MongoDbConnection {
     _tlsCertificateKeyFile = tlsCertificateKeyFile;
     _tlsCertificateKeyFilePassword = tlsCertificateKeyFilePassword;
 
-    await _connect();
-    print('MongoDB connected');
+    await instance;
+
+    print('MongoDB Initialized');
 
     _startHeartbeat();
   }
@@ -61,54 +60,44 @@ class MongoDbConnection {
   }
 
   static Future<void> _connectWithBackoff([int attempt = 0]) async {
-    final int max = _maxReconnectAttempts;
-    final delaySeconds = (1 << attempt) * 2;
     try {
       await _connect();
-      if (_instance!.isConnected) {
-        print('MongoDB reconnected successfully (attempt ${attempt + 1})');
-        return;
-      }
+      await _instance!.pingCommand().timeout(const Duration(seconds: 5));
+      return;
     } catch (e) {
-      print('Reconnect attempt ${attempt + 1} failed: $e');
+      print('Connection attempt ${attempt + 1} failed: $e');
+      if (attempt + 1 < _maxReconnectAttempts) {
+        final delay = Duration(seconds: (1 << attempt) * 2);
+        await Future.delayed(delay);
+        return _connectWithBackoff(attempt + 1);
+      }
+      rethrow;
     }
-    if (attempt + 1 < max) {
-      await Future.delayed(Duration(seconds: delaySeconds));
-      return _connectWithBackoff(attempt + 1);
-    }
-    throw Exception('All reconnection attempts exhausted after $max tries');
   }
 
   static Future<Db> get instance async {
-    if (_instance == null) {
-      throw Exception(
-        "Database not initialized. Please call initialize() first.",
-      );
-    }
-
-    if (_instance!.isConnected) {
-      await _instance!.pingCommand().timeout(Duration(seconds: 5));
-      return _instance!;
-    }
-
     if (_connectionCompleter != null && !_connectionCompleter!.isCompleted) {
       await _connectionCompleter!.future;
       return _instance!;
     }
 
-    _connectionCompleter = Completer<void>();
-    print('MongoDB disconnected, attempting to reconnect...');
+    if (_instance != null && _instance!.isConnected) {
+      try {
+        await _instance!.pingCommand().timeout(const Duration(seconds: 2));
+        return _instance!;
+      } catch (e) {
+        print('Existing MongoDB connection stale/dropped. Reconnecting...');
+      }
+    }
 
+    _connectionCompleter = Completer<void>();
     try {
       await _connectWithBackoff();
-      if (_instance!.isConnected) {
-        _connectionCompleter!.complete();
-        return _instance!;
-      } else {
-        throw Exception('Reconnection failed');
-      }
+      _connectionCompleter!.complete();
+      return _instance!;
     } catch (e) {
       _connectionCompleter!.completeError(e);
+      _connectionCompleter = null;
       rethrow;
     } finally {
       _connectionCompleter = null;
@@ -118,7 +107,6 @@ class MongoDbConnection {
   static Future<void> shutdownDb() async {
     _heartbeatTimer?.cancel();
     _heartbeatTimer = null;
-
     if (_instance != null) {
       try {
         await _instance!.close();
@@ -128,7 +116,6 @@ class MongoDbConnection {
         _instance = null;
       }
     }
-    print('MongoDB connection closed');
   }
 
   static Future<DbCollection> getCollection(String collectionName) async {
@@ -148,12 +135,7 @@ class MongoDbConnection {
       } catch (e) {
         if (_isTransientError(e) && attempt < retries) {
           attempt++;
-          print('DB op transient error (attempt $attempt/$retries): $e');
-          try {
-            await _connectWithBackoff(0);
-          } catch (reconnectError) {
-            print('Reconnect during retry failed: $reconnectError');
-          }
+          print('DB transient error (attempt $attempt/$retries): $e');
           await Future.delayed(retryDelay * attempt);
           continue;
         }
@@ -163,19 +145,14 @@ class MongoDbConnection {
   }
 
   static bool _isTransientError(dynamic e) {
-    final msg = e?.toString() ?? '';
-    if (e is SocketException ||
+    final msg = e?.toString().toLowerCase() ?? '';
+    return e is SocketException ||
         e is TimeoutException ||
-        msg.contains('No master connection') ||
-        msg.contains('SocketException') ||
-        msg.contains('Server selection') ||
-        msg.contains('connection closed')) {
-      return true;
-    }
-    if (e is MongoDartError) {
-      return true;
-    }
-    return false;
+        msg.contains('closed') ||
+        msg.contains('reset by peer') ||
+        msg.contains('broken pipe') ||
+        msg.contains('master') ||
+        msg.contains('selection');
   }
 
   static void _startHeartbeat() {
@@ -183,14 +160,9 @@ class MongoDbConnection {
     _heartbeatTimer = Timer.periodic(_heartbeatInterval, (_) async {
       if (_instance == null) return;
       try {
-        await _instance!.pingCommand();
+        await instance;
       } catch (e) {
-        print('MongoDB heartbeat failed: $e -- attempting reconnect');
-        try {
-          await _connectWithBackoff(0);
-        } catch (re) {
-          print('Heartbeat-triggered reconnect failed: $re');
-        }
+        print('Heartbeat connection check failed: $e');
       }
     });
   }

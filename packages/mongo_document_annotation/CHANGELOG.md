@@ -1,3 +1,7 @@
+## 1.7.6
+
+Ensure atomic reconnections
+
 ## 1.7.5
 
 ### Fixed
