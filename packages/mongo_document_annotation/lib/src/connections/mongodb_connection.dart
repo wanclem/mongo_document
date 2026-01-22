@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:mongo_dart/mongo_dart.dart';
 
 class MongoDbConnection {
   static Db? _instance;
   static Completer<void>? _connectionCompleter;
+
   static late final String _databaseUri;
   static late final bool _secure;
   static late final bool _tlsAllowInvalidCertificates;
@@ -36,34 +36,34 @@ class MongoDbConnection {
     _tlsCertificateKeyFilePassword = tlsCertificateKeyFilePassword;
 
     await instance;
-
-    print('MongoDB Initialized');
-
     _startHeartbeat();
   }
 
   static Future<void> _connect() async {
-    if (_instance != null) {
+    final oldInstance = _instance;
+    if (oldInstance != null) {
       try {
-        await _instance!.close();
+        await oldInstance.close();
       } catch (_) {}
     }
-
-    _instance = await Db.create(_databaseUri);
-    await _instance!.open(
+    final newDb = await Db.create(_databaseUri);
+    await newDb.open(
       secure: _secure,
       tlsAllowInvalidCertificates: _tlsAllowInvalidCertificates,
       tlsCAFile: _tlsCAFile,
       tlsCertificateKeyFile: _tlsCertificateKeyFile,
       tlsCertificateKeyFilePassword: _tlsCertificateKeyFilePassword,
     );
+    _instance = newDb;
   }
 
   static Future<void> _connectWithBackoff([int attempt = 0]) async {
     try {
       await _connect();
-      await _instance!.pingCommand().timeout(const Duration(seconds: 5));
-      return;
+      final db = _instance;
+      if (db == null) throw Exception("Failed to assign instance");
+      await db.pingCommand().timeout(const Duration(seconds: 5));
+      print('MongoDB connected/reconnected successfully.');
     } catch (e) {
       print('Connection attempt ${attempt + 1} failed: $e');
       if (attempt + 1 < _maxReconnectAttempts) {
@@ -76,28 +76,33 @@ class MongoDbConnection {
   }
 
   static Future<Db> get instance async {
-    if (_connectionCompleter != null && !_connectionCompleter!.isCompleted) {
-      await _connectionCompleter!.future;
-      return _instance!;
+    final completer = _connectionCompleter;
+    if (completer != null && !completer.isCompleted) {
+      await completer.future;
+      final db = _instance;
+      if (db != null) return db;
     }
-
-    if (_instance != null && _instance!.isConnected) {
+    final currentDb = _instance;
+    if (currentDb != null && currentDb.isConnected) {
       try {
-        await _instance!.pingCommand().timeout(const Duration(seconds: 2));
-        return _instance!;
+        await currentDb.pingCommand().timeout(const Duration(seconds: 2));
+        return currentDb;
       } catch (e) {
-        print('Existing MongoDB connection stale/dropped. Reconnecting...');
+        print('MongoDB connection lost (ping failed). Reconnecting...');
       }
     }
 
     _connectionCompleter = Completer<void>();
     try {
       await _connectWithBackoff();
-      _connectionCompleter!.complete();
-      return _instance!;
+      final db = _instance;
+      if (db == null) {
+        throw Exception("MongoDB instance is null after connection.");
+      }
+      _connectionCompleter?.complete();
+      return db;
     } catch (e) {
-      _connectionCompleter!.completeError(e);
-      _connectionCompleter = null;
+      _connectionCompleter?.completeError(e);
       rethrow;
     } finally {
       _connectionCompleter = null;
@@ -107,13 +112,13 @@ class MongoDbConnection {
   static Future<void> shutdownDb() async {
     _heartbeatTimer?.cancel();
     _heartbeatTimer = null;
-    if (_instance != null) {
+    final db = _instance;
+    _instance = null;
+    if (db != null) {
       try {
-        await _instance!.close();
+        await db.close();
       } catch (e) {
-        print('Error closing DB: $e');
-      } finally {
-        _instance = null;
+        print('Error during DB shutdown: $e');
       }
     }
   }
@@ -123,46 +128,13 @@ class MongoDbConnection {
     return db.collection(collectionName);
   }
 
-  static Future<T> runWithRetry<T>(
-    Future<T> Function() operation, {
-    int retries = 3,
-    Duration retryDelay = const Duration(seconds: 2),
-  }) async {
-    int attempt = 0;
-    while (true) {
-      try {
-        return await operation();
-      } catch (e) {
-        if (_isTransientError(e) && attempt < retries) {
-          attempt++;
-          print('DB transient error (attempt $attempt/$retries): $e');
-          await Future.delayed(retryDelay * attempt);
-          continue;
-        }
-        rethrow;
-      }
-    }
-  }
-
-  static bool _isTransientError(dynamic e) {
-    final msg = e?.toString().toLowerCase() ?? '';
-    return e is SocketException ||
-        e is TimeoutException ||
-        msg.contains('closed') ||
-        msg.contains('reset by peer') ||
-        msg.contains('broken pipe') ||
-        msg.contains('master') ||
-        msg.contains('selection');
-  }
-
   static void _startHeartbeat() {
     _heartbeatTimer?.cancel();
     _heartbeatTimer = Timer.periodic(_heartbeatInterval, (_) async {
-      if (_instance == null) return;
       try {
         await instance;
       } catch (e) {
-        print('Heartbeat connection check failed: $e');
+        print('Heartbeat check failed: $e');
       }
     });
   }

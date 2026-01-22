@@ -1,3 +1,7 @@
+## 1.7.7
+
+Ensure atomic reconnections with atlas
+
 ## 1.7.6
 
 Ensure atomic reconnections

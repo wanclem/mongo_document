@@ -1,6 +1,6 @@
 name: mongo_document_annotation
 description: Generate MongoDB CRUD code in Dart using @MongoDocument annotations - ideal for clean, scalable backend models.
-version: 1.7.6
+version: 1.7.7
 homepage: https://github.com/wanclem/mongo_document
 repository: https://github.com/wanclem/mongo_document
 issue_tracker: https://github.com/wanclem/mongo_document/issues
