@@ -21,7 +21,7 @@ class ReadTemplates {
       throw ArgumentError('Invalid id type: \${id.runtimeType}');
     }
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     bool foundLookups = false;
     List<Map<String, Object>> pipeline = [];
     if (projections.isNotEmpty) {
@@ -67,7 +67,7 @@ class ReadTemplates {
   ) async {
   
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
 
     if (predicate == null) {
       final $classNameVar = await coll.modernFindOne(sort: {'created_at': -1});
@@ -125,7 +125,7 @@ class ReadTemplates {
 /// Type-safe findOne by named arguments
   static Future<$className?> findOneByNamed({${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db,List<Lookup>lookups=const [],List<BaseProjections> projections=const [],})async{
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
 
     final selector = <String, dynamic>{};
     
@@ -187,7 +187,7 @@ class ReadTemplates {
     Db?db,
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
 
     var selectorBuilder = predicate(Q$className()).toSelectorBuilder();
     var selectorMap = selectorBuilder.map;
@@ -249,7 +249,7 @@ class ReadTemplates {
 })async{
 
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
 
     final selector = <String, dynamic>{};
     
@@ -310,7 +310,7 @@ class ReadTemplates {
   {Db?db}
 ) async {
   final database = db ?? await MongoDbConnection.instance;
-  final coll = await database.collection(_collection);
+  final coll = database.collection(_collection);
 
   final selectorMap = predicate == null
       ? <String, dynamic>{}

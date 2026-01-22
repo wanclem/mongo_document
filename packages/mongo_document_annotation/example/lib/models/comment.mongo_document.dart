@@ -164,7 +164,7 @@ extension $CommentExtension on Comment {
 
   Future<Comment?> save({Db? db}) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
@@ -208,7 +208,7 @@ extension $CommentExtension on Comment {
   Future<bool> delete({Db? db}) async {
     if (id == null) return false;
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final res = await coll.deleteOne(where.eq(r'_id', id));
     return res.isSuccess;
   }
@@ -224,7 +224,7 @@ class Comments {
   }) async {
     if (comments.isEmpty) return <Comment>[];
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final now = DateTime.now().toUtc();
     final List<Map<String, dynamic>> toInsert = [];
     final List<Map<String, dynamic>> toSave = [];
@@ -286,7 +286,7 @@ class Comments {
       throw ArgumentError('Invalid id type: ${id.runtimeType}');
     }
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     bool foundLookups = false;
     List<Map<String, Object>> pipeline = [];
     if (projections.isNotEmpty) {
@@ -375,7 +375,7 @@ class Comments {
     List<BaseProjections> projections = const [],
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
 
     if (predicate == null) {
       final comment = await coll.modernFindOne(sort: {'created_at': -1});
@@ -435,7 +435,7 @@ class Comments {
     List<BaseProjections> projections = const [],
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
 
     final selector = <String, dynamic>{};
 
@@ -541,7 +541,7 @@ class Comments {
     Db? db,
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
 
     var selectorBuilder = predicate(QComment()).toSelectorBuilder();
     var selectorMap = selectorBuilder.map;
@@ -604,7 +604,7 @@ class Comments {
     int limit = 10,
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
 
     final selector = <String, dynamic>{};
 
@@ -713,7 +713,7 @@ class Comments {
     final database = db ?? await MongoDbConnection.instance;
     final expr = predicate(QComment());
     final selector = expr.toSelectorBuilder();
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final result = await coll.deleteOne(selector.map.cleaned());
     return result.isSuccess;
   }
@@ -739,7 +739,7 @@ class Comments {
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) return false;
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final result = await coll.deleteOne(selector);
     return result.isSuccess;
   }
@@ -752,7 +752,7 @@ class Comments {
     final database = db ?? await MongoDbConnection.instance;
     final expr = predicate(QComment());
     final selector = expr.toSelectorBuilder();
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final result = await coll.deleteMany(selector.map.cleaned());
     return result.isSuccess;
   }
@@ -778,7 +778,7 @@ class Comments {
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) return false;
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final result = await coll.deleteMany(selector);
     return result.isSuccess;
   }
@@ -807,7 +807,7 @@ class Comments {
       }),
     );
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final retrieved = await findOne(predicate);
     if (retrieved == null) return null;
     final result = await coll.updateOne(where.id(retrieved.id!), modifier);
@@ -841,7 +841,7 @@ class Comments {
       }),
     );
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final retrieved = await findMany(predicate);
     if (retrieved.isEmpty) return [];
     final ids = retrieved.map((doc) => doc.id).toList();
@@ -871,7 +871,7 @@ class Comments {
       sanitizedDocument(updateMap.withValidObjectReferences()),
     );
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final result = await coll.updateOne(where.id(id), mod);
     if (!result.isSuccess) return null;
     final updatedDoc = await coll.findOne({'_id': id});
@@ -883,7 +883,7 @@ class Comments {
     Db? db,
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
 
     final selectorMap =
         predicate == null

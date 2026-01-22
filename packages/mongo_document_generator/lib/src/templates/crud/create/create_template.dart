@@ -7,7 +7,7 @@ class CreateTemplates {
     return '''
   Future<$className?> save({Db? db}) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
@@ -57,7 +57,7 @@ class CreateTemplates {
   ) async {
     if ($classNamePlural.isEmpty) return <$className>[];
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final now = DateTime.now().toUtc();
     final List<Map<String, dynamic>> toInsert = [];
     final List<Map<String, dynamic>> toSave = [];

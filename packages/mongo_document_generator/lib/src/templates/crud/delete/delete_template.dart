@@ -9,7 +9,7 @@ class DeleteTemplates {
   Future<bool> delete({Db? db}) async {
     if (id == null) return false;
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final res = await coll.deleteOne(where.eq(r'_id', id));
     return res.isSuccess;
   }
@@ -25,7 +25,7 @@ class DeleteTemplates {
     final database = db ?? await MongoDbConnection.instance;
     final expr = predicate(Q$className());
     final selector = expr.toSelectorBuilder();
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final result = await coll.deleteOne(selector.map.cleaned());
     return result.isSuccess;
   }''';
@@ -41,7 +41,7 @@ class DeleteTemplates {
     final database = db ?? await MongoDbConnection.instance;
     final expr = predicate(Q$className());
     final selector = expr.toSelectorBuilder();
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final result = await coll.deleteMany(selector.map.cleaned());
     return result.isSuccess;
   }
@@ -69,7 +69,7 @@ class DeleteTemplates {
     }).join('\n')}
     if (selector.isEmpty) return false;
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final result = await coll.deleteOne(selector);
     return result.isSuccess;
   }
@@ -97,7 +97,7 @@ class DeleteTemplates {
     }).join('\n')}
     if (selector.isEmpty) return false;
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final result = await coll.deleteMany(selector);
     return result.isSuccess;
   }

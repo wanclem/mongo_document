@@ -51,7 +51,7 @@ extension $VanillaUserExtension on VanillaUser {
 
   Future<VanillaUser?> save({Db? db}) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
@@ -95,7 +95,7 @@ extension $VanillaUserExtension on VanillaUser {
   Future<bool> delete({Db? db}) async {
     if (id == null) return false;
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final res = await coll.deleteOne(where.eq(r'_id', id));
     return res.isSuccess;
   }
@@ -111,7 +111,7 @@ class VanillaUsers {
   }) async {
     if (vanillaUsers.isEmpty) return <VanillaUser>[];
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final now = DateTime.now().toUtc();
     final List<Map<String, dynamic>> toInsert = [];
     final List<Map<String, dynamic>> toSave = [];
@@ -175,7 +175,7 @@ class VanillaUsers {
       throw ArgumentError('Invalid id type: ${id.runtimeType}');
     }
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     bool foundLookups = false;
     List<Map<String, Object>> pipeline = [];
     if (projections.isNotEmpty) {
@@ -266,7 +266,7 @@ class VanillaUsers {
     List<BaseProjections> projections = const [],
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
 
     if (predicate == null) {
       final vanillaUser = await coll.modernFindOne(sort: {'created_at': -1});
@@ -322,7 +322,7 @@ class VanillaUsers {
     List<BaseProjections> projections = const [],
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
 
     final selector = <String, dynamic>{};
 
@@ -427,7 +427,7 @@ class VanillaUsers {
     Db? db,
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
 
     var selectorBuilder = predicate(QVanillaUser()).toSelectorBuilder();
     var selectorMap = selectorBuilder.map;
@@ -488,7 +488,7 @@ class VanillaUsers {
     int limit = 10,
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
 
     final selector = <String, dynamic>{};
 
@@ -597,7 +597,7 @@ class VanillaUsers {
     final database = db ?? await MongoDbConnection.instance;
     final expr = predicate(QVanillaUser());
     final selector = expr.toSelectorBuilder();
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final result = await coll.deleteOne(selector.map.cleaned());
     return result.isSuccess;
   }
@@ -615,7 +615,7 @@ class VanillaUsers {
     if (lastName != null) selector['last_name'] = lastName;
     if (selector.isEmpty) return false;
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final result = await coll.deleteOne(selector);
     return result.isSuccess;
   }
@@ -628,7 +628,7 @@ class VanillaUsers {
     final database = db ?? await MongoDbConnection.instance;
     final expr = predicate(QVanillaUser());
     final selector = expr.toSelectorBuilder();
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final result = await coll.deleteMany(selector.map.cleaned());
     return result.isSuccess;
   }
@@ -646,7 +646,7 @@ class VanillaUsers {
     if (lastName != null) selector['last_name'] = lastName;
     if (selector.isEmpty) return false;
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final result = await coll.deleteMany(selector);
     return result.isSuccess;
   }
@@ -667,7 +667,7 @@ class VanillaUsers {
       }),
     );
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final retrieved = await findOne(predicate);
     if (retrieved == null) return null;
     final result = await coll.updateOne(where.id(retrieved.id!), modifier);
@@ -693,7 +693,7 @@ class VanillaUsers {
       }),
     );
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final retrieved = await findMany(predicate);
     if (retrieved.isEmpty) return [];
     final ids = retrieved.map((doc) => doc.id).toList();
@@ -725,7 +725,7 @@ class VanillaUsers {
       sanitizedDocument(updateMap.withValidObjectReferences()),
     );
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final result = await coll.updateOne(where.id(id), mod);
     if (!result.isSuccess) return null;
     final updatedDoc = await coll.findOne({'_id': id});
@@ -739,7 +739,7 @@ class VanillaUsers {
     Db? db,
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
 
     final selectorMap =
         predicate == null

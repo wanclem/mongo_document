@@ -1,3 +1,9 @@
+## 1.7.5
+
+### Fixed
+
+Removed awaited collection name calls
+
 ## 1.7.4
 
 ### Fixed

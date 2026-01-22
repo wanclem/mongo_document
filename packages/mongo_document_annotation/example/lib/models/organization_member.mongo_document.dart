@@ -172,7 +172,7 @@ extension $OrganizationMemberExtension on OrganizationMember {
 
   Future<OrganizationMember?> save({Db? db}) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
@@ -220,7 +220,7 @@ extension $OrganizationMemberExtension on OrganizationMember {
   Future<bool> delete({Db? db}) async {
     if (id == null) return false;
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final res = await coll.deleteOne(where.eq(r'_id', id));
     return res.isSuccess;
   }
@@ -236,7 +236,7 @@ class OrganizationMembers {
   }) async {
     if (organizationMembers.isEmpty) return <OrganizationMember>[];
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final now = DateTime.now().toUtc();
     final List<Map<String, dynamic>> toInsert = [];
     final List<Map<String, dynamic>> toSave = [];
@@ -300,7 +300,7 @@ class OrganizationMembers {
       throw ArgumentError('Invalid id type: ${id.runtimeType}');
     }
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     bool foundLookups = false;
     List<Map<String, Object>> pipeline = [];
     if (projections.isNotEmpty) {
@@ -393,7 +393,7 @@ class OrganizationMembers {
     List<BaseProjections> projections = const [],
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
 
     if (predicate == null) {
       final organizationMember = await coll.modernFindOne(
@@ -457,7 +457,7 @@ class OrganizationMembers {
     List<BaseProjections> projections = const [],
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
 
     final selector = <String, dynamic>{};
 
@@ -571,7 +571,7 @@ class OrganizationMembers {
     Db? db,
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
 
     var selectorBuilder = predicate(QOrganizationMember()).toSelectorBuilder();
     var selectorMap = selectorBuilder.map;
@@ -639,7 +639,7 @@ class OrganizationMembers {
     int limit = 10,
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
 
     final selector = <String, dynamic>{};
 
@@ -757,7 +757,7 @@ class OrganizationMembers {
     final database = db ?? await MongoDbConnection.instance;
     final expr = predicate(QOrganizationMember());
     final selector = expr.toSelectorBuilder();
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final result = await coll.deleteOne(selector.map.cleaned());
     return result.isSuccess;
   }
@@ -785,7 +785,7 @@ class OrganizationMembers {
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) return false;
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final result = await coll.deleteOne(selector);
     return result.isSuccess;
   }
@@ -798,7 +798,7 @@ class OrganizationMembers {
     final database = db ?? await MongoDbConnection.instance;
     final expr = predicate(QOrganizationMember());
     final selector = expr.toSelectorBuilder();
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final result = await coll.deleteMany(selector.map.cleaned());
     return result.isSuccess;
   }
@@ -826,7 +826,7 @@ class OrganizationMembers {
     if (updatedAt != null) selector['updated_at'] = updatedAt;
     if (selector.isEmpty) return false;
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final result = await coll.deleteMany(selector);
     return result.isSuccess;
   }
@@ -857,7 +857,7 @@ class OrganizationMembers {
       }),
     );
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final retrieved = await findOne(predicate);
     if (retrieved == null) return null;
     final result = await coll.updateOne(where.id(retrieved.id!), modifier);
@@ -893,7 +893,7 @@ class OrganizationMembers {
       }),
     );
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final retrieved = await findMany(predicate);
     if (retrieved.isEmpty) return [];
     final ids = retrieved.map((doc) => doc.id).toList();
@@ -925,7 +925,7 @@ class OrganizationMembers {
       sanitizedDocument(updateMap.withValidObjectReferences()),
     );
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
     final result = await coll.updateOne(where.id(id), mod);
     if (!result.isSuccess) return null;
     final updatedDoc = await coll.findOne({'_id': id});
@@ -939,7 +939,7 @@ class OrganizationMembers {
     Db? db,
   }) async {
     final database = db ?? await MongoDbConnection.instance;
-    final coll = await database.collection(_collection);
+    final coll = database.collection(_collection);
 
     final selectorMap =
         predicate == null
