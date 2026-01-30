@@ -1,3 +1,7 @@
+## 1.7.8
+
+Upgrade deps
+
 ## 1.7.7
 
 Ensure atomic reconnections with atlas
