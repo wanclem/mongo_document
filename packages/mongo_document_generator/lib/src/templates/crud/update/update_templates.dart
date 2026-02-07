@@ -52,7 +52,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
     final coll = database.collection(_collection);
     final retrieved = await findOne(predicate);
     if (retrieved == null) return null;
-    final result = await coll.updateOne(where.id(retrieved.id!), modifier);
+    final result = await coll.updateOne(where.id(retrieved.id), modifier);
     if (!result.isSuccess) return null;
     final updatedDoc = await coll.findOne({'_id': retrieved.id});
     if (updatedDoc == null) return null;
