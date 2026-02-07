@@ -1,3 +1,7 @@
+## 1.7.11
+
+- Align example with package version bump.
+
 ## 1.7.10
 
 - Align example with package version bump.

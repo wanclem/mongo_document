@@ -1,3 +1,9 @@
+## 1.7.11
+
+### Fixed
+
+Remove unnecessary non-null assertion in update template type checks.
+
 ## 1.7.10
 
 ### Fixed

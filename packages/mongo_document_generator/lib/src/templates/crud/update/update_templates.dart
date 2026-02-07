@@ -39,7 +39,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
         var valueExpr = '$name';
         if (p.type is InterfaceType) {
           final interfaceType = p.type as InterfaceType;
-          final hasToJson = interfaceType.lookUpMethod('toJson', interfaceType.element.library!) != null;
+          final hasToJson = interfaceType.lookUpMethod('toJson', interfaceType.element.library) != null;
           if (hasToJson) {
             valueExpr = '$name.toJson()';
           }
