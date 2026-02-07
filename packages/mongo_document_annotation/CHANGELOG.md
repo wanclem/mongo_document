@@ -1,3 +1,9 @@
+## 1.7.12
+
+### Fixed
+
+Align with generator patch release.
+
 ## 1.7.11
 
 ### Fixed

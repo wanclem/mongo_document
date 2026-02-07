@@ -1,3 +1,9 @@
+## 1.7.12
+
+### Fixed
+
+Handle nullable ids in update templates for newer mongo_dart signatures.
+
 ## 1.7.11
 
 ### Fixed
