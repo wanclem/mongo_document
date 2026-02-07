@@ -1,3 +1,9 @@
+## 1.7.13
+
+### Fixed
+
+Use where.id for update follow-up lookup with null-safe id guard.
+
 ## 1.7.12
 
 ### Fixed

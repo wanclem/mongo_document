@@ -56,7 +56,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
     if (retrievedId == null) return null;
     final result = await coll.updateOne(where.id(retrievedId), modifier);
     if (!result.isSuccess) return null;
-    final updatedDoc = await coll.findOne({'_id': retrievedId});
+    final updatedDoc = await coll.findOne(where.id(retrievedId));
     if (updatedDoc == null) return null;
     return $className.fromJson(updatedDoc.withRefs());
   }
