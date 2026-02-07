@@ -1,3 +1,10 @@
+## 1.7.9
+
+### Fixed
+
+Use mongo_dart 0.10.7 and simplify connection handling to rely on safeAtlas.
+Automatically append safeAtlas=true to connection strings when missing.
+
 ## 1.7.8
 
 Upgrade deps

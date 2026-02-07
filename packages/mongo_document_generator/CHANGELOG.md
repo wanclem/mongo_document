@@ -1,3 +1,9 @@
+## 1.7.9
+
+### Fixed
+
+Upgrade mongo_dart to 0.10.7.
+
 ## 1.7.8
 
 Upgrade deps
