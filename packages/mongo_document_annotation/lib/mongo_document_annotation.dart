@@ -7,7 +7,7 @@ export 'src/lookups//projection_extensions.dart';
 export 'src/converters/object_id_converter.dart';
 export 'src/converters/date_time_converter.dart';
 export 'dart:async';
-export 'package:mongo_dart/mongo_dart.dart' hide Lookup;
+export 'package:mongo_document_db/mongo_document_db.dart' hide Lookup;
 export 'src/lookups/lookup.dart';
 export 'src/utils/lookup_utils.dart';
 export 'src/utils/map_list.dart';

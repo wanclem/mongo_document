@@ -1,3 +1,10 @@
+## 1.7.14
+
+### Fixed
+
+Switch to `mongo_document_db` dependency `^0.10.9` and align runtime connection behavior with the rewritten driver.
+Remove automatic `safeAtlas` URI mutation and simplify connection handling to rely on driver-level reconnect/state management.
+
 ## 1.7.13
 
 ### Fixed
@@ -26,7 +33,7 @@ Align with generator patch release.
 
 ### Fixed
 
-Use mongo_dart 0.10.7 and simplify connection handling to rely on safeAtlas.
+Use mongo_document_db 0.10.7 and simplify connection handling to rely on safeAtlas.
 Automatically append safeAtlas=true to connection strings when missing.
 
 ## 1.7.8

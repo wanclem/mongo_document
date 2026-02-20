@@ -1,14 +1,15 @@
-import 'package:mongo_dart/mongo_dart.dart';
+import 'package:mongo_document_db/mongo_document_db.dart';
 
 class MongoDbConnection {
   static Db? _instance;
+  static Future<Db>? _connecting;
 
-  static late final String _databaseUri;
-  static late final bool _secure;
-  static late final bool _tlsAllowInvalidCertificates;
-  static late final String? _tlsCAFile;
-  static late final String? _tlsCertificateKeyFile;
-  static late final String? _tlsCertificateKeyFilePassword;
+  static String? _databaseUri;
+  static bool? _secure;
+  static bool? _tlsAllowInvalidCertificates;
+  static String? _tlsCAFile;
+  static String? _tlsCertificateKeyFile;
+  static String? _tlsCertificateKeyFilePassword;
 
   MongoDbConnection._();
 
@@ -20,9 +21,19 @@ class MongoDbConnection {
     String? tlsCertificateKeyFile,
     String? tlsCertificateKeyFilePassword,
   }) async {
-    if (_instance != null) return;
+    if (_databaseUri != null &&
+        (_databaseUri != databaseUri ||
+            _secure != secure ||
+            _tlsAllowInvalidCertificates != tlsAllowInvalidCertificates ||
+            _tlsCAFile != tlsCAFile ||
+            _tlsCertificateKeyFile != tlsCertificateKeyFile ||
+            _tlsCertificateKeyFilePassword != tlsCertificateKeyFilePassword)) {
+      throw StateError(
+        'MongoDbConnection is already initialized with different settings.',
+      );
+    }
 
-    _databaseUri = _withSafeAtlas(databaseUri);
+    _databaseUri = databaseUri;
     _secure = secure;
     _tlsAllowInvalidCertificates = tlsAllowInvalidCertificates;
     _tlsCAFile = tlsCAFile;
@@ -33,15 +44,44 @@ class MongoDbConnection {
   }
 
   static Future<Db> get instance async {
-    final currentDb = _instance;
-    if (currentDb != null && currentDb.isConnected) {
-      return currentDb;
+    if (_databaseUri == null) {
+      throw StateError(
+        'MongoDbConnection.initialize must be called before instance.',
+      );
     }
 
-    final newDb = await Db.create(_databaseUri);
+    var currentDb = _instance;
+    if (currentDb != null) {
+      // Do not brute-force recreate the Db on transient socket drops.
+      // The local driver now performs internal reconnect/recovery.
+      if (currentDb.state != State.closed) {
+        return currentDb;
+      }
+      _instance = null;
+      currentDb = null;
+    }
+
+    final connecting = _connecting;
+    if (connecting != null) {
+      return connecting;
+    }
+
+    final connectTask = _connect();
+    _connecting = connectTask;
+    try {
+      return await connectTask;
+    } finally {
+      if (identical(_connecting, connectTask)) {
+        _connecting = null;
+      }
+    }
+  }
+
+  static Future<Db> _connect() async {
+    final newDb = await Db.create(_databaseUri!);
     await newDb.open(
-      secure: _secure,
-      tlsAllowInvalidCertificates: _tlsAllowInvalidCertificates,
+      secure: _secure ?? true,
+      tlsAllowInvalidCertificates: _tlsAllowInvalidCertificates ?? false,
       tlsCAFile: _tlsCAFile,
       tlsCertificateKeyFile: _tlsCertificateKeyFile,
       tlsCertificateKeyFilePassword: _tlsCertificateKeyFilePassword,
@@ -51,8 +91,20 @@ class MongoDbConnection {
   }
 
   static Future<void> shutdownDb() async {
-    final db = _instance;
+    final inProgress = _connecting;
+    _connecting = null;
+
+    Db? db = _instance;
     _instance = null;
+    if (inProgress != null) {
+      try {
+        final pendingDb = await inProgress;
+        if (!identical(pendingDb, db)) {
+          await pendingDb.close();
+        }
+      } catch (_) {}
+    }
+
     if (db != null) {
       try {
         await db.close();
@@ -65,13 +117,5 @@ class MongoDbConnection {
   static Future<DbCollection> getCollection(String collectionName) async {
     final db = await instance;
     return db.collection(collectionName);
-  }
-
-  static String _withSafeAtlas(String databaseUri) {
-    if (databaseUri.contains('safeAtlas=')) {
-      return databaseUri;
-    }
-    final separator = databaseUri.contains('?') ? '&' : '?';
-    return '$databaseUri${separator}safeAtlas=true';
   }
 }

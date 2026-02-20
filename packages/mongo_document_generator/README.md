@@ -25,7 +25,7 @@
 
 ## Overview
 
-**mongo_document** simplifies interaction between Dart classes and MongoDB using `mongo_dart`. It generates zero-boilerplate, type-safe CRUD methods, query builders, and supports cross-collection lookups and projections. It works seamlessly with both `freezed` and plain Dart classes.
+**mongo_document** simplifies interaction between Dart classes and MongoDB using `mongo_document_db`. It generates zero-boilerplate, type-safe CRUD methods, query builders, and supports cross-collection lookups and projections. It works seamlessly with both `freezed` and plain Dart classes.
 
 This package allows you to:
 

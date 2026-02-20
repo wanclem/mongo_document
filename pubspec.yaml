@@ -6,3 +6,7 @@ workspace:
   - packages/mongo_document_annotation
   - packages/mongo_document_generator
   - packages/mongo_document_annotation/example
+
+dependency_overrides:
+  mongo_document_db:
+    path: packages/mongo_document_db

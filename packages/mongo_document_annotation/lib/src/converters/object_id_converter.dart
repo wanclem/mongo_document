@@ -1,5 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:mongo_dart/mongo_dart.dart';
+import 'package:mongo_document_db/mongo_document_db.dart';
 
 class ObjectIdConverter implements JsonConverter<ObjectId?, dynamic> {
   const ObjectIdConverter();

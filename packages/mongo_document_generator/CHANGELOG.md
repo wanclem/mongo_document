@@ -1,3 +1,11 @@
+## 1.7.14
+
+### Fixed
+
+Align dependencies with the rewritten local driver stack:
+- `mongo_document_annotation: ^1.7.14`
+- `mongo_document_db: ^0.10.9`
+
 ## 1.7.13
 
 ### Fixed
@@ -8,7 +16,7 @@ Use where.id for update follow-up lookup with null-safe id guard.
 
 ### Fixed
 
-Handle nullable ids in update templates for newer mongo_dart signatures.
+Handle nullable ids in update templates for newer mongo_document_db signatures.
 
 ## 1.7.11
 
@@ -26,7 +34,7 @@ Remove unnecessary non-null assertion in update template.
 
 ### Fixed
 
-Upgrade mongo_dart to 0.10.7.
+Upgrade mongo_document_db to 0.10.7.
 
 ## 1.7.8
 

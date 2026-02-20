@@ -63,8 +63,7 @@ class DeleteTemplates {
   final selector = <String, dynamic>{};
   ${params.map((p) {
       final paramName = p.name;
-      final key =
-          ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
+      final key = ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
       return '''if ($paramName != null) selector['$key'] = ${nestedCollectionMap.containsKey(key) ? "$paramName.id" : paramName};''';
     }).join('\n')}
     if (selector.isEmpty) return false;
@@ -91,8 +90,7 @@ class DeleteTemplates {
   final selector = <String, dynamic>{};
   ${params.map((p) {
       final paramName = p.name;
-      final key =
-          ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
+      final key = ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
       return '''if ($paramName != null) selector['$key'] = ${nestedCollectionMap.containsKey(key) ? "$paramName.id" : paramName};''';
     }).join('\n')}
     if (selector.isEmpty) return false;

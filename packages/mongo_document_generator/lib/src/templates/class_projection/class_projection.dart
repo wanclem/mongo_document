@@ -14,22 +14,36 @@ class ClassProjection {
   ) {
     final enumName = '${className}Fields';
     final projectName = '${className}Projections';
-    final validParams = params.where((p) {
-      final key =
-          ParameterTemplates.getParameterKey(jsonKeyChecker, p, fieldRename);
-      return !nestedCollectionMap.containsKey(key);
-    }).toList();
+    final validParams =
+        params.where((p) {
+          final key = ParameterTemplates.getParameterKey(
+            jsonKeyChecker,
+            p,
+            fieldRename,
+          );
+          return !nestedCollectionMap.containsKey(key);
+        }).toList();
     final enumValues = validParams.map((f) => f.name).join(', ');
-    final entries = validParams.map((p) {
-      final jsonKey =
-          ParameterTemplates.getParameterKey(jsonKeyChecker, p, fieldRename);
-      return "'$jsonKey': 1";
-    }).join(', ');
-    final fieldMappings = validParams.map((p) {
-      final jsonKey =
-          ParameterTemplates.getParameterKey(jsonKeyChecker, p, fieldRename);
-      return '    "${p.name}": "$jsonKey"';
-    }).join(',\n');
+    final entries = validParams
+        .map((p) {
+          final jsonKey = ParameterTemplates.getParameterKey(
+            jsonKeyChecker,
+            p,
+            fieldRename,
+          );
+          return "'$jsonKey': 1";
+        })
+        .join(', ');
+    final fieldMappings = validParams
+        .map((p) {
+          final jsonKey = ParameterTemplates.getParameterKey(
+            jsonKeyChecker,
+            p,
+            fieldRename,
+          );
+          return '    "${p.name}": "$jsonKey"';
+        })
+        .join(',\n');
     return '''
 enum $enumName { $enumValues }
 

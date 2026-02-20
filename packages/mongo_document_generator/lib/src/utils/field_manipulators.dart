@@ -8,9 +8,7 @@ FieldRename? getFieldRenamePolicy(
 ) {
   var jsAnn = typeChecker.firstAnnotationOf(element);
   if (jsAnn == null && element.unnamedConstructor != null) {
-    jsAnn = typeChecker.firstAnnotationOf(
-      element.unnamedConstructor!,
-    );
+    jsAnn = typeChecker.firstAnnotationOf(element.unnamedConstructor!);
   }
   FieldRename? fieldRename;
   if (jsAnn != null) {

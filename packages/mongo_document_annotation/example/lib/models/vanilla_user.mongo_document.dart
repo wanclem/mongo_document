@@ -670,9 +670,11 @@ class VanillaUsers {
     final coll = database.collection(_collection);
     final retrieved = await findOne(predicate);
     if (retrieved == null) return null;
-    final result = await coll.updateOne(where.id(retrieved.id!), modifier);
+    final retrievedId = retrieved.id;
+    if (retrievedId == null) return null;
+    final result = await coll.updateOne(where.id(retrievedId), modifier);
     if (!result.isSuccess) return null;
-    final updatedDoc = await coll.findOne({'_id': retrieved.id});
+    final updatedDoc = await coll.findOne(where.id(retrievedId));
     if (updatedDoc == null) return null;
     return VanillaUser.fromJson(updatedDoc.withRefs());
   }
@@ -696,7 +698,8 @@ class VanillaUsers {
     final coll = database.collection(_collection);
     final retrieved = await findMany(predicate);
     if (retrieved.isEmpty) return [];
-    final ids = retrieved.map((doc) => doc.id).toList();
+    final ids = retrieved.map((doc) => doc.id).whereType<ObjectId>().toList();
+    if (ids.isEmpty) return [];
     final result = await coll.updateMany(where.oneFrom('_id', ids), modifier);
     if (!result.isSuccess) return [];
     final updatedCursor = coll.find(where.oneFrom('_id', ids));
