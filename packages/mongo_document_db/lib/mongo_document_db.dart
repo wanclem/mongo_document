@@ -15,6 +15,8 @@ import 'dart:io'
         FileMode,
         IOSink,
         Platform,
+        RawSocketOption,
+        SocketOption,
         SecureSocket,
         SecurityContext,
         Socket,

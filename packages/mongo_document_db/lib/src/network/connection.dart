@@ -196,10 +196,13 @@ class Connection {
       throw ex;
     }
 
+    _configureSocket(locSocket);
     // ignore: unawaited_futures
-    locSocket.done.catchError((error) {
-      _log.info('Socket error $error');
-      throw ConnectionException('Socket error: $error');
+    locSocket.done.catchError((error) async {
+      _log.info('Socket closed with error: $error');
+      if (!_closed) {
+        await _closeSocketOnError(socketError: error);
+      }
     });
     socket = locSocket;
 
@@ -221,11 +224,30 @@ class Connection {
             //   the secure parameter to true in db.open()
             onDone: () async {
               if (!_closed) {
-                await _closeSocketOnError(socketError: noSecureRequestError);
+                await _closeSocketOnError(
+                    socketError: serverConfig.isSecure
+                        ? 'Socket closed by remote host.'
+                        : noSecureRequestError);
               }
             });
     connected = true;
     return true;
+  }
+
+  void _configureSocket(Socket currentSocket) {
+    try {
+      currentSocket.setOption(SocketOption.tcpNoDelay, true);
+    } catch (error) {
+      _log.fine(() => 'Could not enable tcpNoDelay: $error');
+    }
+    try {
+      // SO_KEEPALIVE option id differs on Linux vs BSD/Windows stacks.
+      var keepAliveOption = Platform.isLinux ? 9 : 0x0008;
+      currentSocket.setRawOption(RawSocketOption.fromBool(
+          RawSocketOption.levelSocket, keepAliveOption, true));
+    } catch (error) {
+      _log.fine(() => 'Could not enable TCP keepalive: $error');
+    }
   }
 
   Future<void> close() async {
@@ -347,6 +369,9 @@ class Connection {
   }
 
   Future<void> _closeSocketOnError({dynamic socketError}) async {
+    if (_closed) {
+      return;
+    }
     _closed = true;
     connected = false;
     var ex = ConnectionException(

@@ -1,3 +1,9 @@
+## 1.7.16
+
+### Fixed
+
+Aligned dependency to `mongo_document_db: ^0.10.12` to consume the latest connection lifecycle hardening and URI log redaction fixes.
+
 ## 1.7.15
 
 ### Added

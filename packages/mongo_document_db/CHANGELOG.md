@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.12
+
+- Hardened reconnection flow to recover cleanly from transitional `State.OPENING` / connection-manager-closed races during automatic reconnect.
+- Improved socket lifecycle handling by enabling TCP keepalive and avoiding duplicate socket-close cascades on stream/socket error paths.
+- Redacted credentials from DNS SRV host logs to prevent MongoDB URI secret leakage.
+
 ## 0.10.11
 
 - Added AI-oriented documentation (`README.AI.md`) for agent and automation workflows.

@@ -5,6 +5,16 @@ import 'package:mongo_document_db/src/database/utils/check_same_domain.dart';
 
 var _log = Logger('dns_llokup');
 
+String _redactMongoUriCredentials(String uriString) {
+  var uri = Uri.parse(uriString);
+  if (uri.userInfo.isEmpty) {
+    return uriString;
+  }
+  var user = uri.userInfo.split(':').first;
+  var redactedUserInfo = '${user.isEmpty ? '***' : user}:***';
+  return uri.replace(userInfo: redactedUserInfo).toString();
+}
+
 /// This method receive an Uri with "mongodb+srv" schema and returns
 /// A List of urls in "mongodb" schema format
 Future<List<String>> decodeDnsSeedlist(Uri dnsSeedlistUri) async {
@@ -85,7 +95,7 @@ Future<List<String>> decodeDnsSeedlist(Uri dnsSeedlistUri) async {
       throw MongoDartError('Different domain detected in DNS SRV record: '
           'required "$dnsDomain", detected "$actualDomain"');
     }
-    _log.info('Dns host detected: $address');
+    _log.info('Dns host detected: ${_redactMongoUriCredentials(address)}');
   }
   return ret;
 }

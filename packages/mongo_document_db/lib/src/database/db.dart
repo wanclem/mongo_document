@@ -499,10 +499,15 @@ class Db {
       return true;
     }
     if (error is MongoDartError) {
-      return error.message == 'No master connection' ||
-          error.message == 'Invalid Connection manager state' ||
-          error.message.contains('Connection already closed') ||
-          error.message.contains('socket has not been created');
+      var message = error.message;
+      var normalized = message.toUpperCase();
+      return message == 'No master connection' ||
+          message == 'Invalid Connection manager state' ||
+          message.contains('Connection already closed') ||
+          message.contains('socket has not been created') ||
+          normalized.contains('STATE.OPENING') ||
+          (!_explicitlyClosed && normalized.contains('STATE.CLOSED')) ||
+          normalized.contains('CONNECTION MANAGER CLOSED');
     }
     if (error is Map<String, dynamic>) {
       var message = error[keyErrmsg]?.toString() ?? '';
@@ -515,6 +520,13 @@ class Db {
 
   Future<T> _runWithReconnect<T>(Future<T> Function() operation,
       {required bool allowReconnect}) async {
+    var reconnectInProgress = _reconnectInProgress;
+    if (!_explicitlyClosed &&
+        state == State.opening &&
+        reconnectInProgress != null) {
+      await reconnectInProgress;
+    }
+
     try {
       return await operation();
     } catch (error) {
@@ -523,7 +535,12 @@ class Db {
           !_isRecoverableConnectionError(error)) {
         rethrow;
       }
-      await _reconnect();
+      reconnectInProgress = _reconnectInProgress;
+      if (state == State.opening && reconnectInProgress != null) {
+        await reconnectInProgress;
+      } else {
+        await _reconnect();
+      }
       return operation();
     }
   }
@@ -635,7 +652,7 @@ class Db {
       return section.payload.content;
     },
         allowReconnect:
-            connection == null && !skipStateCheck && state == State.open);
+            connection == null && !skipStateCheck && !_explicitlyClosed);
   }
 
   Future open(
@@ -740,7 +757,7 @@ class Db {
       throw firstRepliedDocument;
       //}
       //return result.future;
-    }, allowReconnect: connection == null && state == State.open);
+    }, allowReconnect: connection == null && !_explicitlyClosed);
   }
 
   bool documentIsNotAnError(dynamic firstRepliedDocument) =>
