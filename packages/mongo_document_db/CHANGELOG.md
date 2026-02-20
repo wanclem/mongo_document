@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.10
+
+- Updated package metadata and repository links to point to:
+  - https://github.com/wanclem/mongo_document
+- Replaced legacy `mongo-dart` repository references in docs/changelog links.
+
 ## 0.10.9
 
 - Reworked connection lifecycle for Atlas and long-running services:
@@ -32,7 +38,7 @@
 
 - Removed Library names (Lint)
 - Updated Dependencies
-- Changes to Grid Fs to fix problem with files bigger than 2GB (Issue [#385](https://github.com/mongo-dart/mongo_document_db/issues/385))
+- Changes to Grid Fs to fix problem with files bigger than 2GB (Issue [#385](https://github.com/wanclem/mongo_document/issues/385))
   1) Changed length in GridFSFile from int? to Int64
   2) Changed chunkSize in GridFSFile from int to Int32
   3) Changed GridFS.defaultChunkSize from int to Int32
@@ -44,7 +50,7 @@
 
 ## 0.10.2
 
-- Change event improvements see [Pull Request #373](https://github.com/mongo-dart/mongo_document_db/pull/373)
+- Change event improvements see [Pull Request #373](https://github.com/wanclem/mongo_document/pull/373)
 
 ## 0.10.1
 
@@ -298,7 +304,7 @@ Changes List:
 emits `Uint8List`, rather than plain `List<int>`, so some fixes were necessary
 to allow the package to continue to function.
   - Courtesy of @a14n, thank you!
-  - Resolves <https://github.com/mongo-dart/mongo_document_db/issues/160>, among other issues.
+  - Resolves <https://github.com/wanclem/mongo_document/issues/160>, among other issues.
 
 ### 0.3.5
 
@@ -308,8 +314,8 @@ to allow the package to continue to function.
 
 - Added `cursor` option to `DbCollection.aggregate`.
   - Courtesy of @jodinathan, thank you!
-  - Resolves <https://github.com/mongo-dart/mongo_document_db/issues/120>
-  - See PR: <https://github.com/mongo-dart/mongo_document_db/pull/139>
+  - Resolves <https://github.com/wanclem/mongo_document/issues/120>
+  - See PR: <https://github.com/wanclem/mongo_document/pull/139>
 - Added "Tobe O" to authors in `pubspec.yaml`.
 
 ### 0.3.2
@@ -327,7 +333,7 @@ while `writeConcern` is now a named optional parameter.
 Future remove(selector, {WriteConcern writeConcern});
 ```
 
-Resolves [#73](https://github.com/mongo-dart/mongo_document_db/issues/73).
+Resolves [#73](https://github.com/wanclem/mongo_document/issues/73).
 
 ### 0.3.0
 
@@ -353,7 +359,7 @@ Resolves [#73](https://github.com/mongo-dart/mongo_document_db/issues/73).
 
 ### 0.2.5
 
-- Moved mongo_document_db project to a new organization on [GitHub](https://github.com/mongo-dart/mongo_document_db).
+- Moved mongo_document_db project to a new organization on [GitHub](https://github.com/wanclem/mongo_document).
 - Authentication schemes now use Secure Random coming from `dart:math` since 1.14.  **Note that this version now required SDK version >= 1.14 because of this**
 - Added sort by text score to the query builders.
 

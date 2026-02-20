@@ -1,7 +1,10 @@
 name: mongo_document_db
-version: 0.10.9
+version: 0.10.10
 description: MongoDB driver, implemented in pure Dart. All CRUD operations, aggregation pipeline and more!
-homepage: https://github.com/mongo-dart/mongo_document_db
+homepage: https://github.com/wanclem/mongo_document
+repository: https://github.com/wanclem/mongo_document
+issue_tracker: https://github.com/wanclem/mongo_document/issues
+documentation: https://github.com/wanclem/mongo_document/tree/main/packages/mongo_document_db
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
