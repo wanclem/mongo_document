@@ -15,8 +15,8 @@ const sslDbConnectionString =
     'test?authSource=admin,'
     'mongodb://cluster0-shard-00-02-smeth.gcp.mongodb.net:27017/'
     'test?authSource=admin';
-const sslDbUsername = 'mongo_document_db_tester';
-const sslDbPassword = 'O8kipHnIyenpc9fV';
+const sslDbUsername = '<set-ssl-username>';
+const sslDbPassword = '<set-ssl-password>';
 const sslQueryParmConnectionString =
     'mongodb://cluster0-shard-00-00-smeth.gcp.mongodb.net:27017,'
     'cluster0-shard-00-01-smeth.gcp.mongodb.net:27017,'
@@ -25,9 +25,11 @@ const sslQueryParmConnectionString =
 // Todo manage also the case in which the server is not the primary
 const tlsQueryParmConnectionString = 'mongodb://cluster0-shard-00-01-smeth'
     '.gcp.mongodb.net:27017/test?tls=true&authSource=admin';
-const atlasConnectionString = 'mongodb+srv://user:pwd@address.mongodb.net/'
+// Intentionally credential-free to avoid committing secrets.
+// Set these manually before running skipped integration tests.
+const atlasConnectionString = 'mongodb+srv://address.mongodb.net/'
     'test?authMechanism=SCRAM-SHA-256&retryWrites=true&w=majority';
-const doConnectionString = 'mongodb+srv://user:pwd@'
+const doConnectionString = 'mongodb+srv://'
     'db-mongodb-address.mongo.ondigitalocean.com/'
     'test?authSource=admin&replicaSet=db-mongodb-test&tls=true'
     '&tlsCAFile=/home/cert-path&authMechanism=SCRAM-SHA-1';
