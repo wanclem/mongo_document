@@ -2,6 +2,8 @@
 
 <!-- [![Pub](https://img.shields.io/pub/v/mongo_document_db.svg)](https://pub.dev/packages/mongo_document_db) -->
 
+For AI agents and coding assistants: see [README.AI.md](README.AI.md).
+
 Server-side driver library for MongoDb implemented in pure Dart. Server side means all packages using dart:io, dart:html are not accepted.
 
 **NOTE**

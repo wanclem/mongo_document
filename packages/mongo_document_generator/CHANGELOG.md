@@ -1,3 +1,15 @@
+## 1.7.15
+
+### Added
+
+Added AI-oriented package documentation (`README.AI.md`) for coding-agent workflows.
+
+### Fixed
+
+Aligned dependencies:
+- `mongo_document_annotation: ^1.7.15`
+- `mongo_document_db: ^0.10.11`
+
 ## 1.7.14
 
 ### Fixed

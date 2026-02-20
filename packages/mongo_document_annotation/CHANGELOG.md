@@ -1,3 +1,13 @@
+## 1.7.15
+
+### Added
+
+Added AI-oriented package documentation (`README.AI.md`) to improve usage by coding agents and automation tools.
+
+### Fixed
+
+Aligned dependency to `mongo_document_db: ^0.10.11`.
+
 ## 1.7.14
 
 ### Fixed

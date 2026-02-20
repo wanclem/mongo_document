@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.11
+
+- Added AI-oriented documentation (`README.AI.md`) for agent and automation workflows.
+- Updated README with AI docs entrypoint.
+
 ## 0.10.10
 
 - Updated package metadata and repository links to point to:

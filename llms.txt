@@ -1,0 +1,31 @@
+# mongo_document
+
+> Type-safe MongoDB model code generation for Dart, backed by a local MongoDB driver package (`mongo_document_db`).
+
+## Canonical Docs
+
+- [Human README](README.md): high-level usage.
+- [AI Guide](README.AI.md): machine-oriented integration and operational rules.
+
+## Package AI Docs
+
+- [mongo_document_annotation AI Guide](packages/mongo_document_annotation/README.AI.md): annotations, runtime helpers, connection lifecycle, generated API expectations.
+- [mongo_document AI Guide](packages/mongo_document_generator/README.AI.md): source_gen builder behavior and generation commands.
+- [mongo_document_db AI Guide](packages/mongo_document_db/README.AI.md): low-level driver usage and connection patterns.
+
+## Required Commands
+
+- Install dependencies: `dart pub get`
+- Generate code: `dart run build_runner build --delete-conflicting-outputs`
+- Watch generation: `dart run build_runner watch --delete-conflicting-outputs`
+
+## Runtime Contract
+
+- Initialize once: `MongoDbConnection.initialize(...)`
+- Reuse connection via: `MongoDbConnection.instance`
+- Clean shutdown: `MongoDbConnection.shutdownDb()`
+
+## Security Contract
+
+- Do not commit connection strings with credentials.
+- Use environment variables for database URIs and secrets.
