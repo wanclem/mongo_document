@@ -11,7 +11,7 @@
 
 ```yaml
 dependencies:
-  mongo_document_annotation: ^1.7.14
+  mongo_document_annotation: ^1.7.18
   json_annotation: ^4.9.0
   freezed_annotation: ">=2.4.4 <4.0.0" # optional, if using freezed
 ```
@@ -20,7 +20,7 @@ Generator package is also required:
 
 ```yaml
 dev_dependencies:
-  mongo_document: ^1.7.14
+  mongo_document: ^1.7.18
   build_runner: ^2.10.3
 ```
 

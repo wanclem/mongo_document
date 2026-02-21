@@ -28,7 +28,7 @@ class ServerStatus {
     if (/* serverStatus == null || */
         serverStatus.isEmpty ||
             !serverStatus.containsKey(keyOk) ||
-            serverStatus[keyOk] != 1.0) {
+            ((serverStatus[keyOk] as num?)?.toDouble() != 1.0)) {
       isInitialized = false;
       return;
     }

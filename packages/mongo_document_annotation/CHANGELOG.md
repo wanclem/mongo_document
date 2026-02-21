@@ -1,3 +1,9 @@
+## 1.7.18
+
+### Fixed
+
+Aligned dependency to `mongo_document_db: ^1.7.18` to consume the latest connection stability and failover hardening updates.
+
 ## 1.7.17
 
 ### Fixed

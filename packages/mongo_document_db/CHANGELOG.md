@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.18
+
+- Hardened failover/reconnect behavior with bounded server-selection waits, improved primary promotion flow, and safer handling of transient `State.OPENING` windows.
+- Prevented intermittent protocol regressions by tightening `hello`/legacy fallback logic and avoiding accidental legacy `OP_QUERY` fallback on modern servers.
+- Improved transport resilience with per-connection request tracking, request-level socket timeouts, explicit socket shutdown on failures, and safer request-id rollover behavior.
+- Expanded connection-tuning support and parsing robustness for URI options such as `connectTimeoutMS`, `socketTimeoutMS`, `serverSelectionTimeoutMS`, and `maxReconnectAttempts`.
+
 ## 1.7.17
 
 - Synchronized package versioning across the repository (`mongo_document_db`, `mongo_document_annotation`, and `mongo_document`).

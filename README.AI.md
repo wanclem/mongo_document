@@ -24,12 +24,12 @@ This guide is for coding agents and automation tools integrating `mongo_document
 
 ```yaml
 dependencies:
-  mongo_document_annotation: ^1.7.14
+  mongo_document_annotation: ^1.7.18
   json_annotation: ^4.9.0
   freezed_annotation: ">=2.4.4 <4.0.0" # if using freezed
 
 dev_dependencies:
-  mongo_document: ^1.7.14
+  mongo_document: ^1.7.18
   build_runner: ^2.10.3
   json_serializable: ^6.9.3
   freezed: ">=2.5.8 <4.0.0" # if using freezed

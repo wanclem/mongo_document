@@ -2,9 +2,15 @@ part of '../../mongo_document_db.dart';
 
 class _Statics {
   static int? _requestId;
+  static const _maxRequestId = 0x7ffffffe;
   static int get nextRequestId {
-    _requestId ??= 1;
-    _requestId = _requestId! + 1;
+    if (_requestId == null ||
+        _requestId! <= 0 ||
+        _requestId! >= _maxRequestId) {
+      _requestId = Random().nextInt(_maxRequestId - 1) + 1;
+    } else {
+      _requestId = _requestId! + 1;
+    }
     return _requestId!;
   }
 }

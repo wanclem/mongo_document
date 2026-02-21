@@ -4,6 +4,8 @@ class ServerConfig {
   String host;
   int port;
   bool isSecure;
+  Duration connectTimeout;
+  Duration? socketTimeout;
   bool tlsAllowInvalidCertificates;
   Uint8List? tlsCAFileContent;
   Uint8List? tlsCertificateKeyFileContent;
@@ -20,6 +22,8 @@ class ServerConfig {
       {this.host = '127.0.0.1',
       this.port = Db.mongoDefaultPort,
       bool? isSecure,
+      Duration? connectTimeout,
+      this.socketTimeout,
       bool? tlsAllowInvalidCertificates,
       this.tlsCAFileContent,
       this.tlsCertificateKeyFileContent,
@@ -27,6 +31,7 @@ class ServerConfig {
       this.clientMetadata,
       this.loadBalanced = false})
       : isSecure = isSecure ?? false,
+        connectTimeout = connectTimeout ?? const Duration(seconds: 5),
         tlsAllowInvalidCertificates = tlsAllowInvalidCertificates ?? false;
   String get hostUrl => '$host:${port.toString()}';
 }

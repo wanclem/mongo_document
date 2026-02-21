@@ -128,11 +128,9 @@ class Connection {
   ServerConfig serverConfig;
   Socket? socket;
   final Set _pendingQueries = <int>{};
-
-  Map<int, Completer<MongoResponseMessage>> get _replyCompleters =>
-      _manager.replyCompleters;
-
-  Queue<MongoMessage> get _sendQueue => _manager.sendQueue;
+  final Map<int, Completer<MongoResponseMessage>> _replyCompleters = {};
+  final Queue<MongoMessage> _sendQueue = Queue<MongoMessage>();
+  final Map<int, Timer> _responseTimers = {};
   StreamSubscription<MongoResponseMessage>? _repliesSubscription;
 
   StreamSubscription<MongoResponseMessage>? get repliesSubscription =>
@@ -150,6 +148,10 @@ class Connection {
   bool get isAuthenticated => serverConfig.isAuthenticated;
 
   Future<bool> connect() async {
+    _closed = false;
+    connected = false;
+    isMaster = false;
+    serverConfig.isAuthenticated = false;
     Socket locSocket;
     try {
       if (serverConfig.isSecure) {
@@ -168,13 +170,15 @@ class Connection {
         }
 
         locSocket = await SecureSocket.connect(
-            serverConfig.host, serverConfig.port, context: securityContext,
-            onBadCertificate: (certificate) {
+            serverConfig.host, serverConfig.port,
+            timeout: serverConfig.connectTimeout,
+            context: securityContext, onBadCertificate: (certificate) {
           // couldn't find here if the cause is an hostname mismatch
           return serverConfig.tlsAllowInvalidCertificates;
         });
       } else {
-        locSocket = await Socket.connect(serverConfig.host, serverConfig.port);
+        locSocket = await Socket.connect(serverConfig.host, serverConfig.port,
+            timeout: serverConfig.connectTimeout);
       }
     } on TlsException catch (err) {
       if (err.osError?.message
@@ -251,9 +255,18 @@ class Connection {
   }
 
   Future<void> close() async {
+    if (_closed) {
+      return;
+    }
     _closed = true;
     connected = false;
+    isMaster = false;
+    serverConfig.isAuthenticated = false;
+    _failPendingQueries(const ConnectionException('Connection closed.'));
+    await _repliesSubscription?.cancel();
+    _repliesSubscription = null;
     await socket?.close();
+    socket = null;
     return;
   }
 
@@ -275,11 +288,13 @@ class Connection {
     if (!_closed) {
       _replyCompleters[queryMessage.requestId] = completer;
       _pendingQueries.add(queryMessage.requestId);
+      _startResponseTimer(queryMessage.requestId);
       _log.fine(() => 'Query $queryMessage');
       _sendQueue.addLast(queryMessage);
       try {
         _sendBuffer();
       } catch (error) {
+        _cancelResponseTimer(queryMessage.requestId);
         _replyCompleters.remove(queryMessage.requestId);
         _pendingQueries.remove(queryMessage.requestId);
         completer
@@ -338,11 +353,13 @@ class Connection {
     if (!_closed) {
       _replyCompleters[modernMessage.requestId] = completer;
       _pendingQueries.add(modernMessage.requestId);
+      _startResponseTimer(modernMessage.requestId);
       _log.fine(() => 'Message $modernMessage');
       _sendQueue.addLast(modernMessage);
       try {
         _sendBuffer();
       } catch (error) {
+        _cancelResponseTimer(modernMessage.requestId);
         _replyCompleters.remove(modernMessage.requestId);
         _pendingQueries.remove(modernMessage.requestId);
         completer.completeError(
@@ -356,6 +373,7 @@ class Connection {
 
   void _receiveReply(MongoResponseMessage reply) {
     _log.fine(() => reply.toString());
+    _cancelResponseTimer(reply.responseTo);
     var completer = _replyCompleters.remove(reply.responseTo);
     _pendingQueries.remove(reply.responseTo);
     if (completer != null) {
@@ -374,16 +392,59 @@ class Connection {
     }
     _closed = true;
     connected = false;
+    isMaster = false;
+    serverConfig.isAuthenticated = false;
     var ex = ConnectionException(
         'connection closed${socketError == null ? '.' : ': $socketError'}');
-    for (var id in _pendingQueries) {
-      var completer = _replyCompleters.remove(id);
-      completer?.completeError(ex);
+    _failPendingQueries(ex);
+    await _repliesSubscription?.cancel();
+    _repliesSubscription = null;
+    var currentSocket = socket;
+    socket = null;
+    try {
+      await currentSocket?.close();
+    } catch (_) {}
+    await _manager.handleSocketError(this, ex);
+  }
+
+  void _failPendingQueries(ConnectionException ex) {
+    for (var timer in _responseTimers.values) {
+      timer.cancel();
     }
+    _responseTimers.clear();
+    for (var completer in _replyCompleters.values) {
+      if (!completer.isCompleted) {
+        completer.completeError(ex);
+      }
+    }
+    _replyCompleters.clear();
     _pendingQueries.clear();
-    if (isMaster) {
-      await _manager.handleSocketError(this, ex);
+    _sendQueue.clear();
+  }
+
+  void _startResponseTimer(int requestId) {
+    var timeout = serverConfig.socketTimeout;
+    if (timeout == null || timeout <= Duration.zero) {
+      return;
     }
+    _cancelResponseTimer(requestId);
+    _responseTimers[requestId] = Timer(timeout, () async {
+      var completer = _replyCompleters.remove(requestId);
+      _pendingQueries.remove(requestId);
+      if (completer != null && !completer.isCompleted) {
+        completer.completeError(ConnectionException(
+            'Operation timed out after ${timeout.inMilliseconds}ms'));
+      }
+      if (!_closed) {
+        await _closeSocketOnError(
+            socketError:
+                'Operation timed out after ${timeout.inMilliseconds}ms');
+      }
+    });
+  }
+
+  void _cancelResponseTimer(int requestId) {
+    _responseTimers.remove(requestId)?.cancel();
   }
 }
 

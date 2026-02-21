@@ -194,7 +194,41 @@ class _UriParameters {
   static const appName = 'appname';
   static const loadBalanced = 'loadBalanced';
   static const heartbeatFrequencyMS = 'heartbeatFrequencyMS';
+  static const connectTimeoutMS = 'connectTimeoutMS';
+  static const socketTimeoutMS = 'socketTimeoutMS';
+  static const serverSelectionTimeoutMS = 'serverSelectionTimeoutMS';
+  static const maxReconnectAttempts = 'maxReconnectAttempts';
 }
+
+const Set<int> _retryableServerErrorCodes = <int>{
+  6, // HostUnreachable
+  7, // HostNotFound
+  89, // NetworkTimeout
+  91, // ShutdownInProgress
+  189, // PrimarySteppedDown
+  262, // ExceededTimeLimit
+  9001, // SocketException
+  10107, // NotWritablePrimary / NotMaster
+  11600, // InterruptedAtShutdown
+  11602, // InterruptedDueToReplStateChange
+  13435, // NotPrimaryNoSecondaryOk
+  13436, // NotPrimaryOrSecondary
+};
+
+bool _isServerCommandOk(dynamic okValue) {
+  if (okValue is num) {
+    return okValue.toDouble() == 1.0;
+  }
+  if (okValue is bool) {
+    return okValue;
+  }
+  return okValue?.toString() == '1';
+}
+
+bool _isServerCommandNotOk(dynamic okValue) => !_isServerCommandOk(okValue);
+
+bool _isRetryableServerErrorCode(int? code) =>
+    code != null && _retryableServerErrorCodes.contains(code);
 
 class Db {
   static const mongoDefaultPort = 27017;
@@ -233,7 +267,10 @@ class Db {
   String? _lastTlsCertificateKeyFilePassword;
   bool _explicitlyClosed = false;
   Future<void>? _reconnectInProgress;
+  Future<void>? _openInProgress;
   Duration _heartbeatInterval = const Duration(seconds: 10);
+  Duration _serverSelectionTimeout = const Duration(seconds: 30);
+  int _maxReconnectAttempts = 8;
   Timer? _heartbeatTimer;
   bool _heartbeatInProgress = false;
 
@@ -327,54 +364,95 @@ class Db {
     var uri = Uri.parse(uriString);
     var appName = 'mongo_document_db application';
     var loadBalanced = false;
+    var connectTimeout = const Duration(seconds: 5);
+    Duration? socketTimeout;
 
     if (uri.scheme != 'mongodb') {
       throw MongoDartError('Invalid scheme in uri: $uriString ${uri.scheme}');
     }
 
     uri.queryParameters.forEach((String queryParam, String value) {
-      if (queryParam == _UriParameters.authMechanism) {
+      var normalizedQueryParam = queryParam.toLowerCase();
+      var normalizedValue = value.toLowerCase();
+
+      if (normalizedQueryParam == _UriParameters.authMechanism.toLowerCase()) {
         selectAuthenticationMechanism(value);
       }
 
-      if (queryParam == _UriParameters.authSource) {
+      if (normalizedQueryParam == _UriParameters.authSource.toLowerCase()) {
         authSourceDb = Db._authDb(value);
       }
 
-      if ((queryParam == _UriParameters.tls ||
-              queryParam == _UriParameters.ssl) &&
-          value == 'true') {
+      if ((normalizedQueryParam == _UriParameters.tls.toLowerCase() ||
+              normalizedQueryParam == _UriParameters.ssl.toLowerCase()) &&
+          normalizedValue == 'true') {
         isSecure = true;
       }
-      if (queryParam == _UriParameters.tlsAllowInvalidCertificates &&
-          value == 'true') {
+      if (normalizedQueryParam ==
+              _UriParameters.tlsAllowInvalidCertificates.toLowerCase() &&
+          normalizedValue == 'true') {
         tlsAllowInvalidCertificates = true;
         isSecure = true;
       }
-      if (queryParam == _UriParameters.tlsCAFile && value.isNotEmpty) {
+      if (normalizedQueryParam == _UriParameters.tlsCAFile.toLowerCase() &&
+          value.isNotEmpty) {
         tlsCAFile = value;
         isSecure = true;
       }
-      if (queryParam == _UriParameters.tlsCertificateKeyFile &&
+      if (normalizedQueryParam ==
+              _UriParameters.tlsCertificateKeyFile.toLowerCase() &&
           value.isNotEmpty) {
         tlsCertificateKeyFile = value;
         isSecure = true;
       }
-      if (queryParam == _UriParameters.tlsCertificateKeyFilePassword &&
+      if (normalizedQueryParam ==
+              _UriParameters.tlsCertificateKeyFilePassword.toLowerCase() &&
           value.isNotEmpty) {
         tlsCertificateKeyFilePassword = value;
       }
-      if (queryParam == _UriParameters.appName && value.isNotEmpty) {
+      if (normalizedQueryParam == _UriParameters.appName.toLowerCase() &&
+          value.isNotEmpty) {
         appName = value;
       }
-      if (queryParam == _UriParameters.loadBalanced && value == 'true') {
+      if (normalizedQueryParam == _UriParameters.loadBalanced.toLowerCase() &&
+          normalizedValue == 'true') {
         loadBalanced = true;
       }
-      if (queryParam == _UriParameters.heartbeatFrequencyMS) {
+      if (normalizedQueryParam ==
+          _UriParameters.heartbeatFrequencyMS.toLowerCase()) {
         var heartbeatMs = int.tryParse(value);
         if (heartbeatMs != null && heartbeatMs > 0) {
           _heartbeatInterval =
               Duration(milliseconds: max(heartbeatMs, 1000).toInt());
+        }
+      }
+      if (normalizedQueryParam ==
+          _UriParameters.connectTimeoutMS.toLowerCase()) {
+        var timeoutMs = int.tryParse(value);
+        if (timeoutMs != null && timeoutMs > 0) {
+          connectTimeout = Duration(milliseconds: max(timeoutMs, 250).toInt());
+        }
+      }
+      if (normalizedQueryParam ==
+          _UriParameters.socketTimeoutMS.toLowerCase()) {
+        var timeoutMs = int.tryParse(value);
+        if (timeoutMs != null && timeoutMs > 0) {
+          socketTimeout = Duration(milliseconds: max(timeoutMs, 100).toInt());
+        }
+      }
+      if (normalizedQueryParam ==
+          _UriParameters.serverSelectionTimeoutMS.toLowerCase()) {
+        var timeoutMs = int.tryParse(value);
+        if (timeoutMs != null && timeoutMs > 0) {
+          _serverSelectionTimeout =
+              Duration(milliseconds: max(timeoutMs, 500).toInt());
+        }
+      }
+      if (normalizedQueryParam ==
+          _UriParameters.maxReconnectAttempts.toLowerCase()) {
+        var attempts = int.tryParse(value);
+        if (attempts != null && attempts > 0) {
+          _maxReconnectAttempts = min(attempts, 50);
         }
       }
     });
@@ -398,6 +476,8 @@ class Db {
         host: uri.host,
         port: uri.port,
         isSecure: isSecure,
+        connectTimeout: connectTimeout,
+        socketTimeout: socketTimeout,
         tlsAllowInvalidCertificates: tlsAllowInvalidCertificates,
         tlsCAFileContent: tlsCAFileContent,
         tlsCertificateKeyFileContent: tlsCertificateKeyFileContent,
@@ -470,6 +550,10 @@ class Db {
     }
     _heartbeatInProgress = true;
     try {
+      var manager = _connectionManager;
+      if (manager != null) {
+        await manager.refreshTopology();
+      }
       var master = _masterConnection;
       if (master == null || !master.connected) {
         await _reconnect();
@@ -501,8 +585,15 @@ class Db {
     if (error is MongoDartError) {
       var message = error.message;
       var normalized = message.toUpperCase();
+      if (_isRetryableServerErrorCode(error.mongoCode)) {
+        return true;
+      }
       return message == 'No master connection' ||
           message == 'Invalid Connection manager state' ||
+          normalized.contains('NOT WRITABLE PRIMARY') ||
+          normalized.contains('NOTPRIMARY') ||
+          normalized.contains('PRIMARY STEPPED DOWN') ||
+          normalized.contains('NODE IS RECOVERING') ||
           message.contains('Connection already closed') ||
           message.contains('socket has not been created') ||
           normalized.contains('STATE.OPENING') ||
@@ -511,20 +602,70 @@ class Db {
     }
     if (error is Map<String, dynamic>) {
       var message = error[keyErrmsg]?.toString() ?? '';
+      var code = (error[keyCode] as num?)?.toInt();
+      if (_isRetryableServerErrorCode(code)) {
+        return true;
+      }
+      var normalized = message.toUpperCase();
       return message.contains('connection closed') ||
           message.contains('ConnectionException') ||
+          normalized.contains('NOT WRITABLE PRIMARY') ||
+          normalized.contains('NOTPRIMARY') ||
+          normalized.contains('PRIMARY STEPPED DOWN') ||
+          normalized.contains('NODE IS RECOVERING') ||
           message.contains('Socket');
     }
     return false;
   }
 
+  /// Waits for an in-flight reconnect to finish when the db is transiently in
+  /// [State.opening]. This avoids surfacing temporary state errors while the
+  /// connection manager is being built or rebuilt.
+  Future<void> waitForOpenIfReconnecting() async {
+    if (_explicitlyClosed || state != State.opening) {
+      return;
+    }
+    var openInProgress = _openInProgress;
+    if (openInProgress != null) {
+      await openInProgress;
+      return;
+    }
+    var reconnectInProgress = _reconnectInProgress;
+    if (reconnectInProgress != null) {
+      await reconnectInProgress;
+    }
+  }
+
+  Future<void> _waitForMasterSelection() async {
+    if (_explicitlyClosed || state == State.closed) {
+      return;
+    }
+    var manager = _connectionManager;
+    if (manager == null) {
+      return;
+    }
+    var master = _masterConnection;
+    if (master != null && master.connected) {
+      return;
+    }
+    await manager.waitForMaster(timeout: _serverSelectionProbeTimeout());
+  }
+
+  Duration _serverSelectionProbeTimeout({int maxMilliseconds = 1500}) {
+    var timeoutMs = _serverSelectionTimeout.inMilliseconds;
+    if (timeoutMs <= 0) {
+      return const Duration(milliseconds: 100);
+    }
+    timeoutMs = min(timeoutMs, maxMilliseconds);
+    timeoutMs = max(timeoutMs, 100);
+    return Duration(milliseconds: timeoutMs.toInt());
+  }
+
   Future<T> _runWithReconnect<T>(Future<T> Function() operation,
       {required bool allowReconnect}) async {
-    var reconnectInProgress = _reconnectInProgress;
-    if (!_explicitlyClosed &&
-        state == State.opening &&
-        reconnectInProgress != null) {
-      await reconnectInProgress;
+    await waitForOpenIfReconnecting();
+    if (allowReconnect) {
+      await _waitForMasterSelection();
     }
 
     try {
@@ -535,7 +676,21 @@ class Db {
           !_isRecoverableConnectionError(error)) {
         rethrow;
       }
-      reconnectInProgress = _reconnectInProgress;
+      var manager = _connectionManager;
+      if (state == State.open &&
+          manager != null &&
+          identical(_connectionManager, manager)) {
+        try {
+          await manager.refreshTopology();
+          await manager.waitForMaster(
+              timeout: _serverSelectionProbeTimeout(maxMilliseconds: 3000));
+          var master = _masterConnection;
+          if (master != null && master.connected) {
+            return operation();
+          }
+        } catch (_) {}
+      }
+      var reconnectInProgress = _reconnectInProgress;
       if (state == State.opening && reconnectInProgress != null) {
         await reconnectInProgress;
       } else {
@@ -567,10 +722,13 @@ class Db {
   }
 
   Future<void> _attemptReconnectWithBackoff() async {
-    const maxAttempts = 5;
     var delayMs = 100;
     Object? lastError;
-    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+    var attempt = 0;
+    final deadline = DateTime.now().add(_serverSelectionTimeout);
+    while (
+        attempt < _maxReconnectAttempts && DateTime.now().isBefore(deadline)) {
+      attempt++;
       if (_explicitlyClosed) {
         throw MongoDartError('Db is in the wrong state: $state');
       }
@@ -585,11 +743,15 @@ class Db {
         return;
       } catch (error) {
         lastError = error;
-        if (attempt == maxAttempts) {
+        final remainingMs = deadline.difference(DateTime.now()).inMilliseconds;
+        if (attempt >= _maxReconnectAttempts || remainingMs <= 0) {
           rethrow;
         }
         var jitterMs = Random().nextInt((delayMs ~/ 2) + 1);
-        await Future.delayed(Duration(milliseconds: delayMs + jitterMs));
+        var waitMs = min(delayMs + jitterMs, remainingMs);
+        if (waitMs > 0) {
+          await Future.delayed(Duration(milliseconds: waitMs));
+        }
         delayMs = min(delayMs * 2, 2000).toInt();
       }
     }
@@ -626,9 +788,11 @@ class Db {
   Future<Map<String, dynamic>> executeModernMessage(MongoModernMessage message,
       {Connection? connection, bool skipStateCheck = false}) async {
     return _runWithReconnect(() async {
+      var selectedConnection = connection;
       if (skipStateCheck) {
-        if (!_masterConnectionVerifiedAnyState
-            .serverCapabilities.supportsOpMsg) {
+        selectedConnection ??= _masterConnection;
+        if (selectedConnection != null &&
+            !selectedConnection.serverCapabilities.supportsOpMsg) {
           throw MongoDartError('The "modern message" can only be executed '
               'starting from release 3.6');
         }
@@ -643,7 +807,8 @@ class Db {
         }
       }
 
-      var locConnection = connection ?? _masterConnectionVerifiedAnyState;
+      var locConnection =
+          selectedConnection ?? _masterConnectionVerifiedAnyState;
 
       var response = await locConnection.executeModernMessage(message);
 
@@ -663,6 +828,10 @@ class Db {
       String? tlsCertificateKeyFile,
       String? tlsCertificateKeyFilePassword}) async {
     if (state == State.opening) {
+      var openInProgress = _openInProgress;
+      if (openInProgress != null) {
+        return openInProgress;
+      }
       throw MongoDartError('Attempt to open db in state $state');
     }
     if (state == State.open && isConnected) {
@@ -677,46 +846,71 @@ class Db {
     _lastTlsCertificateKeyFilePassword = tlsCertificateKeyFilePassword;
     state = State.opening;
     _writeConcern = writeConcern;
+    var openCompleter = Completer<void>();
+    _openInProgress = openCompleter.future;
 
-    var previousManager = _connectionManager;
-    var previousSupportsOpMsg = previousManager?.supportsOpMsg ?? false;
-    var previousSupportsListCollections =
-        previousManager?.supportsListCollections ?? false;
-    var previousSupportsListIndexes =
-        previousManager?.supportsListIndexes ?? false;
-    if (previousManager != null) {
-      try {
-        await previousManager.close();
-      } catch (error) {
-        _log.warning('Could not close stale connection manager: $error');
+    try {
+      var previousManager = _connectionManager;
+      var previousSupportsOpMsg = previousManager?.supportsOpMsg ?? false;
+      var previousSupportsListCollections =
+          previousManager?.supportsListCollections ?? false;
+      var previousSupportsListIndexes =
+          previousManager?.supportsListIndexes ?? false;
+      if (previousManager != null) {
+        try {
+          await previousManager.close();
+        } catch (error) {
+          _log.warning('Could not close stale connection manager: $error');
+        }
       }
-    }
 
-    var newConnectionManager = ConnectionManager(this,
-        lastMasterSupportsOpMsg: previousSupportsOpMsg,
-        lastMasterSupportsListCollections: previousSupportsListCollections,
-        lastMasterSupportsListIndexes: previousSupportsListIndexes);
-    _connectionManager = newConnectionManager;
+      var newConnectionManager = ConnectionManager(this,
+          lastMasterSupportsOpMsg: previousSupportsOpMsg,
+          lastMasterSupportsListCollections: previousSupportsListCollections,
+          lastMasterSupportsListIndexes: previousSupportsListIndexes);
+      _connectionManager = newConnectionManager;
 
-    for (var uri in _uriList) {
-      newConnectionManager.addConnection(await _parseUri(uri,
+      var serverConfigs = await Future.wait(_uriList.map((uri) => _parseUri(uri,
           isSecure: secure,
           tlsAllowInvalidCertificates: tlsAllowInvalidCertificates,
           tlsCAFile: tlsCAFile,
           tlsCertificateKeyFile: tlsCertificateKeyFile,
-          tlsCertificateKeyFilePassword: tlsCertificateKeyFilePassword));
-    }
-    try {
-      await newConnectionManager.open(writeConcern);
-      _startHeartbeatMonitor();
-    } catch (e) {
-      state = State.init;
-      _stopHeartbeatMonitor();
-      await newConnectionManager.close();
-      if (identical(_connectionManager, newConnectionManager)) {
-        _connectionManager = null;
+          tlsCertificateKeyFilePassword: tlsCertificateKeyFilePassword)));
+      for (var config in serverConfigs) {
+        newConnectionManager.addConnection(config);
+      }
+      try {
+        await newConnectionManager.open(writeConcern);
+        if (_explicitlyClosed ||
+            !identical(_connectionManager, newConnectionManager)) {
+          _stopHeartbeatMonitor();
+          await newConnectionManager.close();
+          if (_explicitlyClosed) {
+            state = State.closed;
+          }
+          openCompleter.complete();
+          return;
+        }
+        _startHeartbeatMonitor();
+      } catch (e) {
+        state = State.init;
+        _stopHeartbeatMonitor();
+        await newConnectionManager.close();
+        if (identical(_connectionManager, newConnectionManager)) {
+          _connectionManager = null;
+        }
+        rethrow;
+      }
+      openCompleter.complete();
+    } catch (error, stackTrace) {
+      if (!openCompleter.isCompleted) {
+        openCompleter.completeError(error, stackTrace);
       }
       rethrow;
+    } finally {
+      if (identical(_openInProgress, openCompleter.future)) {
+        _openInProgress = null;
+      }
     }
   }
 
@@ -769,12 +963,13 @@ class Db {
   }
 
   bool documentIsNotAnError(dynamic firstRepliedDocument) =>
-      firstRepliedDocument['ok'] == 1.0 && firstRepliedDocument['err'] == null;
+      _isServerCommandOk(firstRepliedDocument['ok']) &&
+      firstRepliedDocument['err'] == null;
 
   Future<bool> dropCollection(String collectionName) async {
     if (supportsOpMsg) {
       var result = await modernDrop(collectionName);
-      return result[keyOk] == 1.0;
+      return _isServerCommandOk(result[keyOk]);
     }
     var collectionInfos = await getCollectionInfos({'name': collectionName});
 
@@ -791,7 +986,7 @@ class Db {
   Future drop() async {
     if (supportsOpMsg) {
       var result = await modernDropDatabase();
-      return result[keyOk] == 1.0;
+      return _isServerCommandOk(result[keyOk]);
     }
     return executeDbCommand(DbCommand.createDropDatabaseCommand(this));
   }

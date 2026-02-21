@@ -75,8 +75,11 @@ class CommandOperation extends OperationBase {
   @override
   Future<Map<String, dynamic>> execute({bool skipStateCheck = false}) async {
     final db = this.db;
-    if (!skipStateCheck && db.state != State.open) {
-      throw MongoDartError('Db is in the wrong state: ${db.state}');
+    if (!skipStateCheck) {
+      await db.waitForOpenIfReconnecting();
+      if (db.state != State.open) {
+        throw MongoDartError('Db is in the wrong state: ${db.state}');
+      }
     }
     //final options = Map.from(this.options);
 
