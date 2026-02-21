@@ -20,7 +20,7 @@ class DropIndexesOptions {
   Map<String, Object> getOptions(DbCollection collection) => <String, Object>{
         if (writeConcern != null)
           keyWriteConcern:
-              writeConcern!.asMap(collection.db.masterConnection.serverStatus),
+              writeConcern!.asMap(collection.db.writeConcernServerStatus),
         if (comment != null) keyComment: comment!,
       };
 }

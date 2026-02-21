@@ -17,6 +17,7 @@ import 'op_msg_collection_test.dart' as collection;
 import 'op_msg_commands_test.dart' as commands;
 import 'op_msg_read_operation_test.dart' as read_op;
 import 'op_msg_write_operation_test.dart' as write_op;
+import 'write_concern_resilience_test.dart' as write_concern_resilience;
 
 //import 'replica_tests.dart' as replica;
 
@@ -36,4 +37,5 @@ void main() {
   commands.main();
   read_op.main();
   write_op.main();
+  write_concern_resilience.main();
 }

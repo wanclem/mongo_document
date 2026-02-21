@@ -75,8 +75,7 @@ class FindAndModifyOptions {
         if (bypassDocumentValidation)
           keyBypassDocumentValidation: bypassDocumentValidation,
         if (writeConcern != null)
-          keyWriteConcern:
-              writeConcern!.asMap(db.masterConnection.serverStatus),
+          keyWriteConcern: writeConcern!.asMap(db.writeConcernServerStatus),
         if (maxTimeMS != null) keyMaxTimeMS: maxTimeMS!,
         if (collation != null) keyCollation: collation!.options,
         if (comment != null) keyComment: comment!,

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.19
+
+- Fixed intermittent `No master connection` / `State.OPENING` write failures during primary election windows by removing premature command-state rejection and letting reconnect-aware execution complete server selection.
+- Hardened write-concern option building so it no longer requires an already-selected master connection, preventing fail-fast errors while topology is recovering.
+- Added regression coverage for write-concern fallback behavior and included it in the aggregated test suite.
+
 ## 1.7.18
 
 - Hardened failover/reconnect behavior with bounded server-selection waits, improved primary promotion flow, and safer handling of transient `State.OPENING` windows.

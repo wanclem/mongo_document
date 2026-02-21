@@ -225,8 +225,7 @@ class CreateOptions {
         if (pipeline != null) keyPipeline: pipeline!,
         if (collation != null) keyCollation: collation!.options,
         if (writeConcern != null)
-          keyWriteConcern:
-              writeConcern!.asMap(db.masterConnection.serverStatus),
+          keyWriteConcern: writeConcern!.asMap(db.writeConcernServerStatus),
         if (comment != null) keyComment: comment!,
       };
 }

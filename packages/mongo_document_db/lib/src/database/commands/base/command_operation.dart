@@ -1,5 +1,5 @@
 import 'package:mongo_document_db/mongo_document_db.dart'
-    show Connection, Db, DbCollection, MongoDartError, State;
+    show Connection, Db, DbCollection, MongoDartError;
 import 'package:mongo_document_db/src/database/message/mongo_modern_message.dart'
     show MongoModernMessage;
 import 'package:mongo_document_db/src/database/utils/map_keys.dart'
@@ -77,9 +77,6 @@ class CommandOperation extends OperationBase {
     final db = this.db;
     if (!skipStateCheck) {
       await db.waitForOpenIfReconnecting();
-      if (db.state != State.open) {
-        throw MongoDartError('Db is in the wrong state: ${db.state}');
-      }
     }
     //final options = Map.from(this.options);
 
@@ -151,7 +148,7 @@ Map<String, Object> applyWriteConcern(Map<String, Object> target,
 
   if (db != null && db.writeConcern != null) {
     target[keyWriteConcern] =
-        db.writeConcern!.asMap(db.masterConnection.serverStatus);
+        db.writeConcern!.asMap(db.writeConcernServerStatus);
     return target;
   }
 

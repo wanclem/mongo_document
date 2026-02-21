@@ -36,8 +36,7 @@ class UpdateOptions {
         if (bypassDocumentValidation)
           keyBypassDocumentValidation: bypassDocumentValidation,
         if (writeConcern != null)
-          keyWriteConcern:
-              writeConcern!.asMap(db.masterConnection.serverStatus),
+          keyWriteConcern: writeConcern!.asMap(db.writeConcernServerStatus),
         if (comment != null) keyComment: comment!,
       };
 }

@@ -34,7 +34,7 @@ class InsertOptions {
   Map<String, Object> getOptions(Db db) {
     return <String, Object>{
       if (writeConcern != null)
-        keyWriteConcern: writeConcern!.asMap(db.masterConnection.serverStatus),
+        keyWriteConcern: writeConcern!.asMap(db.writeConcernServerStatus),
       if (!ordered) keyOrdered: ordered,
       if (bypassDocumentValidation)
         keyBypassDocumentValidation: bypassDocumentValidation,

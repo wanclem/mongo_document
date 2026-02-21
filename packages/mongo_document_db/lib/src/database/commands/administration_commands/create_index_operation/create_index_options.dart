@@ -50,7 +50,7 @@ class CreateIndexOptions {
   Map<String, Object> get options => <String, Object>{
         if (writeConcern != null)
           keyWriteConcern:
-              writeConcern!.asMap(collection.db.masterConnection.serverStatus),
+              writeConcern!.asMap(collection.db.writeConcernServerStatus),
         keyUniqueIndex: uniqueIndex,
         keySparseIndex: sparseIndex,
         keyBackground: background,

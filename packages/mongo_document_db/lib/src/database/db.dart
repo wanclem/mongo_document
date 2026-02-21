@@ -330,6 +330,21 @@ class Db {
 
   Connection get masterConnection => _masterConnectionVerified;
   Connection get masterConnectionAnyState => _masterConnectionVerifiedAnyState;
+  ServerStatus get writeConcernServerStatus {
+    var master = _masterConnection;
+    if (master != null && master.connected) {
+      return master.serverStatus;
+    }
+    var manager = _connectionManager;
+    if (manager != null) {
+      for (var connection in manager._connectionPool.values) {
+        if (connection.connected) {
+          return connection.serverStatus;
+        }
+      }
+    }
+    return ServerStatus();
+  }
 
   bool get supportsOpMsg =>
       _masterConnection?.serverCapabilities.supportsOpMsg ??

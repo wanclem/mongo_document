@@ -112,8 +112,7 @@ class AggregateOptions {
         if (readConcern != null) keyReadConcern: readConcern!.toMap(),
         if (collation != null) keyCollation: collation!.options,
         if (comment != null) keyComment: comment!,
-        if (writeConcern != null && db?.masterConnection.serverStatus != null)
-          keyWriteConcern:
-              writeConcern!.asMap(db!.masterConnection.serverStatus),
+        if (writeConcern != null && db != null)
+          keyWriteConcern: writeConcern!.asMap(db.writeConcernServerStatus),
       };
 }

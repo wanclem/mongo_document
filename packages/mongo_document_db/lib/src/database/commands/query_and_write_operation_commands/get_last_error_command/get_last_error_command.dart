@@ -44,8 +44,7 @@ class GetLastErrorCommand extends CommandOperation {
         }) {
     if (writeConcern != null) {
       options = {
-        ...writeConcern.asMap(db.masterConnection.serverStatus)
-          ..remove(keyFsync),
+        ...writeConcern.asMap(db.writeConcernServerStatus)..remove(keyFsync),
         ...options,
       };
     }
