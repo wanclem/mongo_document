@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.13
+
+- Fixed intermittent fallback to legacy `OP_QUERY` during reconnect/opening windows, which could trigger MongoDB Atlas errors (`OP_QUERY is no longer supported`) on `find`/`findOne`.
+- Preserved negotiated protocol capability flags across connection-manager swaps and corrected capability caching order after `hello`/`isMaster` parsing.
+
 ## 0.10.12
 
 - Hardened reconnection flow to recover cleanly from transitional `State.OPENING` / connection-manager-closed races during automatic reconnect.

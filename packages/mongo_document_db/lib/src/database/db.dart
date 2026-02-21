@@ -679,6 +679,11 @@ class Db {
     _writeConcern = writeConcern;
 
     var previousManager = _connectionManager;
+    var previousSupportsOpMsg = previousManager?.supportsOpMsg ?? false;
+    var previousSupportsListCollections =
+        previousManager?.supportsListCollections ?? false;
+    var previousSupportsListIndexes =
+        previousManager?.supportsListIndexes ?? false;
     if (previousManager != null) {
       try {
         await previousManager.close();
@@ -687,7 +692,10 @@ class Db {
       }
     }
 
-    var newConnectionManager = ConnectionManager(this);
+    var newConnectionManager = ConnectionManager(this,
+        lastMasterSupportsOpMsg: previousSupportsOpMsg,
+        lastMasterSupportsListCollections: previousSupportsListCollections,
+        lastMasterSupportsListIndexes: previousSupportsListIndexes);
     _connectionManager = newConnectionManager;
 
     for (var uri in _uriList) {

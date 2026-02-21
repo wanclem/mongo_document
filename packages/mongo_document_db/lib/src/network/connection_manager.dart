@@ -7,11 +7,17 @@ class ConnectionManager {
   final replyCompleters = <int, Completer<MongoResponseMessage>>{};
   final sendQueue = Queue<MongoMessage>();
   Connection? _masterConnection;
-  bool _lastMasterSupportsOpMsg = false;
-  bool _lastMasterSupportsListCollections = false;
-  bool _lastMasterSupportsListIndexes = false;
+  bool _lastMasterSupportsOpMsg;
+  bool _lastMasterSupportsListCollections;
+  bool _lastMasterSupportsListIndexes;
 
-  ConnectionManager(this.db);
+  ConnectionManager(this.db,
+      {bool lastMasterSupportsOpMsg = false,
+      bool lastMasterSupportsListCollections = false,
+      bool lastMasterSupportsListIndexes = false})
+      : _lastMasterSupportsOpMsg = lastMasterSupportsOpMsg,
+        _lastMasterSupportsListCollections = lastMasterSupportsListCollections,
+        _lastMasterSupportsListIndexes = lastMasterSupportsListIndexes;
 
   Connection? get masterConnection => _masterConnection;
 
@@ -57,6 +63,7 @@ class ConnectionManager {
       }
       var master = resultDoc.isWritablePrimary;
       connection.isMaster = master;
+      connection.serverCapabilities.getParamsFromHello(resultDoc);
       if (master) {
         _masterConnection = connection;
         _cacheMasterCapabilities(connection);
@@ -64,7 +71,6 @@ class ConnectionManager {
         MongoModernMessage.maxMessageSizeBytes = resultDoc.maxMessageSizeBytes;
         MongoModernMessage.maxWriteBatchSize = resultDoc.maxWriteBatchSize;
       }
-      connection.serverCapabilities.getParamsFromHello(resultDoc);
       if (db._authenticationScheme == null &&
           resultDoc.saslSupportedMechs != null) {
         if (resultDoc.saslSupportedMechs!.contains('SCRAM-SHA-256')) {
@@ -91,6 +97,7 @@ class ConnectionManager {
       _log.fine(() => documents.first.toString());
       var master = documents.first['ismaster'] == true;
       connection.isMaster = master;
+      connection.serverCapabilities.getParamsFromIstMaster(documents.first);
       if (master) {
         _masterConnection = connection;
         _cacheMasterCapabilities(connection);
@@ -101,7 +108,6 @@ class ConnectionManager {
         MongoModernMessage.maxWriteBatchSize =
             documents.first[keyMaxWriteBatchSize];
       }
-      connection.serverCapabilities.getParamsFromIstMaster(documents.first);
     }
 
     if (db._authenticationScheme == null) {
