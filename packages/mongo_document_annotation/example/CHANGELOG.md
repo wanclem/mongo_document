@@ -1,3 +1,7 @@
+## 1.7.19
+
+- Align example package dependencies with the `1.7.19` release line.
+
 ## 1.7.18
 
 - Align example package dependencies with the `1.7.18` release line.

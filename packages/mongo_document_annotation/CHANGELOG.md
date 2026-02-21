@@ -1,3 +1,9 @@
+## 1.7.19
+
+### Fixed
+
+Aligned dependency to `mongo_document_db: ^1.7.19` to consume primary-election/write-retry resilience updates.
+
 ## 1.7.18
 
 ### Fixed
