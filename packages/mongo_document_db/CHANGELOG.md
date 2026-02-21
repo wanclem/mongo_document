@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.17
+
+- Synchronized package versioning across the repository (`mongo_document_db`, `mongo_document_annotation`, and `mongo_document`).
+- Includes the reconnect capability-fallback fix released in `0.10.13` (prevents intermittent legacy `OP_QUERY` fallback on modern servers).
+
 ## 0.10.13
 
 - Fixed intermittent fallback to legacy `OP_QUERY` during reconnect/opening windows, which could trigger MongoDB Atlas errors (`OP_QUERY is no longer supported`) on `find`/`findOne`.

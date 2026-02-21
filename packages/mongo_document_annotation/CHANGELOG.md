@@ -1,3 +1,9 @@
+## 1.7.17
+
+### Fixed
+
+Synchronized package versioning across the repository and aligned dependency to `mongo_document_db: ^1.7.17`.
+
 ## 1.7.16
 
 ### Fixed
