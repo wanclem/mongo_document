@@ -22,6 +22,8 @@
 /// await updatedUser.save();
 /// ```
 
+library;
+
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.22
+
+- Serialized per-host authentication to prevent concurrent SCRAM conversations against the same Atlas host during recovery.
+- Fixed intermittent `saslConversationId does not match` failures that could cascade into repeated socket-close churn.
+
 ## 1.7.21
 
 - Serialized topology refresh execution to prevent concurrent master-promotion probe storms during transient socket drops.

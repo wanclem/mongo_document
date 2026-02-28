@@ -9,6 +9,8 @@ class ConnectionManager {
   bool _lastMasterSupportsListCollections;
   bool _lastMasterSupportsListIndexes;
   final Set<String> _recoveringHosts = <String>{};
+  final Map<String, Future<void>> _authInProgressByHost =
+      <String, Future<void>>{};
   Future<void>? _masterRecoveryInProgress;
   Future<void>? _topologyRefreshInProgress;
   bool _closed = false;
@@ -238,37 +240,61 @@ class ConnectionManager {
     if (connection.serverConfig.isAuthenticated) {
       return;
     }
-    if (connection.serverConfig.userName == null &&
-        db._authenticationScheme != AuthenticationScheme.X509) {
-      _log.fine(() => '$db: ${connection.serverConfig.hostUrl} connected');
+    var hostUrl = connection.serverConfig.hostUrl;
+    var authInProgress = _authInProgressByHost[hostUrl];
+    if (authInProgress != null) {
+      await authInProgress;
       return;
     }
-    try {
-      await db.authenticate(
-          connection.serverConfig.userName, connection.serverConfig.password,
-          connection: connection);
-      _log.fine(() => '$db: ${connection.serverConfig.hostUrl} connected');
-    } catch (e) {
-      /// Atlas does not currently support SHA_256
-      if (e is MongoDartError &&
-          e.mongoCode == 8000 &&
-          e.errorCodeName == 'AtlasError' &&
-          e.message.contains('SCRAM-SHA-256') &&
-          db._authenticationScheme == AuthenticationScheme.SCRAM_SHA_256) {
-        _log.warning(() => 'Atlas connection: SCRAM_SHA_256 not available, '
-            'downgrading to SCRAM_SHA_1');
-        db._authenticationScheme = AuthenticationScheme.SCRAM_SHA_1;
-        await db.authenticate(connection.serverConfig.userName!,
-            connection.serverConfig.password ?? '',
-            connection: connection);
+
+    var authFuture = () async {
+      if (connection._closed || !connection.connected) {
+        throw const ConnectionException('Connection is not available');
+      }
+      if (connection.serverConfig.isAuthenticated) {
+        return;
+      }
+      if (connection.serverConfig.userName == null &&
+          db._authenticationScheme != AuthenticationScheme.X509) {
         _log.fine(() => '$db: ${connection.serverConfig.hostUrl} connected');
         return;
       }
-      if (connection == _masterConnection) {
-        _masterConnection = null;
+      try {
+        await db.authenticate(
+            connection.serverConfig.userName, connection.serverConfig.password,
+            connection: connection);
+        _log.fine(() => '$db: ${connection.serverConfig.hostUrl} connected');
+      } catch (e) {
+        /// Atlas does not currently support SHA_256
+        if (e is MongoDartError &&
+            e.mongoCode == 8000 &&
+            e.errorCodeName == 'AtlasError' &&
+            e.message.contains('SCRAM-SHA-256') &&
+            db._authenticationScheme == AuthenticationScheme.SCRAM_SHA_256) {
+          _log.warning(() => 'Atlas connection: SCRAM_SHA_256 not available, '
+              'downgrading to SCRAM_SHA_1');
+          db._authenticationScheme = AuthenticationScheme.SCRAM_SHA_1;
+          await db.authenticate(connection.serverConfig.userName!,
+              connection.serverConfig.password ?? '',
+              connection: connection);
+          _log.fine(() => '$db: ${connection.serverConfig.hostUrl} connected');
+          return;
+        }
+        if (connection == _masterConnection) {
+          _masterConnection = null;
+        }
+        await connection.close();
+        rethrow;
       }
-      await connection.close();
-      rethrow;
+    }();
+    _authInProgressByHost[hostUrl] = authFuture;
+    try {
+      await authFuture;
+    } finally {
+      if (identical(_authInProgressByHost[hostUrl], authFuture)) {
+        var removed = _authInProgressByHost.remove(hostUrl);
+        assert(identical(removed, authFuture));
+      }
     }
   }
 
@@ -395,6 +421,7 @@ class ConnectionManager {
 
   Future close({Object? error}) async {
     _closed = true;
+    _authInProgressByHost.clear();
     _masterRecoveryInProgress = null;
     _topologyRefreshInProgress = null;
     _recoveringHosts.clear();

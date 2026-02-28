@@ -1,3 +1,9 @@
+## 1.7.22
+
+### Fixed
+
+Aligned dependency to `mongo_document_db: ^1.7.22` to consume SCRAM conversation single-flight hardening and recovery stability fixes.
+
 ## 1.7.21
 
 ### Fixed
