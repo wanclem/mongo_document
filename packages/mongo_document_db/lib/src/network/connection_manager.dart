@@ -10,6 +10,7 @@ class ConnectionManager {
   bool _lastMasterSupportsListIndexes;
   final Set<String> _recoveringHosts = <String>{};
   Future<void>? _masterRecoveryInProgress;
+  Future<void>? _topologyRefreshInProgress;
   bool _closed = false;
 
   ConnectionManager(this.db,
@@ -85,6 +86,25 @@ class ConnectionManager {
             (normalized.contains('op_msg') ||
                 normalized.contains('opmsg') ||
                 normalized.contains('hello')));
+  }
+
+  bool _isExpectedConnectionChurn(Object error) {
+    if (error is ConnectionException) {
+      var message = error.message.toLowerCase();
+      return message.contains('connection closed') ||
+          message.contains('already closed') ||
+          message.contains('socket closed by remote host');
+    }
+    if (error is MongoDartError) {
+      var message = error.message.toLowerCase();
+      if (error.mongoCode == 91 || error.mongoCode == 189) {
+        return true;
+      }
+      return message.contains('connection closed') ||
+          message.contains('already closed') ||
+          message.contains('socket closed by remote host');
+    }
+    return false;
   }
 
   Connection get masterConnectionVerified {
@@ -311,6 +331,27 @@ class ConnectionManager {
   }
 
   Future<void> refreshTopology() async {
+    var inProgress = _topologyRefreshInProgress;
+    if (inProgress != null) {
+      await inProgress;
+      return;
+    }
+    final completer = Completer<void>();
+    _topologyRefreshInProgress = completer.future;
+    try {
+      await _refreshTopologyInternal();
+      completer.complete();
+    } catch (error, stackTrace) {
+      completer.completeError(error, stackTrace);
+      rethrow;
+    } finally {
+      if (identical(_topologyRefreshInProgress, completer.future)) {
+        _topologyRefreshInProgress = null;
+      }
+    }
+  }
+
+  Future<void> _refreshTopologyInternal() async {
     if (_closed || !identical(db._connectionManager, this)) {
       return;
     }
@@ -355,6 +396,7 @@ class ConnectionManager {
   Future close({Object? error}) async {
     _closed = true;
     _masterRecoveryInProgress = null;
+    _topologyRefreshInProgress = null;
     _recoveringHosts.clear();
     _masterConnection = null;
 
@@ -425,8 +467,12 @@ class ConnectionManager {
           return true;
         }
       } catch (error) {
-        _log.fine(() =>
-            'Master promotion probe failed for ${connection.serverConfig.hostUrl}: $error');
+        if (!_closed &&
+            identical(db._connectionManager, this) &&
+            !_isExpectedConnectionChurn(error)) {
+          _log.fine(() =>
+              'Master promotion probe failed for ${connection.serverConfig.hostUrl}: $error');
+        }
       }
     }
     return false;
@@ -562,16 +608,27 @@ class ConnectionManager {
             await _authenticateConnection(connection);
             return;
           } catch (error) {
-            _log.fine(() =>
-                'Background host recovery failed for $hostUrl (attempt $attempt): $error');
+            if (_closed ||
+                db._explicitlyClosed ||
+                !identical(db._connectionManager, this)) {
+              return;
+            }
+            if (!_isExpectedConnectionChurn(error)) {
+              _log.fine(() =>
+                  'Background host recovery failed for $hostUrl (attempt $attempt): $error');
+            }
             var delayMs = min(100 * (1 << min(attempt, 6)), 5000).toInt();
             var jitterMs = Random().nextInt((delayMs ~/ 2) + 1);
             await Future.delayed(Duration(milliseconds: delayMs + jitterMs));
           }
         }
       } catch (error) {
-        _log.fine(
-            () => 'Background host recovery aborted for $hostUrl: $error');
+        if (!_closed &&
+            identical(db._connectionManager, this) &&
+            !_isExpectedConnectionChurn(error)) {
+          _log.fine(
+              () => 'Background host recovery aborted for $hostUrl: $error');
+        }
       } finally {
         _recoveringHosts.remove(hostUrl);
       }

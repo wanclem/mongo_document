@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.21
+
+- Serialized topology refresh execution to prevent concurrent master-promotion probe storms during transient socket drops.
+- Hardened background recovery loops to stop immediately when the connection manager is closing or replaced.
+- Reduced noisy fine-level logs for expected Atlas connection churn cases (`connection closed`, `already closed`, remote socket close).
+
 ## 1.7.20
 
 - Fixed an authentication race during primary selection/failover by ensuring master readiness requires authentication when credentials are configured.

@@ -1,3 +1,9 @@
+## 1.7.21
+
+### Fixed
+
+Aligned dependency to `mongo_document_db: ^1.7.21` to consume topology-refresh serialization and connection-churn recovery hardening.
+
 ## 1.7.20
 
 ### Fixed
