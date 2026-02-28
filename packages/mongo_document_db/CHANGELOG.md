@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.20
+
+- Fixed an authentication race during primary selection/failover by ensuring master readiness requires authentication when credentials are configured.
+- Hardened topology refresh and master promotion paths to avoid exposing unauthenticated connections for regular operations.
+- Improved heartbeat/reconnect behavior to reduce unnecessary reconnect churn while preserving recovery on transient unauthorized states.
+
 ## 1.7.19
 
 - Fixed intermittent `No master connection` / `State.OPENING` write failures during primary election windows by removing premature command-state rejection and letting reconnect-aware execution complete server selection.

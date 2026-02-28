@@ -1,3 +1,9 @@
+## 1.7.20
+
+### Fixed
+
+Aligned dependency to `mongo_document_db: ^1.7.20` to consume failover/authentication race hardening and reconnect stability updates.
+
 ## 1.7.19
 
 ### Fixed

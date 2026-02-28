@@ -34,9 +34,26 @@ class ConnectionManager {
       _masterConnection?.serverCapabilities.listIndexes ??
       _lastMasterSupportsListIndexes;
 
+  bool _requiresAuthentication(Connection connection) {
+    if (db._authenticationScheme == AuthenticationScheme.X509) {
+      return true;
+    }
+    return filled(connection.serverConfig.userName);
+  }
+
+  bool _isConnectionReadyForOperations(Connection connection) {
+    if (connection._closed || !connection.connected) {
+      return false;
+    }
+    if (!_requiresAuthentication(connection)) {
+      return true;
+    }
+    return connection.serverConfig.isAuthenticated;
+  }
+
   Connection? _connectedMaster() {
     var master = _masterConnection;
-    if (master != null && !master._closed && master.connected) {
+    if (master != null && _isConnectionReadyForOperations(master)) {
       return master;
     }
     return null;
@@ -107,6 +124,9 @@ class ConnectionManager {
       connection.isMaster = master;
       connection.serverCapabilities.getParamsFromHello(resultDoc);
       if (master) {
+        if (authenticate) {
+          await _authenticateConnection(connection);
+        }
         _masterConnection = connection;
         _cacheMasterCapabilities(connection);
         MongoModernMessage.maxBsonObjectSize = resultDoc.maxBsonObjectSize;
@@ -157,6 +177,9 @@ class ConnectionManager {
       connection.isMaster = master;
       connection.serverCapabilities.getParamsFromIstMaster(documents.first);
       if (master) {
+        if (authenticate) {
+          await _authenticateConnection(connection);
+        }
         _masterConnection = connection;
         _cacheMasterCapabilities(connection);
         MongoModernMessage.maxBsonObjectSize =
@@ -182,7 +205,9 @@ class ConnectionManager {
           'topology connected');
       return true;
     }
-    await _authenticateConnection(connection);
+    if (!connection.serverConfig.isAuthenticated) {
+      await _authenticateConnection(connection);
+    }
     return true;
   }
 
@@ -430,14 +455,14 @@ class ConnectionManager {
     if (!master) {
       return false;
     }
+    if (authenticateIfMaster) {
+      await _authenticateConnection(connection);
+    }
     _masterConnection = connection;
     _cacheMasterCapabilities(connection);
     MongoModernMessage.maxBsonObjectSize = resultDoc.maxBsonObjectSize;
     MongoModernMessage.maxMessageSizeBytes = resultDoc.maxMessageSizeBytes;
     MongoModernMessage.maxWriteBatchSize = resultDoc.maxWriteBatchSize;
-    if (authenticateIfMaster) {
-      await _authenticateConnection(connection);
-    }
     return true;
   }
 

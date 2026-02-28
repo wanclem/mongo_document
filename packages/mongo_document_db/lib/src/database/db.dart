@@ -570,7 +570,12 @@ class Db {
         await manager.refreshTopology();
       }
       var master = _masterConnection;
-      if (master == null || !master.connected) {
+      var authRequired = master != null &&
+          (_authenticationScheme == AuthenticationScheme.X509 ||
+              filled(master.serverConfig.userName));
+      if (master == null ||
+          !master.connected ||
+          (authRequired && !master.serverConfig.isAuthenticated)) {
         await _reconnect();
         return;
       }
@@ -582,6 +587,15 @@ class Db {
     } catch (error) {
       _log.fine(() => 'Heartbeat failed: $error');
       if (!_explicitlyClosed) {
+        var master = _masterConnection;
+        var authRequired = master != null &&
+            (_authenticationScheme == AuthenticationScheme.X509 ||
+                filled(master.serverConfig.userName));
+        if (master != null &&
+            master.connected &&
+            (!authRequired || master.serverConfig.isAuthenticated)) {
+          return;
+        }
         try {
           await _reconnect();
         } catch (reconnectError) {
@@ -601,6 +615,15 @@ class Db {
       var message = error.message;
       var normalized = message.toUpperCase();
       if (_isRetryableServerErrorCode(error.mongoCode)) {
+        return true;
+      }
+      var master = _masterConnection;
+      if ((error.mongoCode == 13 ||
+              normalized.contains('NOT ALLOWED TO DO ACTION')) &&
+          master != null &&
+          master.connected &&
+          filled(master.serverConfig.userName) &&
+          !master.serverConfig.isAuthenticated) {
         return true;
       }
       return message == 'No master connection' ||
