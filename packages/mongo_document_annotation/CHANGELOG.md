@@ -1,3 +1,9 @@
+## 1.7.24
+
+### Fixed
+
+Aligned dependency to `mongo_document_db: ^1.7.24` to consume socket-reset resilience and reconnect stability fixes.
+
 ## 1.7.23
 
 ### Fixed

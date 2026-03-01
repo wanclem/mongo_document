@@ -131,6 +131,7 @@ class Connection {
   final Map<int, Completer<MongoResponseMessage>> _replyCompleters = {};
   final Queue<MongoMessage> _sendQueue = Queue<MongoMessage>();
   final Map<int, Timer> _responseTimers = {};
+  int _inFlightRequests = 0;
   StreamSubscription<MongoResponseMessage>? _repliesSubscription;
 
   StreamSubscription<MongoResponseMessage>? get repliesSubscription =>
@@ -263,6 +264,7 @@ class Connection {
     connected = false;
     isMaster = false;
     serverConfig.isAuthenticated = false;
+    _inFlightRequests = 0;
     _failPendingQueries(const ConnectionException('Connection closed.'));
     await _repliesSubscription?.cancel();
     _repliesSubscription = null;
@@ -272,16 +274,31 @@ class Connection {
   }
 
   void _sendBuffer() {
-    _log.fine(() => '_sendBuffer ${_sendQueue.isNotEmpty}');
-    var message = <int>[];
-    while (_sendQueue.isNotEmpty) {
-      var mongoMessage = _sendQueue.removeFirst();
-      message.addAll(mongoMessage.serialize().byteList);
+    _log.fine(() =>
+        '_sendBuffer hasQueue=${_sendQueue.isNotEmpty} inFlight=$_inFlightRequests');
+    if (_sendQueue.isEmpty) {
+      return;
     }
     if (socket == null) {
       throw ConnectionException('The socket has not been created yet');
     }
-    socket!.add(message);
+    // Serialize wire requests per socket when awaiting replies. Atlas can
+    // reset sockets under heavy concurrent in-flight command multiplexing.
+    while (_sendQueue.isNotEmpty) {
+      if (_inFlightRequests > 0) {
+        return;
+      }
+      var mongoMessage = _sendQueue.removeFirst();
+      var expectsReply = _replyCompleters.containsKey(mongoMessage.requestId);
+      if (expectsReply) {
+        _inFlightRequests++;
+        _startResponseTimer(mongoMessage.requestId);
+      }
+      socket!.add(mongoMessage.serialize().byteList);
+      if (expectsReply) {
+        return;
+      }
+    }
   }
 
   Future<MongoReplyMessage> query(MongoMessage queryMessage) {
@@ -289,12 +306,13 @@ class Connection {
     if (!_closed) {
       _replyCompleters[queryMessage.requestId] = completer;
       _pendingQueries.add(queryMessage.requestId);
-      _startResponseTimer(queryMessage.requestId);
       _log.fine(() => 'Query $queryMessage');
       _sendQueue.addLast(queryMessage);
       try {
         _sendBuffer();
       } catch (error) {
+        _sendQueue.removeWhere(
+            (message) => message.requestId == queryMessage.requestId);
         _cancelResponseTimer(queryMessage.requestId);
         _replyCompleters.remove(queryMessage.requestId);
         _pendingQueries.remove(queryMessage.requestId);
@@ -354,12 +372,13 @@ class Connection {
     if (!_closed) {
       _replyCompleters[modernMessage.requestId] = completer;
       _pendingQueries.add(modernMessage.requestId);
-      _startResponseTimer(modernMessage.requestId);
       _log.fine(() => 'Message $modernMessage');
       _sendQueue.addLast(modernMessage);
       try {
         _sendBuffer();
       } catch (error) {
+        _sendQueue.removeWhere(
+            (message) => message.requestId == modernMessage.requestId);
         _cancelResponseTimer(modernMessage.requestId);
         _replyCompleters.remove(modernMessage.requestId);
         _pendingQueries.remove(modernMessage.requestId);
@@ -377,6 +396,9 @@ class Connection {
     _cancelResponseTimer(reply.responseTo);
     var completer = _replyCompleters.remove(reply.responseTo);
     _pendingQueries.remove(reply.responseTo);
+    if (_inFlightRequests > 0) {
+      _inFlightRequests--;
+    }
     if (completer != null) {
       _log.fine(() => 'Completing $reply');
       completer.complete(reply);
@@ -384,6 +406,9 @@ class Connection {
       if (!_closed) {
         _log.info(() => 'Unexpected respondTo: ${reply.responseTo} $reply');
       }
+    }
+    if (!_closed) {
+      _sendBuffer();
     }
   }
 
@@ -395,6 +420,7 @@ class Connection {
     connected = false;
     isMaster = false;
     serverConfig.isAuthenticated = false;
+    _inFlightRequests = 0;
     var ex = ConnectionException(
         'connection closed${socketError == null ? '.' : ': $socketError'}');
     _failPendingQueries(ex);
@@ -421,6 +447,7 @@ class Connection {
     _replyCompleters.clear();
     _pendingQueries.clear();
     _sendQueue.clear();
+    _inFlightRequests = 0;
   }
 
   void _startResponseTimer(int requestId) {
@@ -432,6 +459,9 @@ class Connection {
     _responseTimers[requestId] = Timer(timeout, () async {
       var completer = _replyCompleters.remove(requestId);
       _pendingQueries.remove(requestId);
+      if (_inFlightRequests > 0) {
+        _inFlightRequests--;
+      }
       if (completer != null && !completer.isCompleted) {
         completer.completeError(ConnectionException(
             'Operation timed out after ${timeout.inMilliseconds}ms'));

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.24
+
+- Fixed intermittent Atlas socket resets under concurrent command load by serializing in-flight request/reply flow per socket.
+- Fixed request timeout handling to start response timers when a request is actually sent, reducing false timeout churn for queued requests.
+- Hardened reconnect retry flow to wait for primary recovery before failing operations when topology still has connected hosts.
+
 ## 1.7.23
 
 - Added internal per-host socket pooling (configurable with `maxPoolSize`, `minPoolSize`, and `maxConnecting`) and distributed primary operations across authenticated pooled sockets.

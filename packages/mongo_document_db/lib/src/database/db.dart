@@ -828,7 +828,7 @@ class Db {
 
     try {
       return await operation();
-    } catch (error, stackTrace) {
+    } catch (error) {
       if (!allowReconnect ||
           _explicitlyClosed ||
           !_isRecoverableConnectionError(error)) {
@@ -838,6 +838,7 @@ class Db {
       if (state == State.open &&
           manager != null &&
           identical(_connectionManager, manager)) {
+        var hasConnectedServer = manager.hasAnyConnectedServer;
         try {
           await manager.refreshTopology();
           await manager.waitForMaster(
@@ -846,8 +847,14 @@ class Db {
             return operation();
           }
         } catch (_) {}
-        if (manager.hasAnyConnectedServer) {
-          Error.throwWithStackTrace(error, stackTrace);
+        if (hasConnectedServer) {
+          try {
+            await manager.waitForMaster(
+                timeout: _serverSelectionProbeTimeout(maxMilliseconds: 5000));
+            if (_hasHealthyMaster()) {
+              return operation();
+            }
+          } catch (_) {}
         }
       }
       var reconnectInProgress = _reconnectInProgress;
