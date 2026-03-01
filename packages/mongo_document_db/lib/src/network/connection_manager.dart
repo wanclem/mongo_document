@@ -3,12 +3,12 @@ part of '../../mongo_document_db.dart';
 class ConnectionManager {
   final _log = Logger('ConnectionManager');
   final Db db;
-  final _connectionPool = <String, Connection>{};
+  final _connectionPool = <String, _HostConnectionPool>{};
   Connection? _masterConnection;
   bool _lastMasterSupportsOpMsg;
   bool _lastMasterSupportsListCollections;
   bool _lastMasterSupportsListIndexes;
-  final Set<String> _recoveringHosts = <String>{};
+  final Set<Connection> _recoveringConnections = <Connection>{};
   final Map<String, Future<void>> _authInProgressByHost =
       <String, Future<void>>{};
   Future<void>? _masterRecoveryInProgress;
@@ -25,6 +25,12 @@ class ConnectionManager {
 
   Connection? get masterConnection => _masterConnection;
 
+  Iterable<Connection> get _allConnections sync* {
+    for (var hostPool in _connectionPool.values) {
+      yield* hostPool.connections;
+    }
+  }
+
   bool get supportsOpMsg =>
       _masterConnection?.serverCapabilities.supportsOpMsg ??
       _lastMasterSupportsOpMsg;
@@ -36,6 +42,27 @@ class ConnectionManager {
   bool get supportsListIndexes =>
       _masterConnection?.serverCapabilities.listIndexes ??
       _lastMasterSupportsListIndexes;
+
+  /// Indicates whether at least one pooled host still has an open socket.
+  /// This mirrors the Java driver SDAM approach: keep monitoring/promotion
+  /// active before tearing down the whole topology.
+  bool get hasAnyConnectedServer {
+    for (var connection in _allConnections) {
+      if (!connection._closed && connection.connected) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool get hasAnyReadyServer {
+    for (var connection in _allConnections) {
+      if (_isConnectionReadyForOperations(connection)) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   bool _requiresAuthentication(Connection connection) {
     if (db._authenticationScheme == AuthenticationScheme.X509) {
@@ -116,6 +143,23 @@ class ConnectionManager {
     } else {
       throw MongoDartError('No master connection');
     }
+  }
+
+  /// Selects an authenticated, connected socket from the current primary host.
+  /// This provides per-host operation distribution while preserving primary
+  /// routing semantics.
+  Connection selectOperationalConnection({bool requireAuthentication = true}) {
+    var master = masterConnectionVerified;
+    var hostPool = _connectionPool[master.serverConfig.hostUrl];
+    if (hostPool == null) {
+      return master;
+    }
+    var selected = hostPool.selectLeastBusyConnection(
+        requireAuthentication: requireAuthentication);
+    if (selected != null) {
+      return selected;
+    }
+    return master;
   }
 
   Future<bool> _connect(Connection connection,
@@ -234,17 +278,19 @@ class ConnectionManager {
   }
 
   Future<void> _authenticateConnection(Connection connection) async {
-    if (connection._closed || !connection.connected) {
-      throw const ConnectionException('Connection is not available');
-    }
-    if (connection.serverConfig.isAuthenticated) {
-      return;
-    }
     var hostUrl = connection.serverConfig.hostUrl;
-    var authInProgress = _authInProgressByHost[hostUrl];
-    if (authInProgress != null) {
+    while (true) {
+      if (connection._closed || !connection.connected) {
+        throw const ConnectionException('Connection is not available');
+      }
+      if (connection.serverConfig.isAuthenticated) {
+        return;
+      }
+      var authInProgress = _authInProgressByHost[hostUrl];
+      if (authInProgress == null) {
+        break;
+      }
       await authInProgress;
-      return;
     }
 
     var authFuture = () async {
@@ -310,14 +356,9 @@ class ConnectionManager {
     _masterConnection = null;
     var connectionErrors = <Object>[];
     var tasks = <Future<void>>[];
-    for (var connection in _connectionPool.values) {
-      tasks.add(() async {
-        try {
-          await _connect(connection, authenticate: false);
-        } catch (e) {
-          connectionErrors.add(e);
-        }
-      }());
+    for (var hostPool in _connectionPool.values) {
+      hostPool.ensureMaxConnections();
+      tasks.add(_connectHostPool(hostPool, connectionErrors));
     }
     await Future.wait(tasks);
 
@@ -354,6 +395,25 @@ class ConnectionManager {
 
     // Pre-warm authenticated standby connections without blocking startup.
     _warmStandbyConnections();
+  }
+
+  Future<void> _connectHostPool(
+      _HostConnectionPool hostPool, List<Object> connectionErrors) async {
+    var queue = Queue<Connection>.from(hostPool.connections);
+    var workers = <Future<void>>[];
+    for (var i = 0; i < hostPool.maxConnecting; i++) {
+      workers.add(() async {
+        while (queue.isNotEmpty) {
+          var connection = queue.removeFirst();
+          try {
+            await _connect(connection, authenticate: false);
+          } catch (e) {
+            connectionErrors.add(e);
+          }
+        }
+      }());
+    }
+    await Future.wait(workers);
   }
 
   Future<void> refreshTopology() async {
@@ -424,23 +484,24 @@ class ConnectionManager {
     _authInProgressByHost.clear();
     _masterRecoveryInProgress = null;
     _topologyRefreshInProgress = null;
-    _recoveringHosts.clear();
+    _recoveringConnections.clear();
     _masterConnection = null;
 
-    for (var hostUrl in _connectionPool.keys) {
-      var connection = _connectionPool[hostUrl];
-      _log.fine(() => '$db: ${connection?.serverConfig.hostUrl} closed');
-      try {
-        await connection?.close();
-      } catch (error) {
-        _log.fine(() => 'Error closing ${connection?.serverConfig.hostUrl}: '
-            '$error');
+    for (var hostPool in _connectionPool.values) {
+      for (var connection in hostPool.connections) {
+        _log.fine(() => '$db: ${connection.serverConfig.hostUrl} closed');
+        try {
+          await connection.close();
+        } catch (error) {
+          _log.fine(() => 'Error closing ${connection.serverConfig.hostUrl}: '
+              '$error');
+        }
       }
     }
   }
 
   void _warmStandbyConnections() {
-    for (var connection in _connectionPool.values) {
+    for (var connection in _allConnections) {
       if (!identical(connection, _masterConnection)) {
         _recoverConnectionInBackground(connection);
       }
@@ -463,11 +524,17 @@ class ConnectionManager {
             !_closed &&
             !db._explicitlyClosed &&
             identical(db._connectionManager, this)) {
-          // Fallback to full reconnect if no connected host can be promoted.
-          // ignore: unawaited_futures
-          db._reconnect().catchError((error) {
-            _log.fine(() => 'Background reconnect failed: $error');
-          });
+          // Keep SDAM-style recovery in-process while any host is still
+          // connected. A full reconnect is reserved for total connectivity loss.
+          if (!hasAnyConnectedServer) {
+            // ignore: unawaited_futures
+            db._reconnect().catchError((error) {
+              _log.fine(() => 'Background reconnect failed: $error');
+            });
+          } else {
+            _log.fine(() => 'Master recovery waiting for election; '
+                'connected hosts available, skipping full reconnect.');
+          }
         }
         completer.complete();
       } catch (error, stackTrace) {
@@ -481,7 +548,7 @@ class ConnectionManager {
   }
 
   Future<bool> _tryPromoteConnectedMaster({Connection? excluding}) async {
-    for (var connection in _connectionPool.values) {
+    for (var connection in _allConnections) {
       if (identical(connection, excluding) ||
           connection._closed ||
           !connection.connected) {
@@ -577,7 +644,7 @@ class ConnectionManager {
         return null;
       }
 
-      for (var connection in _connectionPool.values) {
+      for (var connection in _allConnections) {
         _recoverConnectionInBackground(connection);
       }
       _ensureMasterRecovery();
@@ -612,11 +679,10 @@ class ConnectionManager {
         !identical(db._connectionManager, this)) {
       return;
     }
-    var hostUrl = connection.serverConfig.hostUrl;
-    if (_recoveringHosts.contains(hostUrl)) {
+    if (_recoveringConnections.contains(connection)) {
       return;
     }
-    _recoveringHosts.add(hostUrl);
+    _recoveringConnections.add(connection);
     () async {
       var attempt = 0;
       try {
@@ -642,7 +708,7 @@ class ConnectionManager {
             }
             if (!_isExpectedConnectionChurn(error)) {
               _log.fine(() =>
-                  'Background host recovery failed for $hostUrl (attempt $attempt): $error');
+                  'Background host recovery failed for ${connection.serverConfig.hostUrl} (attempt $attempt): $error');
             }
             var delayMs = min(100 * (1 << min(attempt, 6)), 5000).toInt();
             var jitterMs = Random().nextInt((delayMs ~/ 2) + 1);
@@ -653,18 +719,19 @@ class ConnectionManager {
         if (!_closed &&
             identical(db._connectionManager, this) &&
             !_isExpectedConnectionChurn(error)) {
-          _log.fine(
-              () => 'Background host recovery aborted for $hostUrl: $error');
+          _log.fine(() =>
+              'Background host recovery aborted for ${connection.serverConfig.hostUrl}: $error');
         }
       } finally {
-        _recoveringHosts.remove(hostUrl);
+        _recoveringConnections.remove(connection);
       }
     }();
   }
 
-  void addConnection(ServerConfig serverConfig) {
-    var connection = Connection(this, serverConfig);
-    _connectionPool[serverConfig.hostUrl] = connection;
+  Connection addConnection(ServerConfig serverConfig) {
+    var hostPool = _HostConnectionPool(this, serverConfig);
+    _connectionPool[serverConfig.hostUrl] = hostPool;
+    return hostPool.ensureOneConnection();
   }
 
   Connection? removeConnection(Connection connection) {
@@ -672,6 +739,85 @@ class ConnectionManager {
     if (connection.isMaster) {
       _masterConnection = null;
     }
-    return _connectionPool.remove(connection.serverConfig.hostUrl);
+    var hostPool = _connectionPool[connection.serverConfig.hostUrl];
+    if (hostPool == null) {
+      return null;
+    }
+    hostPool.remove(connection);
+    if (hostPool.isEmpty) {
+      _connectionPool.remove(connection.serverConfig.hostUrl);
+    }
+    return connection;
+  }
+}
+
+class _HostConnectionPool {
+  final ConnectionManager manager;
+  final ServerConfig _prototypeConfig;
+  final List<Connection> _connections = <Connection>[];
+
+  _HostConnectionPool(this.manager, ServerConfig serverConfig)
+      : _prototypeConfig = ServerConfig.clone(serverConfig) {
+    _ensureMinConnections();
+  }
+
+  int get _maxPoolSize => max(1, _prototypeConfig.maxPoolSize);
+
+  int get _minPoolSize =>
+      min(_maxPoolSize, max(0, _prototypeConfig.minPoolSize));
+
+  int get maxConnecting =>
+      min(_maxPoolSize, max(1, _prototypeConfig.maxConnecting));
+
+  Iterable<Connection> get connections => _connections;
+
+  bool get isEmpty => _connections.isEmpty;
+
+  Connection ensureOneConnection() {
+    if (_connections.isEmpty) {
+      _connections.add(_newConnection());
+    }
+    return _connections.first;
+  }
+
+  void ensureMaxConnections() {
+    while (_connections.length < _maxPoolSize) {
+      _connections.add(_newConnection());
+    }
+  }
+
+  void remove(Connection connection) {
+    _connections.remove(connection);
+  }
+
+  Connection? selectLeastBusyConnection({required bool requireAuthentication}) {
+    Connection? selected;
+    var selectedPendingCount = 1 << 30;
+    for (var connection in _connections) {
+      if (connection._closed || !connection.connected) {
+        continue;
+      }
+      if (requireAuthentication &&
+          manager._requiresAuthentication(connection) &&
+          !connection.serverConfig.isAuthenticated) {
+        continue;
+      }
+      var pendingCount = connection.pendingRequestCount;
+      if (selected == null || pendingCount < selectedPendingCount) {
+        selected = connection;
+        selectedPendingCount = pendingCount;
+      }
+    }
+    return selected;
+  }
+
+  void _ensureMinConnections() {
+    while (_connections.length < _minPoolSize) {
+      _connections.add(_newConnection());
+    }
+  }
+
+  Connection _newConnection() {
+    return Connection(manager, ServerConfig.clone(_prototypeConfig));
   }
 }

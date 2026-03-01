@@ -1,3 +1,9 @@
+## 1.7.23
+
+### Fixed
+
+Aligned dependency to `mongo_document_db: ^1.7.23` to consume per-host pooling support and reconnect/heartbeat hardening.
+
 ## 1.7.22
 
 ### Fixed

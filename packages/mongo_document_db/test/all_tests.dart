@@ -18,6 +18,9 @@ import 'op_msg_commands_test.dart' as commands;
 import 'op_msg_read_operation_test.dart' as read_op;
 import 'op_msg_write_operation_test.dart' as write_op;
 import 'write_concern_resilience_test.dart' as write_concern_resilience;
+import 'connection_manager_recovery_policy_test.dart'
+    as connection_manager_recovery;
+import 'server_config_pooling_test.dart' as server_config_pooling;
 
 //import 'replica_tests.dart' as replica;
 
@@ -38,4 +41,6 @@ void main() {
   read_op.main();
   write_op.main();
   write_concern_resilience.main();
+  connection_manager_recovery.main();
+  server_config_pooling.main();
 }

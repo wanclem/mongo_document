@@ -193,6 +193,13 @@ class _UriParameters {
   static const tlsCertificateKeyFilePassword = 'tlsCertificateKeyFilePassword';
   static const appName = 'appname';
   static const loadBalanced = 'loadBalanced';
+  static const maxPoolSize = 'maxPoolSize';
+  static const minPoolSize = 'minPoolSize';
+  static const maxConnecting = 'maxConnecting';
+  static const waitQueueTimeoutMS = 'waitQueueTimeoutMS';
+  static const maxIdleTimeMS = 'maxIdleTimeMS';
+  static const maxLifeTimeMS = 'maxLifeTimeMS';
+  static const minHeartbeatFrequencyMS = 'minHeartbeatFrequencyMS';
   static const heartbeatFrequencyMS = 'heartbeatFrequencyMS';
   static const connectTimeoutMS = 'connectTimeoutMS';
   static const socketTimeoutMS = 'socketTimeoutMS';
@@ -268,6 +275,13 @@ class Db {
   bool _explicitlyClosed = false;
   Future<void>? _reconnectInProgress;
   Future<void>? _openInProgress;
+  int _maxPoolSize = 4;
+  int _minPoolSize = 1;
+  int _maxConnecting = 2;
+  Duration _waitQueueTimeout = const Duration(seconds: 15);
+  Duration? _maxConnectionIdleTime;
+  Duration? _maxConnectionLifeTime;
+  Duration _minHeartbeatInterval = const Duration(milliseconds: 500);
   Duration _heartbeatInterval = const Duration(seconds: 10);
   Duration _serverSelectionTimeout = const Duration(seconds: 30);
   int _maxReconnectAttempts = 8;
@@ -337,9 +351,11 @@ class Db {
     }
     var manager = _connectionManager;
     if (manager != null) {
-      for (var connection in manager._connectionPool.values) {
-        if (connection.connected) {
-          return connection.serverStatus;
+      for (var hostPool in manager._connectionPool.values) {
+        for (var connection in hostPool.connections) {
+          if (connection.connected) {
+            return connection.serverStatus;
+          }
         }
       }
     }
@@ -381,6 +397,12 @@ class Db {
     var loadBalanced = false;
     var connectTimeout = const Duration(seconds: 5);
     Duration? socketTimeout;
+    var maxPoolSize = _maxPoolSize;
+    var minPoolSize = _minPoolSize;
+    var maxConnecting = _maxConnecting;
+    var waitQueueTimeout = _waitQueueTimeout;
+    var maxConnectionIdleTime = _maxConnectionIdleTime;
+    var maxConnectionLifeTime = _maxConnectionLifeTime;
 
     if (uri.scheme != 'mongodb') {
       throw MongoDartError('Invalid scheme in uri: $uriString ${uri.scheme}');
@@ -433,12 +455,58 @@ class Db {
           normalizedValue == 'true') {
         loadBalanced = true;
       }
+      if (normalizedQueryParam == _UriParameters.maxPoolSize.toLowerCase()) {
+        var parsed = int.tryParse(value);
+        if (parsed != null && parsed > 0) {
+          maxPoolSize = min(parsed, 500);
+        }
+      }
+      if (normalizedQueryParam == _UriParameters.minPoolSize.toLowerCase()) {
+        var parsed = int.tryParse(value);
+        if (parsed != null && parsed >= 0) {
+          minPoolSize = min(parsed, 500);
+        }
+      }
+      if (normalizedQueryParam == _UriParameters.maxConnecting.toLowerCase()) {
+        var parsed = int.tryParse(value);
+        if (parsed != null && parsed > 0) {
+          maxConnecting = min(parsed, 50);
+        }
+      }
+      if (normalizedQueryParam ==
+          _UriParameters.waitQueueTimeoutMS.toLowerCase()) {
+        var parsed = int.tryParse(value);
+        if (parsed != null && parsed > 0) {
+          waitQueueTimeout = Duration(milliseconds: max(parsed, 10).toInt());
+        }
+      }
+      if (normalizedQueryParam == _UriParameters.maxIdleTimeMS.toLowerCase()) {
+        var parsed = int.tryParse(value);
+        if (parsed != null && parsed > 0) {
+          maxConnectionIdleTime =
+              Duration(milliseconds: max(parsed, 100).toInt());
+        }
+      }
+      if (normalizedQueryParam == _UriParameters.maxLifeTimeMS.toLowerCase()) {
+        var parsed = int.tryParse(value);
+        if (parsed != null && parsed > 0) {
+          maxConnectionLifeTime =
+              Duration(milliseconds: max(parsed, 1000).toInt());
+        }
+      }
+      if (normalizedQueryParam ==
+          _UriParameters.minHeartbeatFrequencyMS.toLowerCase()) {
+        var minHeartbeatMs = int.tryParse(value);
+        if (minHeartbeatMs != null && minHeartbeatMs > 0) {
+          _minHeartbeatInterval =
+              Duration(milliseconds: max(minHeartbeatMs, 100).toInt());
+        }
+      }
       if (normalizedQueryParam ==
           _UriParameters.heartbeatFrequencyMS.toLowerCase()) {
         var heartbeatMs = int.tryParse(value);
         if (heartbeatMs != null && heartbeatMs > 0) {
-          _heartbeatInterval =
-              Duration(milliseconds: max(heartbeatMs, 1000).toInt());
+          _heartbeatInterval = Duration(milliseconds: heartbeatMs.toInt());
         }
       }
       if (normalizedQueryParam ==
@@ -472,6 +540,29 @@ class Db {
       }
     });
 
+    if (_heartbeatInterval < _minHeartbeatInterval) {
+      _heartbeatInterval = _minHeartbeatInterval;
+    }
+    if (maxPoolSize < 1) {
+      maxPoolSize = 1;
+    }
+    if (minPoolSize < 0) {
+      minPoolSize = 0;
+    }
+    if (minPoolSize > maxPoolSize) {
+      minPoolSize = maxPoolSize;
+    }
+    if (maxConnecting < 1) {
+      maxConnecting = 1;
+    }
+
+    _maxPoolSize = maxPoolSize;
+    _minPoolSize = minPoolSize;
+    _maxConnecting = maxConnecting;
+    _waitQueueTimeout = waitQueueTimeout;
+    _maxConnectionIdleTime = maxConnectionIdleTime;
+    _maxConnectionLifeTime = maxConnectionLifeTime;
+
     Uint8List? tlsCAFileContent;
     if (tlsCAFile != null) {
       tlsCAFileContent = await File(tlsCAFile!).readAsBytes();
@@ -493,12 +584,18 @@ class Db {
         isSecure: isSecure,
         connectTimeout: connectTimeout,
         socketTimeout: socketTimeout,
+        waitQueueTimeout: waitQueueTimeout,
+        maxConnectionIdleTime: maxConnectionIdleTime,
+        maxConnectionLifeTime: maxConnectionLifeTime,
         tlsAllowInvalidCertificates: tlsAllowInvalidCertificates,
         tlsCAFileContent: tlsCAFileContent,
         tlsCertificateKeyFileContent: tlsCertificateKeyFileContent,
         tlsCertificateKeyFilePassword: tlsCertificateKeyFilePassword,
         clientMetadata: clientMetadata,
-        loadBalanced: loadBalanced);
+        loadBalanced: loadBalanced,
+        maxPoolSize: maxPoolSize,
+        minPoolSize: minPoolSize,
+        maxConnecting: maxConnecting);
 
     if (serverConfig.port == 0) {
       serverConfig.port = mongoDefaultPort;
@@ -559,6 +656,34 @@ class Db {
     _heartbeatTimer = null;
   }
 
+  bool _hasHealthyMaster() {
+    var master = _masterConnection;
+    if (master == null || !master.connected) {
+      return false;
+    }
+    var authRequired = _authenticationScheme == AuthenticationScheme.X509 ||
+        filled(master.serverConfig.userName);
+    return !authRequired || master.serverConfig.isAuthenticated;
+  }
+
+  Future<bool> _tryWaitForMaster(ConnectionManager manager,
+      {int maxMilliseconds = 3000}) async {
+    var selected = await manager.waitForMaster(
+        timeout:
+            _serverSelectionProbeTimeout(maxMilliseconds: maxMilliseconds));
+    if (selected == null) {
+      return false;
+    }
+    return _hasHealthyMaster();
+  }
+
+  Future<void> _reconnectIfTopologyFullyDown(ConnectionManager? manager) async {
+    if (manager != null && manager.hasAnyConnectedServer) {
+      return;
+    }
+    await _reconnect();
+  }
+
   Future<void> _runHeartbeat() async {
     if (_heartbeatInProgress || _explicitlyClosed || state != State.open) {
       return;
@@ -569,14 +694,11 @@ class Db {
       if (manager != null) {
         await manager.refreshTopology();
       }
-      var master = _masterConnection;
-      var authRequired = master != null &&
-          (_authenticationScheme == AuthenticationScheme.X509 ||
-              filled(master.serverConfig.userName));
-      if (master == null ||
-          !master.connected ||
-          (authRequired && !master.serverConfig.isAuthenticated)) {
-        await _reconnect();
+      if (!_hasHealthyMaster()) {
+        if (manager != null && await _tryWaitForMaster(manager)) {
+          return;
+        }
+        await _reconnectIfTopologyFullyDown(manager);
         return;
       }
 
@@ -587,17 +709,15 @@ class Db {
     } catch (error) {
       _log.fine(() => 'Heartbeat failed: $error');
       if (!_explicitlyClosed) {
-        var master = _masterConnection;
-        var authRequired = master != null &&
-            (_authenticationScheme == AuthenticationScheme.X509 ||
-                filled(master.serverConfig.userName));
-        if (master != null &&
-            master.connected &&
-            (!authRequired || master.serverConfig.isAuthenticated)) {
+        if (_hasHealthyMaster()) {
+          return;
+        }
+        var manager = _connectionManager;
+        if (manager != null && await _tryWaitForMaster(manager)) {
           return;
         }
         try {
-          await _reconnect();
+          await _reconnectIfTopologyFullyDown(manager);
         } catch (reconnectError) {
           _log.fine(() => 'Heartbeat reconnect failed: $reconnectError');
         }
@@ -708,7 +828,7 @@ class Db {
 
     try {
       return await operation();
-    } catch (error) {
+    } catch (error, stackTrace) {
       if (!allowReconnect ||
           _explicitlyClosed ||
           !_isRecoverableConnectionError(error)) {
@@ -722,11 +842,13 @@ class Db {
           await manager.refreshTopology();
           await manager.waitForMaster(
               timeout: _serverSelectionProbeTimeout(maxMilliseconds: 3000));
-          var master = _masterConnection;
-          if (master != null && master.connected) {
+          if (_hasHealthyMaster()) {
             return operation();
           }
         } catch (_) {}
+        if (manager.hasAnyConnectedServer) {
+          Error.throwWithStackTrace(error, stackTrace);
+        }
       }
       var reconnectInProgress = _reconnectInProgress;
       if (state == State.opening && reconnectInProgress != null) {
@@ -803,7 +925,9 @@ class Db {
         throw MongoDartError('Db is in the wrong state: $state');
       }
 
-      var locConnection = connection ?? _masterConnectionVerifiedAnyState;
+      var locConnection = connection ??
+          _connectionManager!
+              .selectOperationalConnection(requireAuthentication: true);
 
       return locConnection.query(queryMessage);
     }, allowReconnect: connection == null);
@@ -815,7 +939,8 @@ class Db {
       throw MongoDartError('DB is not open. $state');
     }
 
-    connection ??= _masterConnectionVerified;
+    connection ??= _connectionManager!
+        .selectOperationalConnection(requireAuthentication: true);
 
     writeConcern ??= _writeConcern;
 
@@ -838,11 +963,14 @@ class Db {
         if (state != State.open) {
           throw MongoDartError('DB is not open. $state');
         }
-        if (!_masterConnectionVerifiedAnyState
-            .serverCapabilities.supportsOpMsg) {
+        var opConnection = selectedConnection ??
+            _connectionManager!
+                .selectOperationalConnection(requireAuthentication: true);
+        if (!opConnection.serverCapabilities.supportsOpMsg) {
           throw MongoDartError('The "modern message" can only be executed '
               'starting from release 3.6');
         }
+        selectedConnection = opConnection;
       }
 
       var locConnection =
@@ -962,7 +1090,9 @@ class Db {
   Future<Map<String, dynamic>> executeDbCommand(MongoMessage message,
       {Connection? connection}) async {
     return _runWithReconnect(() async {
-      var locConnection = connection ?? _masterConnectionVerifiedAnyState;
+      var locConnection = connection ??
+          _connectionManager!
+              .selectOperationalConnection(requireAuthentication: true);
 
       //var result = Completer<Map<String, dynamic>>();
 

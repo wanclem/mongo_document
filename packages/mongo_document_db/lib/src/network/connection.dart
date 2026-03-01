@@ -146,6 +146,7 @@ class Connection {
       : serverConfig = serverConfig ?? ServerConfig();
 
   bool get isAuthenticated => serverConfig.isAuthenticated;
+  int get pendingRequestCount => _pendingQueries.length + _sendQueue.length;
 
   Future<bool> connect() async {
     _closed = false;

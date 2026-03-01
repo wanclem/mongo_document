@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.23
+
+- Added internal per-host socket pooling (configurable with `maxPoolSize`, `minPoolSize`, and `maxConnecting`) and distributed primary operations across authenticated pooled sockets.
+- Added URI parsing for `waitQueueTimeoutMS`, `maxIdleTimeMS`, and `maxLifeTimeMS` pool settings.
+- Hardened topology recovery to avoid full `Db.open()` reconnect churn while any pooled host is still connected; full reconnect now happens only on total connectivity loss.
+- Improved heartbeat failover behavior by waiting for master recovery before attempting a global reconnect.
+- Added support for `minHeartbeatFrequencyMS` URI option and enforced heartbeat clamping to prevent over-aggressive monitor cadence.
+
 ## 1.7.22
 
 - Serialized per-host authentication to prevent concurrent SCRAM conversations against the same Atlas host during recovery.
