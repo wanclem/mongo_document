@@ -23,6 +23,7 @@ class ServerConfig {
   int maxPoolSize;
   int minPoolSize;
   int maxConnecting;
+  int maxInFlightRequests;
 
   ServerConfig(
       {this.host = '127.0.0.1',
@@ -39,9 +40,10 @@ class ServerConfig {
       this.tlsCertificateKeyFilePassword,
       this.clientMetadata,
       this.loadBalanced = false,
-      this.maxPoolSize = 4,
-      this.minPoolSize = 1,
-      this.maxConnecting = 2})
+      this.maxPoolSize = 20,
+      this.minPoolSize = 0,
+      this.maxConnecting = 4,
+      this.maxInFlightRequests = 128})
       : isSecure = isSecure ?? false,
         connectTimeout = connectTimeout ?? const Duration(seconds: 5),
         tlsAllowInvalidCertificates = tlsAllowInvalidCertificates ?? false;
@@ -65,6 +67,7 @@ class ServerConfig {
         loadBalanced = other.loadBalanced,
         maxPoolSize = other.maxPoolSize,
         minPoolSize = other.minPoolSize,
-        maxConnecting = other.maxConnecting;
+        maxConnecting = other.maxConnecting,
+        maxInFlightRequests = other.maxInFlightRequests;
   String get hostUrl => '$host:${port.toString()}';
 }

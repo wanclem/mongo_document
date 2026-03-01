@@ -1,3 +1,9 @@
+## 1.7.26
+
+### Fixed
+
+Aligned dependency to `mongo_document_db: ^1.7.26` to consume concurrency and startup performance improvements.
+
 ## 1.7.25
 
 ### Fixed

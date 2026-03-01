@@ -282,22 +282,28 @@ class Connection {
     if (socket == null) {
       throw ConnectionException('The socket has not been created yet');
     }
-    // Serialize wire requests per socket when awaiting replies. Atlas can
-    // reset sockets under heavy concurrent in-flight command multiplexing.
+    // Batch multiple queued messages into one socket write. This preserves
+    // single-connection semantics while reducing per-message syscall overhead.
+    var buffer = BytesBuilder(copy: false);
     while (_sendQueue.isNotEmpty) {
-      if (_inFlightRequests > 0) {
-        return;
-      }
-      var mongoMessage = _sendQueue.removeFirst();
+      var mongoMessage = _sendQueue.first;
       var expectsReply = _replyCompleters.containsKey(mongoMessage.requestId);
+      if (expectsReply &&
+          _inFlightRequests >= serverConfig.maxInFlightRequests) {
+        break;
+      }
+      _sendQueue.removeFirst();
       if (expectsReply) {
         _inFlightRequests++;
         _startResponseTimer(mongoMessage.requestId);
       }
-      socket!.add(mongoMessage.serialize().byteList);
-      if (expectsReply) {
-        return;
+      buffer.add(mongoMessage.serialize().byteList);
+      if (buffer.length >= (256 * 1024)) {
+        break;
       }
+    }
+    if (buffer.length > 0) {
+      socket!.add(buffer.takeBytes());
     }
   }
 

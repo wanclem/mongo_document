@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.26
+
+- Improved high-concurrency throughput by batching queued socket writes into larger wire packets.
+- Added `maxInFlightRequests` URI tuning support and increased default in-flight request capacity.
+- Kept startup fast and stable by avoiding eager pool pre-open connection storms.
+- Added lazy pool scale-out under load while preserving conservative initial connection behavior.
+- Hardened primary routing during background provisioning to avoid master-selection stalls.
+
 ## 1.7.25
 
 - Reduced default wire-level log noise by demoting per-message tracing (`Message`, `Completing`, `_sendBuffer`, transformer payload traces) from `fine` to `finer`.

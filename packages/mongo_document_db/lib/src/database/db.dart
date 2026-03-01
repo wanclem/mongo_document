@@ -196,6 +196,7 @@ class _UriParameters {
   static const maxPoolSize = 'maxPoolSize';
   static const minPoolSize = 'minPoolSize';
   static const maxConnecting = 'maxConnecting';
+  static const maxInFlightRequests = 'maxInFlightRequests';
   static const waitQueueTimeoutMS = 'waitQueueTimeoutMS';
   static const maxIdleTimeMS = 'maxIdleTimeMS';
   static const maxLifeTimeMS = 'maxLifeTimeMS';
@@ -205,6 +206,7 @@ class _UriParameters {
   static const socketTimeoutMS = 'socketTimeoutMS';
   static const serverSelectionTimeoutMS = 'serverSelectionTimeoutMS';
   static const maxReconnectAttempts = 'maxReconnectAttempts';
+  static const prewarmStandbyConnections = 'prewarmStandbyConnections';
 }
 
 const Set<int> _retryableServerErrorCodes = <int>{
@@ -275,9 +277,12 @@ class Db {
   bool _explicitlyClosed = false;
   Future<void>? _reconnectInProgress;
   Future<void>? _openInProgress;
-  int _maxPoolSize = 4;
-  int _minPoolSize = 1;
-  int _maxConnecting = 2;
+  // Keep startup conservative (single socket boot), then scale out lazily
+  // under concurrent load.
+  int _maxPoolSize = 20;
+  int _minPoolSize = 0;
+  int _maxConnecting = 4;
+  int _maxInFlightRequests = 128;
   Duration _waitQueueTimeout = const Duration(seconds: 15);
   Duration? _maxConnectionIdleTime;
   Duration? _maxConnectionLifeTime;
@@ -285,6 +290,7 @@ class Db {
   Duration _heartbeatInterval = const Duration(seconds: 10);
   Duration _serverSelectionTimeout = const Duration(seconds: 30);
   int _maxReconnectAttempts = 8;
+  bool _prewarmStandbyConnections = false;
   Timer? _heartbeatTimer;
   bool _heartbeatInProgress = false;
 
@@ -379,6 +385,8 @@ class Db {
 
   List<String> get uriList => _uriList.toList();
 
+  bool get prewarmStandbyConnections => _prewarmStandbyConnections;
+
   Future<ServerConfig> _parseUri(String uriString,
       {bool? isSecure,
       bool? tlsAllowInvalidCertificates,
@@ -400,9 +408,11 @@ class Db {
     var maxPoolSize = _maxPoolSize;
     var minPoolSize = _minPoolSize;
     var maxConnecting = _maxConnecting;
+    var maxInFlightRequests = _maxInFlightRequests;
     var waitQueueTimeout = _waitQueueTimeout;
     var maxConnectionIdleTime = _maxConnectionIdleTime;
     var maxConnectionLifeTime = _maxConnectionLifeTime;
+    var prewarmStandbyConnections = _prewarmStandbyConnections;
 
     if (uri.scheme != 'mongodb') {
       throw MongoDartError('Invalid scheme in uri: $uriString ${uri.scheme}');
@@ -474,6 +484,13 @@ class Db {
         }
       }
       if (normalizedQueryParam ==
+          _UriParameters.maxInFlightRequests.toLowerCase()) {
+        var parsed = int.tryParse(value);
+        if (parsed != null && parsed > 0) {
+          maxInFlightRequests = min(parsed, 512);
+        }
+      }
+      if (normalizedQueryParam ==
           _UriParameters.waitQueueTimeoutMS.toLowerCase()) {
         var parsed = int.tryParse(value);
         if (parsed != null && parsed > 0) {
@@ -538,6 +555,15 @@ class Db {
           _maxReconnectAttempts = min(attempts, 50);
         }
       }
+      if (normalizedQueryParam ==
+          _UriParameters.prewarmStandbyConnections.toLowerCase()) {
+        if (normalizedValue == 'true') {
+          prewarmStandbyConnections = true;
+        }
+        if (normalizedValue == 'false') {
+          prewarmStandbyConnections = false;
+        }
+      }
     });
 
     if (_heartbeatInterval < _minHeartbeatInterval) {
@@ -555,13 +581,18 @@ class Db {
     if (maxConnecting < 1) {
       maxConnecting = 1;
     }
+    if (maxInFlightRequests < 1) {
+      maxInFlightRequests = 1;
+    }
 
     _maxPoolSize = maxPoolSize;
     _minPoolSize = minPoolSize;
     _maxConnecting = maxConnecting;
+    _maxInFlightRequests = maxInFlightRequests;
     _waitQueueTimeout = waitQueueTimeout;
     _maxConnectionIdleTime = maxConnectionIdleTime;
     _maxConnectionLifeTime = maxConnectionLifeTime;
+    _prewarmStandbyConnections = prewarmStandbyConnections;
 
     Uint8List? tlsCAFileContent;
     if (tlsCAFile != null) {
@@ -595,7 +626,8 @@ class Db {
         loadBalanced: loadBalanced,
         maxPoolSize: maxPoolSize,
         minPoolSize: minPoolSize,
-        maxConnecting: maxConnecting);
+        maxConnecting: maxConnecting,
+        maxInFlightRequests: maxInFlightRequests);
 
     if (serverConfig.port == 0) {
       serverConfig.port = mongoDefaultPort;
@@ -691,6 +723,16 @@ class Db {
     _heartbeatInProgress = true;
     try {
       var manager = _connectionManager;
+      // Fast path: keep a healthy primary alive with a lightweight ping.
+      // Avoid full topology refresh churn on every heartbeat tick.
+      if (_hasHealthyMaster()) {
+        if (supportsOpMsg) {
+          await _runWithReconnect(() => PingCommand(this).execute(),
+              allowReconnect: true);
+        }
+        return;
+      }
+
       if (manager != null) {
         await manager.refreshTopology();
       }
@@ -701,7 +743,6 @@ class Db {
         await _reconnectIfTopologyFullyDown(manager);
         return;
       }
-
       if (supportsOpMsg) {
         await _runWithReconnect(() => PingCommand(this).execute(),
             allowReconnect: true);

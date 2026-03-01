@@ -193,11 +193,17 @@ class ConnectionManager {
         if (authenticate) {
           await _authenticateConnection(connection);
         }
-        _masterConnection = connection;
-        _cacheMasterCapabilities(connection);
-        MongoModernMessage.maxBsonObjectSize = resultDoc.maxBsonObjectSize;
-        MongoModernMessage.maxMessageSizeBytes = resultDoc.maxMessageSizeBytes;
-        MongoModernMessage.maxWriteBatchSize = resultDoc.maxWriteBatchSize;
+        var currentMaster = _masterConnection;
+        if (authenticate ||
+            currentMaster == null ||
+            !_isConnectionReadyForOperations(currentMaster)) {
+          _masterConnection = connection;
+          _cacheMasterCapabilities(connection);
+          MongoModernMessage.maxBsonObjectSize = resultDoc.maxBsonObjectSize;
+          MongoModernMessage.maxMessageSizeBytes =
+              resultDoc.maxMessageSizeBytes;
+          MongoModernMessage.maxWriteBatchSize = resultDoc.maxWriteBatchSize;
+        }
       }
       if (db._authenticationScheme == null &&
           resultDoc.saslSupportedMechs != null) {
@@ -246,14 +252,19 @@ class ConnectionManager {
         if (authenticate) {
           await _authenticateConnection(connection);
         }
-        _masterConnection = connection;
-        _cacheMasterCapabilities(connection);
-        MongoModernMessage.maxBsonObjectSize =
-            documents.first[keyMaxBsonObjectSize];
-        MongoModernMessage.maxMessageSizeBytes =
-            documents.first[keyMaxMessageSizeBytes];
-        MongoModernMessage.maxWriteBatchSize =
-            documents.first[keyMaxWriteBatchSize];
+        var currentMaster = _masterConnection;
+        if (authenticate ||
+            currentMaster == null ||
+            !_isConnectionReadyForOperations(currentMaster)) {
+          _masterConnection = connection;
+          _cacheMasterCapabilities(connection);
+          MongoModernMessage.maxBsonObjectSize =
+              documents.first[keyMaxBsonObjectSize];
+          MongoModernMessage.maxMessageSizeBytes =
+              documents.first[keyMaxMessageSizeBytes];
+          MongoModernMessage.maxWriteBatchSize =
+              documents.first[keyMaxWriteBatchSize];
+        }
       }
     }
 
@@ -267,7 +278,7 @@ class ConnectionManager {
       }
     }
     if (!authenticate) {
-      _log.info(() => '$db: ${connection.serverConfig.hostUrl} '
+      _log.fine(() => '$db: ${connection.serverConfig.hostUrl} '
           'topology connected');
       return true;
     }
@@ -302,14 +313,14 @@ class ConnectionManager {
       }
       if (connection.serverConfig.userName == null &&
           db._authenticationScheme != AuthenticationScheme.X509) {
-        _log.info(() => '$db: ${connection.serverConfig.hostUrl} connected');
+        _log.fine(() => '$db: ${connection.serverConfig.hostUrl} connected');
         return;
       }
       try {
         await db.authenticate(
             connection.serverConfig.userName, connection.serverConfig.password,
             connection: connection);
-        _log.info(() => '$db: ${connection.serverConfig.hostUrl} connected');
+        _log.fine(() => '$db: ${connection.serverConfig.hostUrl} connected');
       } catch (e) {
         /// Atlas does not currently support SHA_256
         if (e is MongoDartError &&
@@ -323,7 +334,7 @@ class ConnectionManager {
           await db.authenticate(connection.serverConfig.userName!,
               connection.serverConfig.password ?? '',
               connection: connection);
-          _log.info(() => '$db: ${connection.serverConfig.hostUrl} connected');
+          _log.fine(() => '$db: ${connection.serverConfig.hostUrl} connected');
           return;
         }
         if (connection == _masterConnection) {
@@ -357,7 +368,9 @@ class ConnectionManager {
     var connectionErrors = <Object>[];
     var tasks = <Future<void>>[];
     for (var hostPool in _connectionPool.values) {
-      hostPool.ensureMaxConnections();
+      // Keep startup conservative: connect one socket per host first.
+      // Additional sockets are intentionally not pre-opened to avoid
+      // connection storms during service boot.
       tasks.add(_connectHostPool(hostPool, connectionErrors));
     }
     await Future.wait(tasks);
@@ -493,14 +506,18 @@ class ConnectionManager {
         try {
           await connection.close();
         } catch (error) {
-          _log.warning(() => 'Error closing ${connection.serverConfig.hostUrl}: '
-              '$error');
+          _log.warning(
+              () => 'Error closing ${connection.serverConfig.hostUrl}: '
+                  '$error');
         }
       }
     }
   }
 
   void _warmStandbyConnections() {
+    if (!db.prewarmStandbyConnections) {
+      return;
+    }
     for (var connection in _allConnections) {
       if (!identical(connection, _masterConnection)) {
         _recoverConnectionInBackground(connection);
@@ -755,16 +772,12 @@ class _HostConnectionPool {
   final ConnectionManager manager;
   final ServerConfig _prototypeConfig;
   final List<Connection> _connections = <Connection>[];
+  int _provisioningConnections = 0;
 
   _HostConnectionPool(this.manager, ServerConfig serverConfig)
-      : _prototypeConfig = ServerConfig.clone(serverConfig) {
-    _ensureMinConnections();
-  }
+      : _prototypeConfig = ServerConfig.clone(serverConfig);
 
   int get _maxPoolSize => max(1, _prototypeConfig.maxPoolSize);
-
-  int get _minPoolSize =>
-      min(_maxPoolSize, max(0, _prototypeConfig.minPoolSize));
 
   int get maxConnecting =>
       min(_maxPoolSize, max(1, _prototypeConfig.maxConnecting));
@@ -808,13 +821,45 @@ class _HostConnectionPool {
         selectedPendingCount = pendingCount;
       }
     }
+    _maybeProvisionConnection(
+        selected: selected,
+        selectedPendingCount: selectedPendingCount,
+        requireAuthentication: requireAuthentication);
     return selected;
   }
 
-  void _ensureMinConnections() {
-    while (_connections.length < _minPoolSize) {
-      _connections.add(_newConnection());
+  void _maybeProvisionConnection(
+      {required Connection? selected,
+      required int selectedPendingCount,
+      required bool requireAuthentication}) {
+    if (_connections.length + _provisioningConnections >= _maxPoolSize) {
+      return;
     }
+    if (_provisioningConnections >= maxConnecting) {
+      return;
+    }
+    var scaleThreshold = max(1, _prototypeConfig.maxInFlightRequests ~/ 16);
+    var shouldScale =
+        selected == null || selectedPendingCount >= scaleThreshold;
+    if (!shouldScale) {
+      return;
+    }
+    _provisioningConnections++;
+    var newConnection = _newConnection();
+    _connections.add(newConnection);
+    unawaited(() async {
+      try {
+        await manager._connect(newConnection, authenticate: false);
+        if (requireAuthentication &&
+            manager._requiresAuthentication(newConnection)) {
+          await manager._authenticateConnection(newConnection);
+        }
+      } catch (_) {
+        manager._recoverConnectionInBackground(newConnection);
+      } finally {
+        _provisioningConnections = max(0, _provisioningConnections - 1);
+      }
+    }());
   }
 
   Connection _newConnection() {
