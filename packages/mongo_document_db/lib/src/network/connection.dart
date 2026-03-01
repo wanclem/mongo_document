@@ -244,7 +244,7 @@ class Connection {
     try {
       currentSocket.setOption(SocketOption.tcpNoDelay, true);
     } catch (error) {
-      _log.fine(() => 'Could not enable tcpNoDelay: $error');
+      _log.finer(() => 'Could not enable tcpNoDelay: $error');
     }
     try {
       // SO_KEEPALIVE option id differs on Linux vs BSD/Windows stacks.
@@ -252,7 +252,7 @@ class Connection {
       currentSocket.setRawOption(RawSocketOption.fromBool(
           RawSocketOption.levelSocket, keepAliveOption, true));
     } catch (error) {
-      _log.fine(() => 'Could not enable TCP keepalive: $error');
+      _log.finer(() => 'Could not enable TCP keepalive: $error');
     }
   }
 
@@ -274,7 +274,7 @@ class Connection {
   }
 
   void _sendBuffer() {
-    _log.fine(() =>
+    _log.finer(() =>
         '_sendBuffer hasQueue=${_sendQueue.isNotEmpty} inFlight=$_inFlightRequests');
     if (_sendQueue.isEmpty) {
       return;
@@ -306,7 +306,7 @@ class Connection {
     if (!_closed) {
       _replyCompleters[queryMessage.requestId] = completer;
       _pendingQueries.add(queryMessage.requestId);
-      _log.fine(() => 'Query $queryMessage');
+      _log.finer(() => 'Query $queryMessage');
       _sendQueue.addLast(queryMessage);
       try {
         _sendBuffer();
@@ -336,7 +336,7 @@ class Connection {
       throw const ConnectionException(
           'Invalid state: Connection already closed.');
     }
-    _log.fine(() => 'Execute $mongoMessage');
+    _log.finer(() => 'Execute $mongoMessage');
     _sendQueue.addLast(mongoMessage);
     if (runImmediately) {
       _sendBuffer();
@@ -355,7 +355,7 @@ class Connection {
       if (!_closed) {
         _replyCompleters[modernMessage.requestId] = completer;
         _pendingQueries.add(modernMessage.requestId);
-        _log.fine(() => 'Message $modernMessage');
+        _log.finer(() => 'Message $modernMessage');
         _sendQueue.addLast(modernMessage);
         _sendBuffer();
       } else {
@@ -372,7 +372,7 @@ class Connection {
     if (!_closed) {
       _replyCompleters[modernMessage.requestId] = completer;
       _pendingQueries.add(modernMessage.requestId);
-      _log.fine(() => 'Message $modernMessage');
+      _log.finer(() => 'Message $modernMessage');
       _sendQueue.addLast(modernMessage);
       try {
         _sendBuffer();
@@ -392,7 +392,7 @@ class Connection {
   }
 
   void _receiveReply(MongoResponseMessage reply) {
-    _log.fine(() => reply.toString());
+    _log.finer(() => reply.toString());
     _cancelResponseTimer(reply.responseTo);
     var completer = _replyCompleters.remove(reply.responseTo);
     _pendingQueries.remove(reply.responseTo);
@@ -400,7 +400,7 @@ class Connection {
       _inFlightRequests--;
     }
     if (completer != null) {
-      _log.fine(() => 'Completing $reply');
+      _log.finer(() => 'Completing $reply');
       completer.complete(reply);
     } else {
       if (!_closed) {

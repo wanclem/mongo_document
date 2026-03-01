@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.25
+
+- Reduced default wire-level log noise by demoting per-message tracing (`Message`, `Completing`, `_sendBuffer`, transformer payload traces) from `fine` to `finer`.
+- Kept operational visibility by promoting successful connection lifecycle messages to `info`.
+- Promoted recovery/close failure paths to warning-level logs so actionable issues remain visible.
+
 ## 1.7.24
 
 - Fixed intermittent Atlas socket resets under concurrent command load by serializing in-flight request/reply flow per socket.

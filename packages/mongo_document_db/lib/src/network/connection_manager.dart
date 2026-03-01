@@ -238,7 +238,7 @@ class ConnectionManager {
         }
         throw MongoDartError(documents.first[keyErrmsg]);
       }
-      _log.fine(() => documents.first.toString());
+      _log.finer(() => documents.first.toString());
       var master = documents.first['ismaster'] == true;
       connection.isMaster = master;
       connection.serverCapabilities.getParamsFromIstMaster(documents.first);
@@ -267,7 +267,7 @@ class ConnectionManager {
       }
     }
     if (!authenticate) {
-      _log.fine(() => '$db: ${connection.serverConfig.hostUrl} '
+      _log.info(() => '$db: ${connection.serverConfig.hostUrl} '
           'topology connected');
       return true;
     }
@@ -302,14 +302,14 @@ class ConnectionManager {
       }
       if (connection.serverConfig.userName == null &&
           db._authenticationScheme != AuthenticationScheme.X509) {
-        _log.fine(() => '$db: ${connection.serverConfig.hostUrl} connected');
+        _log.info(() => '$db: ${connection.serverConfig.hostUrl} connected');
         return;
       }
       try {
         await db.authenticate(
             connection.serverConfig.userName, connection.serverConfig.password,
             connection: connection);
-        _log.fine(() => '$db: ${connection.serverConfig.hostUrl} connected');
+        _log.info(() => '$db: ${connection.serverConfig.hostUrl} connected');
       } catch (e) {
         /// Atlas does not currently support SHA_256
         if (e is MongoDartError &&
@@ -323,7 +323,7 @@ class ConnectionManager {
           await db.authenticate(connection.serverConfig.userName!,
               connection.serverConfig.password ?? '',
               connection: connection);
-          _log.fine(() => '$db: ${connection.serverConfig.hostUrl} connected');
+          _log.info(() => '$db: ${connection.serverConfig.hostUrl} connected');
           return;
         }
         if (connection == _masterConnection) {
@@ -454,7 +454,7 @@ class ConnectionManager {
           return;
         }
       } catch (error) {
-        _log.fine(() => 'Master refresh failed: $error');
+        _log.finer(() => 'Master refresh failed: $error');
       }
     }
 
@@ -489,11 +489,11 @@ class ConnectionManager {
 
     for (var hostPool in _connectionPool.values) {
       for (var connection in hostPool.connections) {
-        _log.fine(() => '$db: ${connection.serverConfig.hostUrl} closed');
+        _log.finer(() => '$db: ${connection.serverConfig.hostUrl} closed');
         try {
           await connection.close();
         } catch (error) {
-          _log.fine(() => 'Error closing ${connection.serverConfig.hostUrl}: '
+          _log.warning(() => 'Error closing ${connection.serverConfig.hostUrl}: '
               '$error');
         }
       }
@@ -529,10 +529,10 @@ class ConnectionManager {
           if (!hasAnyConnectedServer) {
             // ignore: unawaited_futures
             db._reconnect().catchError((error) {
-              _log.fine(() => 'Background reconnect failed: $error');
+              _log.warning(() => 'Background reconnect failed: $error');
             });
           } else {
-            _log.fine(() => 'Master recovery waiting for election; '
+            _log.finer(() => 'Master recovery waiting for election; '
                 'connected hosts available, skipping full reconnect.');
           }
         }
@@ -564,7 +564,7 @@ class ConnectionManager {
         if (!_closed &&
             identical(db._connectionManager, this) &&
             !_isExpectedConnectionChurn(error)) {
-          _log.fine(() =>
+          _log.finer(() =>
               'Master promotion probe failed for ${connection.serverConfig.hostUrl}: $error');
         }
       }
@@ -632,7 +632,7 @@ class ConnectionManager {
         try {
           await refreshTopology();
         } catch (error) {
-          _log.fine(() => 'Server selection refresh failed: $error');
+          _log.finer(() => 'Server selection refresh failed: $error');
         }
       }
 
@@ -707,7 +707,7 @@ class ConnectionManager {
               return;
             }
             if (!_isExpectedConnectionChurn(error)) {
-              _log.fine(() =>
+              _log.warning(() =>
                   'Background host recovery failed for ${connection.serverConfig.hostUrl} (attempt $attempt): $error');
             }
             var delayMs = min(100 * (1 << min(attempt, 6)), 5000).toInt();
@@ -719,7 +719,7 @@ class ConnectionManager {
         if (!_closed &&
             identical(db._connectionManager, this) &&
             !_isExpectedConnectionChurn(error)) {
-          _log.fine(() =>
+          _log.warning(() =>
               'Background host recovery aborted for ${connection.serverConfig.hostUrl}: $error');
         }
       } finally {

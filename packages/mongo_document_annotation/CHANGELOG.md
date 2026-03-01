@@ -1,3 +1,9 @@
+## 1.7.25
+
+### Fixed
+
+Aligned dependency to `mongo_document_db: ^1.7.25` to consume updated logging defaults and lifecycle/error signal tuning.
+
 ## 1.7.24
 
 ### Fixed

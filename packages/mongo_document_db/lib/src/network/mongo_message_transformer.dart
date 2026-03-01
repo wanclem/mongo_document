@@ -16,7 +16,7 @@ class MongoMessageHandler {
       } else {
         reply = MongoModernMessage.fromBuffer(buffer);
       }
-      _log.fine(() => reply.toString());
+      _log.finer(() => reply.toString());
       sink.add(reply);
     }
   }

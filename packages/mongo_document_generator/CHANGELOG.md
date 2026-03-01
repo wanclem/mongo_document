@@ -1,3 +1,11 @@
+## 1.7.25
+
+### Fixed
+
+Aligned dependencies:
+- `mongo_document_annotation: ^1.7.25`
+- `mongo_document_db: ^1.7.25`
+
 ## 1.7.24
 
 ### Fixed
