@@ -209,21 +209,6 @@ class _UriParameters {
   static const prewarmStandbyConnections = 'prewarmStandbyConnections';
 }
 
-const Set<int> _retryableServerErrorCodes = <int>{
-  6, // HostUnreachable
-  7, // HostNotFound
-  89, // NetworkTimeout
-  91, // ShutdownInProgress
-  189, // PrimarySteppedDown
-  262, // ExceededTimeLimit
-  9001, // SocketException
-  10107, // NotWritablePrimary / NotMaster
-  11600, // InterruptedAtShutdown
-  11602, // InterruptedDueToReplStateChange
-  13435, // NotPrimaryNoSecondaryOk
-  13436, // NotPrimaryOrSecondary
-};
-
 bool _isServerCommandOk(dynamic okValue) {
   if (okValue is num) {
     return okValue.toDouble() == 1.0;
@@ -235,9 +220,6 @@ bool _isServerCommandOk(dynamic okValue) {
 }
 
 bool _isServerCommandNotOk(dynamic okValue) => !_isServerCommandOk(okValue);
-
-bool _isRetryableServerErrorCode(int? code) =>
-    code != null && _retryableServerErrorCodes.contains(code);
 
 class Db {
   static const mongoDefaultPort = 27017;
@@ -775,7 +757,12 @@ class Db {
     if (error is MongoDartError) {
       var message = error.message;
       var normalized = message.toUpperCase();
-      if (_isRetryableServerErrorCode(error.mongoCode)) {
+      if (RecoverableErrorClassifier.isRetryableServerErrorCode(
+          error.mongoCode)) {
+        return true;
+      }
+      if (RecoverableErrorClassifier.isPrimaryRoutingFailureCodeName(
+          error.errorCodeName)) {
         return true;
       }
       var master = _masterConnection;
@@ -789,10 +776,8 @@ class Db {
       }
       return message == 'No master connection' ||
           message == 'Invalid Connection manager state' ||
-          normalized.contains('NOT WRITABLE PRIMARY') ||
-          normalized.contains('NOTPRIMARY') ||
-          normalized.contains('PRIMARY STEPPED DOWN') ||
-          normalized.contains('NODE IS RECOVERING') ||
+          RecoverableErrorClassifier.isPrimaryRoutingFailureMessage(
+              normalized) ||
           message.contains('Connection already closed') ||
           message.contains('socket has not been created') ||
           normalized.contains('STATE.OPENING') ||
@@ -800,19 +785,7 @@ class Db {
           normalized.contains('CONNECTION MANAGER CLOSED');
     }
     if (error is Map<String, dynamic>) {
-      var message = error[keyErrmsg]?.toString() ?? '';
-      var code = (error[keyCode] as num?)?.toInt();
-      if (_isRetryableServerErrorCode(code)) {
-        return true;
-      }
-      var normalized = message.toUpperCase();
-      return message.contains('connection closed') ||
-          message.contains('ConnectionException') ||
-          normalized.contains('NOT WRITABLE PRIMARY') ||
-          normalized.contains('NOTPRIMARY') ||
-          normalized.contains('PRIMARY STEPPED DOWN') ||
-          normalized.contains('NODE IS RECOVERING') ||
-          message.contains('Socket');
+      return RecoverableErrorClassifier.isRecoverableServerErrorDocument(error);
     }
     return false;
   }

@@ -20,6 +20,7 @@ import 'op_msg_write_operation_test.dart' as write_op;
 import 'write_concern_resilience_test.dart' as write_concern_resilience;
 import 'connection_manager_recovery_policy_test.dart'
     as connection_manager_recovery;
+import 'recoverable_error_classifier_test.dart' as recoverable_error_classifier;
 import 'server_config_pooling_test.dart' as server_config_pooling;
 
 //import 'replica_tests.dart' as replica;
@@ -42,5 +43,6 @@ void main() {
   write_op.main();
   write_concern_resilience.main();
   connection_manager_recovery.main();
+  recoverable_error_classifier.main();
   server_config_pooling.main();
 }

@@ -1,3 +1,9 @@
+## 1.7.27
+
+### Fixed
+
+Aligned dependency to `mongo_document_db: ^1.7.27` to consume failover retry classification hardening for primary stepdown/election windows.
+
 ## 1.7.26
 
 ### Fixed

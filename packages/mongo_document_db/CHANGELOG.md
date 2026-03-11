@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.27
+
+- Treated primary-routing failover errors as recoverable across both legacy and modern MongoDB variants (including legacy `not master and slaveOk=false` wording), so operations trigger topology refresh/retry instead of bubbling immediately.
+- Added code-name based detection for `NotPrimary`/`NotMaster` family errors to reduce dependence on exact error-message text.
+- Added regression tests for failover error classification to prevent silent retries regressions in future releases.
+
 ## 1.7.26
 
 - Improved high-concurrency throughput by batching queued socket writes into larger wire packets.
