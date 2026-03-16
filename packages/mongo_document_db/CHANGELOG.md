@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.28
+
+- Retried recoverable read operations through the full server-selection window instead of stopping after a single replay, reducing user-facing 500s during transient Atlas socket resets.
+- Kept write operations on the conservative single-replay path to avoid broadening duplicate-write risk while still improving read resilience.
+- Added a short per-host provisioning throttle so recovery under connection churn does not fan out into repeated same-host connection storms and excessive `topology connected` / `connected` log noise.
+- Added regression tests covering repeated read recovery, conservative write replay behavior, and host-pool provisioning throttling.
+
 ## 1.7.27
 
 - Treated primary-routing failover errors as recoverable across both legacy and modern MongoDB variants (including legacy `not master and slaveOk=false` wording), so operations trigger topology refresh/retry instead of bubbling immediately.

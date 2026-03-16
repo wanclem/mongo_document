@@ -7,7 +7,7 @@ It scans Dart model files and emits typed CRUD/query helpers into `*.mongo_docum
 
 ```yaml
 dev_dependencies:
-  mongo_document: ^1.7.19
+  mongo_document: ^1.7.28
   build_runner: ^2.10.3
 ```
 
@@ -15,7 +15,7 @@ Runtime annotations/helpers must also be installed:
 
 ```yaml
 dependencies:
-  mongo_document_annotation: ^1.7.19
+  mongo_document_annotation: ^1.7.28
 ```
 
 ## Builder Behavior

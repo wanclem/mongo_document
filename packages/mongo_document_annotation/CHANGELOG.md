@@ -1,3 +1,9 @@
+## 1.7.28
+
+### Fixed
+
+Aligned dependency to `mongo_document_db: ^1.7.28` to consume improved primary-election recovery, read retry resilience, and connection provisioning throttling.
+
 ## 1.7.27
 
 ### Fixed

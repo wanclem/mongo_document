@@ -698,6 +698,42 @@ class Db {
     await _reconnect();
   }
 
+  Duration _operationReplayBackoff(int replayAttempt) {
+    var delayMs = 50 * (1 << min(replayAttempt - 1, 4));
+    return Duration(milliseconds: min(delayMs, 500).toInt());
+  }
+
+  Future<void> _recoverAfterOperationError(ConnectionManager? manager) async {
+    if (state == State.open &&
+        manager != null &&
+        identical(_connectionManager, manager)) {
+      var hasConnectedServer = manager.hasAnyConnectedServer;
+      try {
+        await manager.refreshTopology();
+        await manager.waitForMaster(
+            timeout: _serverSelectionProbeTimeout(maxMilliseconds: 3000));
+        if (_hasHealthyMaster()) {
+          return;
+        }
+      } catch (_) {}
+      if (hasConnectedServer) {
+        try {
+          await manager.waitForMaster(
+              timeout: _serverSelectionProbeTimeout(maxMilliseconds: 5000));
+          if (_hasHealthyMaster()) {
+            return;
+          }
+        } catch (_) {}
+      }
+    }
+    var reconnectInProgress = _reconnectInProgress;
+    if (state == State.opening && reconnectInProgress != null) {
+      await reconnectInProgress;
+    } else {
+      await _reconnect();
+    }
+  }
+
   Future<void> _runHeartbeat() async {
     if (_heartbeatInProgress || _explicitlyClosed || state != State.open) {
       return;
@@ -834,50 +870,56 @@ class Db {
   }
 
   Future<T> _runWithReconnect<T>(Future<T> Function() operation,
-      {required bool allowReconnect}) async {
+      {required bool allowReconnect,
+      bool allowReplayUntilSelectionTimeout = false}) async {
     await waitForOpenIfReconnecting();
     if (allowReconnect) {
       await _waitForMasterSelection();
     }
 
+    final replayRecoverableErrors =
+        allowReconnect && allowReplayUntilSelectionTimeout;
+    final replayDeadline = replayRecoverableErrors
+        ? DateTime.now().add(_serverSelectionTimeout)
+        : null;
+    var replayAttempt = 0;
+
     try {
       return await operation();
     } catch (error) {
-      if (!allowReconnect ||
-          _explicitlyClosed ||
-          !_isRecoverableConnectionError(error)) {
-        rethrow;
-      }
-      var manager = _connectionManager;
-      if (state == State.open &&
-          manager != null &&
-          identical(_connectionManager, manager)) {
-        var hasConnectedServer = manager.hasAnyConnectedServer;
-        try {
-          await manager.refreshTopology();
-          await manager.waitForMaster(
-              timeout: _serverSelectionProbeTimeout(maxMilliseconds: 3000));
-          if (_hasHealthyMaster()) {
-            return operation();
+      Object currentError = error;
+      while (true) {
+        if (!allowReconnect ||
+            _explicitlyClosed ||
+            !_isRecoverableConnectionError(currentError)) {
+          rethrow;
+        }
+        if (replayDeadline != null && DateTime.now().isAfter(replayDeadline)) {
+          rethrow;
+        }
+        replayAttempt++;
+        await _recoverAfterOperationError(_connectionManager);
+        if (!replayRecoverableErrors) {
+          return operation();
+        }
+        var backoff = _operationReplayBackoff(replayAttempt);
+        if (replayDeadline != null && backoff > Duration.zero) {
+          var remaining = replayDeadline.difference(DateTime.now());
+          if (remaining <= Duration.zero) {
+            backoff = Duration.zero;
+          } else if (backoff > remaining) {
+            backoff = remaining;
           }
-        } catch (_) {}
-        if (hasConnectedServer) {
-          try {
-            await manager.waitForMaster(
-                timeout: _serverSelectionProbeTimeout(maxMilliseconds: 5000));
-            if (_hasHealthyMaster()) {
-              return operation();
-            }
-          } catch (_) {}
+        }
+        if (backoff > Duration.zero) {
+          await Future.delayed(backoff);
+        }
+        try {
+          return await operation();
+        } catch (nextError) {
+          currentError = nextError;
         }
       }
-      var reconnectInProgress = _reconnectInProgress;
-      if (state == State.opening && reconnectInProgress != null) {
-        await reconnectInProgress;
-      } else {
-        await _reconnect();
-      }
-      return operation();
     }
   }
 
@@ -951,7 +993,9 @@ class Db {
               .selectOperationalConnection(requireAuthentication: true);
 
       return locConnection.query(queryMessage);
-    }, allowReconnect: connection == null);
+    },
+        allowReconnect: connection == null,
+        allowReplayUntilSelectionTimeout: connection == null);
   }
 
   void executeMessage(MongoMessage message, WriteConcern? writeConcern,
@@ -970,7 +1014,9 @@ class Db {
   }
 
   Future<Map<String, dynamic>> executeModernMessage(MongoModernMessage message,
-      {Connection? connection, bool skipStateCheck = false}) async {
+      {Connection? connection,
+      bool skipStateCheck = false,
+      bool replayReadsUntilSelectionTimeout = false}) async {
     return _runWithReconnect(() async {
       var selectedConnection = connection;
       if (skipStateCheck) {
@@ -1004,7 +1050,11 @@ class Db {
       return section.payload.content;
     },
         allowReconnect:
-            connection == null && !skipStateCheck && !_explicitlyClosed);
+            connection == null && !skipStateCheck && !_explicitlyClosed,
+        allowReplayUntilSelectionTimeout: replayReadsUntilSelectionTimeout &&
+            connection == null &&
+            !skipStateCheck &&
+            !_explicitlyClosed);
   }
 
   Future open(
@@ -1109,7 +1159,8 @@ class Db {
       state == State.open && (_masterConnection?.connected ?? false);
 
   Future<Map<String, dynamic>> executeDbCommand(MongoMessage message,
-      {Connection? connection}) async {
+      {Connection? connection,
+      bool replayReadsUntilSelectionTimeout = false}) async {
     return _runWithReconnect(() async {
       var locConnection = connection ??
           _connectionManager!
@@ -1148,7 +1199,16 @@ class Db {
       throw firstRepliedDocument;
       //}
       //return result.future;
-    }, allowReconnect: connection == null && !_explicitlyClosed);
+    },
+        allowReconnect: connection == null && !_explicitlyClosed,
+        allowReplayUntilSelectionTimeout: replayReadsUntilSelectionTimeout &&
+            connection == null &&
+            !_explicitlyClosed);
+  }
+
+  /// Visible for testing: inject a custom connection manager.
+  void debugAttachConnectionManager(ConnectionManager manager) {
+    _connectionManager = manager;
   }
 
   bool documentIsNotAnError(dynamic firstRepliedDocument) =>
@@ -1223,12 +1283,14 @@ class Db {
 
   Future<Map<String, dynamic>> getBuildInfo({Connection? connection}) {
     return executeDbCommand(DbCommand.createBuildInfoCommand(this),
-        connection: connection);
+        connection: connection,
+        replayReadsUntilSelectionTimeout: connection == null);
   }
 
   Future<Map<String, dynamic>> isMaster({Connection? connection}) =>
       executeDbCommand(DbCommand.createIsMasterCommand(this),
-          connection: connection);
+          connection: connection,
+          replayReadsUntilSelectionTimeout: connection == null);
 
   Future<Map<String, dynamic>> wait() => getLastError();
 
@@ -1251,7 +1313,8 @@ class Db {
           await DbAdminCommandOperation(this, {'listDatabases': 1}).execute();
     } else {
       commandResult = await executeDbCommand(
-          DbCommand.createQueryAdminCommand({'listDatabases': 1}));
+          DbCommand.createQueryAdminCommand({'listDatabases': 1}),
+          replayReadsUntilSelectionTimeout: true);
     }
 
     var result = [];

@@ -5,9 +5,9 @@ void main() {
   test('server config exposes pool settings with safe defaults', () {
     var config = ServerConfig();
 
-    expect(config.maxPoolSize, equals(4));
-    expect(config.minPoolSize, equals(1));
-    expect(config.maxConnecting, equals(2));
+    expect(config.maxPoolSize, equals(20));
+    expect(config.minPoolSize, equals(0));
+    expect(config.maxConnecting, equals(4));
     expect(config.waitQueueTimeout, isNull);
     expect(config.maxConnectionIdleTime, isNull);
     expect(config.maxConnectionLifeTime, isNull);

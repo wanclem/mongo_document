@@ -266,8 +266,10 @@ class DbCollection {
   // Todo - missing modern version
   Future<int> legacyCount([dynamic selector]) {
     return db
-        .executeDbCommand(DbCommand.createCountCommand(
-            db, collectionName, _selectorBuilder2Map(selector)))
+        .executeDbCommand(
+            DbCommand.createCountCommand(
+                db, collectionName, _selectorBuilder2Map(selector)),
+            replayReadsUntilSelectionTimeout: true)
         .then((reply) {
       return Future.value((reply['n'] as num?)?.toInt());
     });
@@ -286,15 +288,17 @@ class DbCollection {
 
   /// Old version to be used on MongoDb versions prior to 3.6
   Future<Map<String, dynamic>> legacyDistinct(String field, [selector]) async =>
-      db.executeDbCommand(DbCommand.createDistinctCommand(
-          db, collectionName, field, _selectorBuilder2Map(selector)));
+      db.executeDbCommand(
+          DbCommand.createDistinctCommand(
+              db, collectionName, field, _selectorBuilder2Map(selector)),
+          replayReadsUntilSelectionTimeout: true);
 
   /// Old version to be used on MongoDb versions prior to 3.6
   Future<Map<String, dynamic>> aggregate(List pipeline,
       {bool allowDiskUse = false, Map<String, Object>? cursor}) {
     var cmd = DbCommand.createAggregateCommand(db, collectionName, pipeline,
         allowDiskUse: allowDiskUse, cursor: cursor);
-    return db.executeDbCommand(cmd);
+    return db.executeDbCommand(cmd, replayReadsUntilSelectionTimeout: true);
   }
 
   /// Executes an aggregation pipeline

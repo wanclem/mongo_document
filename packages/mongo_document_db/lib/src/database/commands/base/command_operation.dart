@@ -101,7 +101,9 @@ class CommandOperation extends OperationBase {
     var modernMessage = MongoModernMessage(command);
 
     return db.executeModernMessage(modernMessage,
-        connection: connection, skipStateCheck: skipStateCheck);
+        connection: connection,
+        skipStateCheck: skipStateCheck,
+        replayReadsUntilSelectionTimeout: !hasAspect(Aspect.writeOperation));
   }
 }
 

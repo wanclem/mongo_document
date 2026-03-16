@@ -766,13 +766,34 @@ class ConnectionManager {
     }
     return connection;
   }
+
+  /// Visible for testing: seeds a specific connection into the host pool.
+  void debugAddConnection(Connection connection) {
+    var hostPool = _connectionPool.putIfAbsent(connection.serverConfig.hostUrl,
+        () => _HostConnectionPool(this, connection.serverConfig));
+    if (!hostPool._connections.contains(connection)) {
+      hostPool._connections.add(connection);
+    }
+  }
+
+  /// Visible for testing: overrides the current primary connection.
+  void debugSetMasterConnection(Connection? connection) {
+    _masterConnection = connection;
+  }
+
+  /// Visible for testing: reports pooled connection count for a host.
+  int debugConnectionCountForHost(String hostUrl) {
+    return _connectionPool[hostUrl]?._connections.length ?? 0;
+  }
 }
 
 class _HostConnectionPool {
   final ConnectionManager manager;
   final ServerConfig _prototypeConfig;
   final List<Connection> _connections = <Connection>[];
+  static const Duration _provisionThrottleWindow = Duration(milliseconds: 100);
   int _provisioningConnections = 0;
+  DateTime? _lastProvisionStartedAt;
 
   _HostConnectionPool(this.manager, ServerConfig serverConfig)
       : _prototypeConfig = ServerConfig.clone(serverConfig);
@@ -844,6 +865,13 @@ class _HostConnectionPool {
     if (!shouldScale) {
       return;
     }
+    var now = DateTime.now();
+    var lastProvisionStartedAt = _lastProvisionStartedAt;
+    if (lastProvisionStartedAt != null &&
+        now.difference(lastProvisionStartedAt) < _provisionThrottleWindow) {
+      return;
+    }
+    _lastProvisionStartedAt = now;
     _provisioningConnections++;
     var newConnection = _newConnection();
     _connections.add(newConnection);
