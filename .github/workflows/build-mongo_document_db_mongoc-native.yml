@@ -27,7 +27,7 @@ jobs:
         include:
           - os: ubuntu-22.04
             abi: linux_x64
-          - os: macos-13
+          - os: macos-15-intel
             abi: macos_x64
           - os: macos-latest
             abi: macos_arm64
