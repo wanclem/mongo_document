@@ -41,6 +41,9 @@ class ModernCursor {
     } else if (operation is ChangeStreamOperation) {
       isChangeStream = tailable = awaitData = true;
     }
+    if (tailable || awaitData || isChangeStream) {
+      operation.disableSpeculativeReadTimeout = true;
+    }
     var internalBatchSize = batchSize;
     if (internalBatchSize == null) {
       var operationBatchSize = operation.options[keyBatchSize] as int?;
@@ -244,6 +247,9 @@ class ModernCursor {
           db: db,
           collectionName: collectionName,
           getMoreOptions: GetMoreOptions(batchSize: _batchSize));
+      if (tailable || awaitData || isChangeStream) {
+        command.disableSpeculativeReadTimeout = true;
+      }
       result = await command.execute();
     }
     if (result == null) {

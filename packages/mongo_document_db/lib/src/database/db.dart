@@ -1091,7 +1091,8 @@ class Db {
   Future<Map<String, dynamic>> executeModernMessage(MongoModernMessage message,
       {Connection? connection,
       bool skipStateCheck = false,
-      bool replayReadsUntilSelectionTimeout = false}) async {
+      bool replayReadsUntilSelectionTimeout = false,
+      bool disableSpeculativeReadTimeout = false}) async {
     return _runWithReconnect(() async {
       var selectedConnection = connection;
       if (skipStateCheck) {
@@ -1117,16 +1118,26 @@ class Db {
 
       var locConnection =
           selectedConnection ?? _masterConnectionVerifiedAnyState;
+      var operationDescription = _describeModernMessage(message);
 
-      var response = replayReadsUntilSelectionTimeout
-          ? await _runReadWithSpeculativeTimeout(
-              () => locConnection.executeModernMessage(message),
-              connection: locConnection)
-          : await locConnection.executeModernMessage(message);
+      var response =
+          replayReadsUntilSelectionTimeout && !disableSpeculativeReadTimeout
+              ? await _runReadWithSpeculativeTimeout(
+                  () => locConnection.executeModernMessage(message),
+                  connection: locConnection,
+                  operationDescription: operationDescription)
+              : await locConnection.executeModernMessage(message);
 
       var section = response.sections.firstWhere((Section section) =>
           section.payloadType == MongoModernMessage.basePayloadType);
-      return section.payload.content;
+      var payload = section.payload.content;
+      if (_isAuthenticationStateFailure(payload, locConnection)) {
+        _invalidateConnectionAuthentication(
+            locConnection, payload[keyErrmsg]?.toString());
+        throw ConnectionException(payload[keyErrmsg]?.toString() ??
+            'Command requires authentication');
+      }
+      return payload;
     },
         allowReconnect:
             connection == null && !skipStateCheck && !_explicitlyClosed,
@@ -1137,31 +1148,73 @@ class Db {
   }
 
   Future<T> _runReadWithSpeculativeTimeout<T>(Future<T> Function() operation,
-      {required Connection connection}) async {
+      {required Connection connection, String? operationDescription}) async {
     var timeout = _effectiveSpeculativeReadTimeout(connection);
     if (timeout == null) {
       return operation();
     }
+    var timeoutMessage = _formatSpeculativeReadTimeoutMessage(
+        timeout, operationDescription: operationDescription);
     try {
       return await operation().timeout(timeout);
     } on TimeoutException {
       if (!connection._closed && connection.connected) {
         unawaited(connection._closeSocketOnError(
-            socketError:
-                'Read operation timed out after ${timeout.inMilliseconds}ms'));
+            socketError: timeoutMessage));
       } else if (!connection._closed) {
         unawaited(connection.close());
       }
-      throw ConnectionException(
-          'Read operation timed out after ${timeout.inMilliseconds}ms');
+      throw ConnectionException(timeoutMessage);
     }
+  }
+
+  String _formatSpeculativeReadTimeoutMessage(Duration timeout,
+      {String? operationDescription}) {
+    var message =
+        'Read operation timed out after ${timeout.inMilliseconds}ms';
+    if (operationDescription == null || operationDescription.isEmpty) {
+      return message;
+    }
+    return '$message ($operationDescription)';
+  }
+
+  String? _describeModernMessage(MongoModernMessage message) {
+    try {
+      var section = message.sections.firstWhere((Section section) =>
+          section.payloadType == MongoModernMessage.basePayloadType);
+      var payload = section.payload.content;
+      if (payload.isEmpty) {
+        return null;
+      }
+      var commandName = payload.keys.first;
+      var collectionName = _extractCommandCollectionName(payload, commandName);
+      if (collectionName == null || collectionName.isEmpty) {
+        return commandName;
+      }
+      return '$commandName $collectionName';
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? _extractCommandCollectionName(
+      Map<String, dynamic> payload, String commandName) {
+    var directCollection = payload[commandName];
+    if (directCollection is String && directCollection.isNotEmpty) {
+      return directCollection;
+    }
+    var indirectCollection = payload[keyCollection];
+    if (indirectCollection is String && indirectCollection.isNotEmpty) {
+      return indirectCollection;
+    }
+    return null;
   }
 
   Duration? _speculativeReadTimeout(Connection connection) {
     if (connection.serverConfig.socketTimeout != null) {
       return null;
     }
-    return const Duration(milliseconds: 1500);
+    return const Duration(milliseconds: 3000);
   }
 
   Duration? _effectiveSpeculativeReadTimeout(Connection connection) {
@@ -1178,6 +1231,30 @@ class Db {
       return Duration.zero;
     }
     return remaining < timeout ? remaining : timeout;
+  }
+
+  bool _isAuthenticationStateFailure(
+      Map<String, dynamic> response, Connection connection) {
+    var authRequired = _authenticationScheme == AuthenticationScheme.X509 ||
+        filled(connection.serverConfig.userName);
+    return authRequired &&
+        RecoverableErrorClassifier.isAuthenticationStateFailureDocument(
+            response);
+  }
+
+  void _invalidateConnectionAuthentication(
+      Connection connection, String? reason) {
+    connection.serverConfig.isAuthenticated = false;
+    if (connection._closed) {
+      return;
+    }
+    var socketError =
+        reason ?? 'Server requires re-authentication for this connection.';
+    if (connection.connected) {
+      unawaited(connection._closeSocketOnError(socketError: socketError));
+    } else {
+      unawaited(connection.close());
+    }
   }
 
   Future open(
@@ -1299,6 +1376,12 @@ class Db {
         };
       }
       var firstRepliedDocument = replyMessage.documents!.first;
+      if (_isAuthenticationStateFailure(firstRepliedDocument, locConnection)) {
+        _invalidateConnectionAuthentication(
+            locConnection, firstRepliedDocument[keyErrmsg]?.toString());
+        throw ConnectionException(firstRepliedDocument[keyErrmsg]?.toString() ??
+            'Command requires authentication');
+      }
       /*var errorMessage = '';
 
        if (replyMessage.documents.isEmpty) {

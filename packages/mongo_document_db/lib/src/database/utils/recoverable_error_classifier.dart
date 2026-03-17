@@ -54,6 +54,18 @@ class RecoverableErrorClassifier {
         normalized.contains('SOCKET');
   }
 
+  static bool isAuthenticationRequiredMessage(String message) {
+    var normalized = message.toUpperCase();
+    return normalized.contains('REQUIRES AUTHENTICATION') ||
+        normalized.contains('AUTHENTICATION REQUIRED');
+  }
+
+  static bool isAuthenticationStateFailureDocument(Map<String, dynamic> error) {
+    var code = (error[keyCode] as num?)?.toInt();
+    var message = error[keyErrmsg]?.toString() ?? '';
+    return code == 13 && isAuthenticationRequiredMessage(message);
+  }
+
   static bool isRecoverableServerErrorDocument(Map<String, dynamic> error) {
     var code = (error[keyCode] as num?)?.toInt();
     if (isRetryableServerErrorCode(code)) {
@@ -63,7 +75,8 @@ class RecoverableErrorClassifier {
       return true;
     }
     var message = error[keyErrmsg]?.toString() ?? '';
-    return isConnectionLifecycleFailureMessage(message) ||
+    return isAuthenticationStateFailureDocument(error) ||
+        isConnectionLifecycleFailureMessage(message) ||
         isPrimaryRoutingFailureMessage(message);
   }
 }

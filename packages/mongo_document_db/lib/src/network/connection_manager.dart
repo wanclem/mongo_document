@@ -638,7 +638,7 @@ class ConnectionManager {
   }
 
   Future<bool> _tryPromoteConnectedMaster({Connection? excluding}) async {
-    for (var connection in _allConnections) {
+    for (var connection in [..._allConnections]) {
       if (identical(connection, excluding) ||
           connection._closed ||
           !connection.connected) {

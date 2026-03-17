@@ -18,11 +18,16 @@ class CommandOperation extends OperationBase {
   late Db db;
   DbCollection? collection;
   Map<String, Object>? command;
+  bool disableSpeculativeReadTimeout;
   //String namespace;
   ReadPreference? readPreference;
 
   CommandOperation(Db? db, Map<String, Object> options,
-      {this.collection, this.command, Aspect? aspect, Connection? connection})
+      {this.collection,
+      this.command,
+      this.disableSpeculativeReadTimeout = false,
+      Aspect? aspect,
+      Connection? connection})
       : super(options, connection: connection, aspects: aspect) {
     db ??= collection?.db;
     //aspect ??= Aspect.noInheritOptions;
@@ -103,7 +108,8 @@ class CommandOperation extends OperationBase {
     return db.executeModernMessage(modernMessage,
         connection: connection,
         skipStateCheck: skipStateCheck,
-        replayReadsUntilSelectionTimeout: !hasAspect(Aspect.writeOperation));
+        replayReadsUntilSelectionTimeout: !hasAspect(Aspect.writeOperation),
+        disableSpeculativeReadTimeout: disableSpeculativeReadTimeout);
   }
 }
 

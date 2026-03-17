@@ -11,7 +11,9 @@ class ServerStatusCommand extends CommandOperation {
       Connection? connection})
       : super(db,
             <String, Object>{...?serverStatusOptions?.options, ...?rawOptions},
-            command: _command, connection: connection);
+            command: _command,
+            connection: connection,
+            disableSpeculativeReadTimeout: true);
 
   Future<ServerStatusResult> executeDocument() async {
     var result = await super.execute();

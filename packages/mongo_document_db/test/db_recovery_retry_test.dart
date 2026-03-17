@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:fixnum/fixnum.dart';
 import 'package:mongo_document_db/mongo_document_db.dart';
 import 'package:mongo_document_db/src/database/commands/base/command_operation.dart';
 import 'package:mongo_document_db/src/database/commands/base/operation_base.dart';
+import 'package:mongo_document_db/src/database/cursor/modern_cursor.dart';
 import 'package:mongo_document_db/src/database/message/mongo_modern_message.dart';
 import 'package:test/test.dart';
 
@@ -66,6 +68,48 @@ void main() {
       expect(connection.modernAttempts, equals(3));
       expect(manager.refreshTopologyCount, equals(2));
       expect(manager.waitForMasterCount, equals(2));
+    });
+
+    test('moderately slow CRUD reads are allowed up to 3 seconds', () async {
+      var connection = _ScriptedConnection(
+        manager,
+        modernDelay: const Duration(milliseconds: 1600),
+      );
+      manager.bind(connection);
+
+      var result = await CommandOperation(
+        db,
+        <String, Object>{},
+        command: <String, Object>{'ping': 1},
+      ).execute();
+
+      expect(result['ok'], equals(1.0));
+      expect(connection.modernAttempts, equals(1));
+    });
+
+    test('modern reads recover when a pooled socket loses authentication',
+        () async {
+      var staleConnection = _ScriptedConnection(
+        manager,
+        modernAuthRequiredFailuresRemaining: 1,
+      );
+      var recoveredConnection = _ScriptedConnection(manager)..isMaster = true;
+      manager.bind(staleConnection);
+      manager.promotedConnection = recoveredConnection;
+      manager.promoteOnRefreshTopology = true;
+
+      var result = await CommandOperation(
+        db,
+        <String, Object>{},
+        command: <String, Object>{'ping': 1},
+      ).execute();
+
+      expect(result['ok'], equals(1.0));
+      expect(staleConnection.connected, isFalse);
+      expect(staleConnection.serverConfig.isAuthenticated, isFalse);
+      expect(staleConnection.modernAttempts, equals(1));
+      expect(recoveredConnection.modernAttempts, equals(1));
+      expect(manager.refreshTopologyCount, equals(1));
     });
 
     test('write command operations keep conservative single replay behavior',
@@ -437,6 +481,75 @@ void main() {
       expect(secondary.connectCalls, greaterThanOrEqualTo(1));
       expect(secondary.helloRequests, greaterThanOrEqualTo(1));
     });
+
+    test('slow background serverStatus does not evict the primary', () async {
+      var db = Db('mongodb://127.0.0.1:27017/test-mongo-dart');
+      db.databaseName = 'test-mongo-dart';
+      var manager = ConnectionManager(db);
+      db.debugAttachConnectionManager(manager);
+      addTearDown(() async {
+        await manager.close();
+      });
+
+      var primary = _OpenProbeConnection(
+        manager,
+        isPrimaryOnHello: true,
+        connectDelay: const Duration(milliseconds: 15),
+        helloDelay: const Duration(milliseconds: 15),
+        serverStatusDelay: const Duration(milliseconds: 3500),
+        config: ServerConfig(
+          host: 'primary.example.test',
+          port: 27017,
+          maxPoolSize: 1,
+          minPoolSize: 1,
+          maxConnecting: 1,
+        ),
+      );
+      manager.debugAddConnection(primary);
+
+      await manager.open(WriteConcern.acknowledged);
+      await Future.delayed(const Duration(milliseconds: 3200));
+
+      expect(db.state, equals(State.open));
+      expect(manager.masterConnection, same(primary));
+      expect(primary.connected, isTrue);
+      expect(primary.serverStatusRequests, equals(1));
+    });
+  });
+
+  group('Long-lived cursor reads', () {
+    late Db db;
+    late _ScriptedConnectionManager manager;
+
+    setUp(() {
+      db = Db('mongodb://127.0.0.1:27017/test-mongo-dart');
+      db.databaseName = 'test-mongo-dart';
+      db.state = State.open;
+      manager = _ScriptedConnectionManager(db);
+      db.debugAttachConnectionManager(manager);
+    });
+
+    test('awaitData getMore is not force-closed by speculative timeout',
+        () async {
+      var connection = _ScriptedConnection(
+        manager,
+        getMoreDelay: const Duration(milliseconds: 1600),
+        getMoreCursorId: Int64(42),
+      );
+      manager.bind(connection);
+
+      var cursor = ModernCursor.fromOpenId(
+        db.collection('accounts'),
+        Int64(42),
+        tailable: true,
+        awaitData: true,
+      );
+
+      var result = await cursor.nextObject();
+
+      expect(result, isNull);
+      expect(connection.modernAttempts, equals(1));
+    });
   });
 }
 
@@ -488,9 +601,14 @@ class _ScriptedConnection extends Connection {
   _ScriptedConnection(ConnectionManager manager,
       {this.queryFailuresRemaining = 0,
       this.modernFailuresRemaining = 0,
+      this.modernAuthRequiredFailuresRemaining = 0,
+      this.modernDelay = Duration.zero,
+      this.getMoreDelay = Duration.zero,
+      this.getMoreCursorId,
       int pendingRequestCount = 0,
       ServerConfig? config})
       : _pendingRequestCount = pendingRequestCount,
+        _databaseName = manager.db.databaseName ?? 'test-mongo-dart',
         super(
           manager,
           config ??
@@ -511,9 +629,14 @@ class _ScriptedConnection extends Connection {
 
   int queryFailuresRemaining;
   int modernFailuresRemaining;
+  int modernAuthRequiredFailuresRemaining;
+  final Duration modernDelay;
+  final Duration getMoreDelay;
+  final Int64? getMoreCursorId;
   int queryAttempts = 0;
   int modernAttempts = 0;
   final int _pendingRequestCount;
+  final String _databaseName;
 
   @override
   int get pendingRequestCount => _pendingRequestCount;
@@ -538,6 +661,36 @@ class _ScriptedConnection extends Connection {
   Future<MongoModernMessage> executeModernMessage(
       MongoModernMessage modernMessage) async {
     modernAttempts++;
+    var command = modernMessage.sections
+        .firstWhere((section) =>
+            section.payloadType == MongoModernMessage.basePayloadType)
+        .payload
+        .content;
+    if (command.containsKey('getMore') && getMoreCursorId != null) {
+      if (getMoreDelay > Duration.zero) {
+        await Future.delayed(getMoreDelay);
+      }
+      return MongoModernMessage(<String, Object>{
+        'ok': 1.0,
+        'cursor': <String, Object>{
+          'id': getMoreCursorId!,
+          'ns': '$_databaseName.accounts',
+          'nextBatch': <Map<String, dynamic>>[],
+        },
+      });
+    }
+    if (modernAuthRequiredFailuresRemaining > 0) {
+      modernAuthRequiredFailuresRemaining--;
+      return MongoModernMessage(<String, Object>{
+        'ok': 0.0,
+        'errmsg': 'Command find requires authentication',
+        'code': 13,
+        'codeName': 'Unauthorized',
+      });
+    }
+    if (modernDelay > Duration.zero) {
+      await Future.delayed(modernDelay);
+    }
     if (modernFailuresRemaining > 0) {
       modernFailuresRemaining--;
       throw const ConnectionException(
