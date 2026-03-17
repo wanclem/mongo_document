@@ -1,3 +1,9 @@
+## 1.7.29
+
+### Fixed
+
+Aligned dependency to `mongo_document_db: ^1.7.29` to consume the bounded read-retry latency fix for the `1.7.28` query slowdown regression.
+
 ## 1.7.28
 
 ### Fixed

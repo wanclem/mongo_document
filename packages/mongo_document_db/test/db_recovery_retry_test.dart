@@ -49,6 +49,24 @@ void main() {
       expect(manager.waitForMasterCount, equals(2));
     });
 
+    test('read retries stay bounded when topology remains healthy', () async {
+      var connection = _ScriptedConnection(manager, modernFailuresRemaining: 5);
+      manager.bind(connection);
+
+      await expectLater(
+        CommandOperation(
+          db,
+          <String, Object>{},
+          command: <String, Object>{'ping': 1},
+        ).execute(),
+        throwsA(isA<ConnectionException>()),
+      );
+
+      expect(connection.modernAttempts, equals(3));
+      expect(manager.refreshTopologyCount, equals(2));
+      expect(manager.waitForMasterCount, equals(2));
+    });
+
     test('write command operations keep conservative single replay behavior',
         () async {
       var connection = _ScriptedConnection(manager, modernFailuresRemaining: 2);

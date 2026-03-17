@@ -223,6 +223,7 @@ bool _isServerCommandNotOk(dynamic okValue) => !_isServerCommandOk(okValue);
 
 class Db {
   static const mongoDefaultPort = 27017;
+  static const _maxHealthyTopologyReadReplays = 2;
   final _log = Logger('Db');
   final List<String> _uriList = <String>[];
 
@@ -703,34 +704,44 @@ class Db {
     return Duration(milliseconds: min(delayMs, 500).toInt());
   }
 
-  Future<void> _recoverAfterOperationError(ConnectionManager? manager) async {
+  Future<void> _recoverAfterOperationError(ConnectionManager? manager,
+      {DateTime? replayDeadline}) async {
     if (state == State.open &&
         manager != null &&
         identical(_connectionManager, manager)) {
       var hasConnectedServer = manager.hasAnyConnectedServer;
       try {
         await manager.refreshTopology();
-        await manager.waitForMaster(
-            timeout: _serverSelectionProbeTimeout(maxMilliseconds: 3000));
+        var refreshWaitTimeout = _serverSelectionProbeTimeout(
+            maxMilliseconds: 3000, deadline: replayDeadline);
+        if (refreshWaitTimeout > Duration.zero) {
+          await manager.waitForMaster(timeout: refreshWaitTimeout);
+        }
         if (_hasHealthyMaster()) {
           return;
         }
       } catch (_) {}
       if (hasConnectedServer) {
         try {
-          await manager.waitForMaster(
-              timeout: _serverSelectionProbeTimeout(maxMilliseconds: 5000));
+          var promotionWaitTimeout = _serverSelectionProbeTimeout(
+              maxMilliseconds: 5000, deadline: replayDeadline);
+          if (promotionWaitTimeout > Duration.zero) {
+            await manager.waitForMaster(timeout: promotionWaitTimeout);
+          }
           if (_hasHealthyMaster()) {
             return;
           }
         } catch (_) {}
       }
     }
+    if (replayDeadline != null && !DateTime.now().isBefore(replayDeadline)) {
+      return;
+    }
     var reconnectInProgress = _reconnectInProgress;
     if (state == State.opening && reconnectInProgress != null) {
       await reconnectInProgress;
     } else {
-      await _reconnect();
+      await _reconnect(deadline: replayDeadline);
     }
   }
 
@@ -859,13 +870,26 @@ class Db {
     await manager.waitForMaster(timeout: _serverSelectionProbeTimeout());
   }
 
-  Duration _serverSelectionProbeTimeout({int maxMilliseconds = 1500}) {
+  Duration _serverSelectionProbeTimeout(
+      {int maxMilliseconds = 1500, DateTime? deadline}) {
     var timeoutMs = _serverSelectionTimeout.inMilliseconds;
     if (timeoutMs <= 0) {
-      return const Duration(milliseconds: 100);
+      timeoutMs = 100;
     }
     timeoutMs = min(timeoutMs, maxMilliseconds);
-    timeoutMs = max(timeoutMs, 100);
+    if (deadline != null) {
+      var remainingMs = deadline.difference(DateTime.now()).inMilliseconds;
+      if (remainingMs <= 0) {
+        return Duration.zero;
+      }
+      timeoutMs = min(timeoutMs, remainingMs);
+    }
+    if (timeoutMs <= 0) {
+      return Duration.zero;
+    }
+    if (deadline == null || timeoutMs >= 100) {
+      timeoutMs = max(timeoutMs, 100);
+    }
     return Duration(milliseconds: timeoutMs.toInt());
   }
 
@@ -883,24 +907,43 @@ class Db {
         ? DateTime.now().add(_serverSelectionTimeout)
         : null;
     var replayAttempt = 0;
+    var healthyTopologyReplayCount = 0;
 
     try {
       return await operation();
-    } catch (error) {
+    } catch (error, stackTrace) {
       Object currentError = error;
+      StackTrace currentStackTrace = stackTrace;
       while (true) {
         if (!allowReconnect ||
             _explicitlyClosed ||
             !_isRecoverableConnectionError(currentError)) {
-          rethrow;
+          Error.throwWithStackTrace(currentError, currentStackTrace);
         }
         if (replayDeadline != null && DateTime.now().isAfter(replayDeadline)) {
-          rethrow;
+          Error.throwWithStackTrace(currentError, currentStackTrace);
+        }
+        if (replayRecoverableErrors &&
+            healthyTopologyReplayCount >= _maxHealthyTopologyReadReplays &&
+            _hasHealthyMaster()) {
+          Error.throwWithStackTrace(currentError, currentStackTrace);
         }
         replayAttempt++;
-        await _recoverAfterOperationError(_connectionManager);
+        var hadHealthyMaster = _hasHealthyMaster();
+        await _recoverAfterOperationError(_connectionManager,
+            replayDeadline: replayDeadline);
+        if (replayRecoverableErrors) {
+          if (hadHealthyMaster && _hasHealthyMaster()) {
+            healthyTopologyReplayCount++;
+          } else {
+            healthyTopologyReplayCount = 0;
+          }
+        }
         if (!replayRecoverableErrors) {
           return operation();
+        }
+        if (replayDeadline != null && DateTime.now().isAfter(replayDeadline)) {
+          Error.throwWithStackTrace(currentError, currentStackTrace);
         }
         var backoff = _operationReplayBackoff(replayAttempt);
         if (replayDeadline != null && backoff > Duration.zero) {
@@ -916,14 +959,15 @@ class Db {
         }
         try {
           return await operation();
-        } catch (nextError) {
+        } catch (nextError, nextStackTrace) {
           currentError = nextError;
+          currentStackTrace = nextStackTrace;
         }
       }
     }
   }
 
-  Future<void> _reconnect() async {
+  Future<void> _reconnect({DateTime? deadline}) async {
     if (_explicitlyClosed) {
       throw MongoDartError('Db is in the wrong state: $state');
     }
@@ -934,7 +978,7 @@ class Db {
     final completer = Completer<void>();
     _reconnectInProgress = completer.future;
     try {
-      await _attemptReconnectWithBackoff();
+      await _attemptReconnectWithBackoff(deadline: deadline);
       completer.complete();
     } catch (error, stackTrace) {
       completer.completeError(error, stackTrace);
@@ -944,13 +988,14 @@ class Db {
     }
   }
 
-  Future<void> _attemptReconnectWithBackoff() async {
+  Future<void> _attemptReconnectWithBackoff({DateTime? deadline}) async {
     var delayMs = 100;
     Object? lastError;
     var attempt = 0;
-    final deadline = DateTime.now().add(_serverSelectionTimeout);
-    while (
-        attempt < _maxReconnectAttempts && DateTime.now().isBefore(deadline)) {
+    final reconnectDeadline =
+        deadline ?? DateTime.now().add(_serverSelectionTimeout);
+    while (attempt < _maxReconnectAttempts &&
+        DateTime.now().isBefore(reconnectDeadline)) {
       attempt++;
       if (_explicitlyClosed) {
         throw MongoDartError('Db is in the wrong state: $state');
@@ -966,7 +1011,8 @@ class Db {
         return;
       } catch (error) {
         lastError = error;
-        final remainingMs = deadline.difference(DateTime.now()).inMilliseconds;
+        final remainingMs =
+            reconnectDeadline.difference(DateTime.now()).inMilliseconds;
         if (attempt >= _maxReconnectAttempts || remainingMs <= 0) {
           rethrow;
         }

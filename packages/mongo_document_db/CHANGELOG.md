@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.29
+
+- Fixed the `1.7.28` read-retry regression that could keep replaying queries for the full `serverSelectionTimeoutMS` window and make simple reads appear hung.
+- Bounded healthy-topology read replays so repeated socket churn on a single connection fails fast again instead of stretching query latency into multi-second stalls.
+- Made recovery waits and reconnect attempts respect the operation's remaining retry budget.
+- Added regression coverage for bounded healthy-topology read retries.
+
 ## 1.7.28
 
 - Retried recoverable read operations through the full server-selection window instead of stopping after a single replay, reducing user-facing 500s during transient Atlas socket resets.
