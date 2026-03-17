@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:mongo_document_db/mongo_document_db.dart';
 import 'package:mongo_document_db/src/database/commands/base/command_operation.dart';
@@ -93,10 +94,107 @@ void main() {
       expect(manager.refreshTopologyCount, equals(1));
       expect(manager.waitForMasterCount, equals(1));
     });
+
+    test('stale stepped-down primary is not reused for legacy reads', () async {
+      var stalePrimary = _ScriptedConnection(manager);
+      var promotedPrimary = _ScriptedConnection(manager)..isMaster = true;
+      manager.bind(stalePrimary);
+      stalePrimary.isMaster = false;
+      manager.promotedConnection = promotedPrimary;
+      manager.promoteOnWaitForMaster = true;
+
+      expect(db.isConnected, isFalse);
+
+      var reply = await db.queryMessage(DbCommand.createIsMasterCommand(db));
+
+      expect(reply.documents, isNotNull);
+      expect(reply.documents!.single['ok'], equals(1.0));
+      expect(manager.waitForMasterCount, equals(1));
+      expect(stalePrimary.queryAttempts, equals(0));
+      expect(promotedPrimary.queryAttempts, equals(1));
+    });
+
+    test('stale stepped-down primary is not reused for modern commands',
+        () async {
+      var stalePrimary = _ScriptedConnection(manager);
+      var promotedPrimary = _ScriptedConnection(manager)..isMaster = true;
+      manager.bind(stalePrimary);
+      stalePrimary.isMaster = false;
+      manager.promotedConnection = promotedPrimary;
+      manager.promoteOnWaitForMaster = true;
+
+      var result = await CommandOperation(
+        db,
+        <String, Object>{},
+        command: <String, Object>{'ping': 1},
+      ).execute();
+
+      expect(result['ok'], equals(1.0));
+      expect(manager.waitForMasterCount, equals(1));
+      expect(stalePrimary.modernAttempts, equals(0));
+      expect(promotedPrimary.modernAttempts, equals(1));
+    });
   });
 
-  group('ConnectionManager provisioning throttle', () {
-    test('throttles rapid-fire provisioning on a busy host', () async {
+  group('ConnectionManager pool hardening', () {
+    test('addConnection seeds the pool up to minPoolSize', () async {
+      var db = Db('mongodb://127.0.0.1:27017/test-mongo-dart');
+      var manager = ConnectionManager(db);
+      addTearDown(() async {
+        await manager.close();
+      });
+
+      var connection = manager.addConnection(ServerConfig(
+        host: '127.0.0.1',
+        port: 1,
+        maxPoolSize: 5,
+        minPoolSize: 3,
+        maxConnecting: 4,
+      ));
+
+      expect(
+        manager.debugConnectionCountForHost(connection.serverConfig.hostUrl),
+        equals(3),
+      );
+    });
+
+    test('replaces failed pool slots instead of shrinking capacity', () async {
+      var db = Db('mongodb://127.0.0.1:27017/test-mongo-dart');
+      var manager = ConnectionManager(db);
+      db.debugAttachConnectionManager(manager);
+      addTearDown(() async {
+        await manager.close();
+      });
+
+      var connection = _ScriptedConnection(
+        manager,
+        config: ServerConfig(
+          host: '127.0.0.1',
+          port: 1,
+          maxPoolSize: 4,
+          minPoolSize: 1,
+          maxConnecting: 4,
+        ),
+      );
+      manager.debugAddConnection(connection);
+
+      expect(manager.debugHostContainsConnection(connection), isTrue);
+
+      await manager.handleSocketError(
+        connection,
+        const ConnectionException(
+            'connection closed: Socket closed by remote host.'),
+      );
+
+      expect(manager.debugHostContainsConnection(connection), isFalse);
+      expect(
+        manager.debugConnectionCountForHost(connection.serverConfig.hostUrl),
+        equals(1),
+      );
+    });
+
+    test('scales a busy host to maxPoolSize without artificial throttling',
+        () async {
       var db = Db('mongodb://127.0.0.1:27017/test-mongo-dart');
       var manager = ConnectionManager(db);
       addTearDown(() async {
@@ -129,19 +227,215 @@ void main() {
 
       manager.selectOperationalConnection(requireAuthentication: true);
       manager.selectOperationalConnection(requireAuthentication: true);
+      manager.selectOperationalConnection(requireAuthentication: true);
 
       expect(
         manager.debugConnectionCountForHost(connection.serverConfig.hostUrl),
-        equals(2),
+        equals(4),
+      );
+    });
+
+    test('keeps multiple authenticated primary sockets warm by default',
+        () async {
+      var db = Db('mongodb://127.0.0.1:27017/test-mongo-dart');
+      var manager = ConnectionManager(db);
+      addTearDown(() async {
+        await manager.close();
+      });
+
+      var connection = _ScriptedConnection(
+        manager,
+        config: ServerConfig(
+          host: '127.0.0.1',
+          port: 1,
+          connectTimeout: const Duration(milliseconds: 5),
+          maxPoolSize: 4,
+          maxConnecting: 4,
+          maxInFlightRequests: 1,
+        ),
+      );
+      manager.debugAddConnection(connection);
+      manager.debugSetMasterConnection(connection);
+
+      expect(
+        manager.debugConnectionCountForHost(connection.serverConfig.hostUrl),
+        equals(1),
       );
 
-      await Future<void>.delayed(const Duration(milliseconds: 140));
       manager.selectOperationalConnection(requireAuthentication: true);
 
       expect(
         manager.debugConnectionCountForHost(connection.serverConfig.hostUrl),
         equals(3),
       );
+    });
+
+    test('rotates across equally idle primary sockets instead of pinning one',
+        () async {
+      var db = Db('mongodb://127.0.0.1:27017/test-mongo-dart');
+      var manager = ConnectionManager(db);
+      addTearDown(() async {
+        await manager.close();
+      });
+
+      var first = _ScriptedConnection(
+        manager,
+        config: ServerConfig(
+          host: '127.0.0.1',
+          port: 1,
+          maxPoolSize: 2,
+          maxConnecting: 2,
+          maxInFlightRequests: 1,
+        ),
+      );
+      var second = _ScriptedConnection(
+        manager,
+        config: ServerConfig(
+          host: '127.0.0.1',
+          port: 1,
+          maxPoolSize: 2,
+          maxConnecting: 2,
+          maxInFlightRequests: 1,
+        ),
+      );
+
+      manager.debugAddConnection(first);
+      manager.debugAddConnection(second);
+      manager.debugSetMasterConnection(first);
+
+      expect(
+        manager.selectOperationalConnection(requireAuthentication: true),
+        same(first),
+      );
+      expect(
+        manager.selectOperationalConnection(requireAuthentication: true),
+        same(second),
+      );
+      expect(
+        manager.selectOperationalConnection(requireAuthentication: true),
+        same(first),
+      );
+    });
+  });
+
+  group('Connection wait queue timeout', () {
+    test('queued operations fail fast before socket timeout elapses', () async {
+      var serverSocket =
+          await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+      Socket? serverSideSocket;
+      final serverSideReady = Completer<void>();
+      serverSocket.listen((socket) {
+        serverSideSocket = socket;
+        socket.listen((_) {});
+        if (!serverSideReady.isCompleted) {
+          serverSideReady.complete();
+        }
+      });
+
+      late Socket clientSocket;
+      Connection? connection;
+      addTearDown(() async {
+        try {
+          await connection?.close();
+        } catch (_) {}
+        await serverSideSocket?.close();
+        await serverSocket.close();
+      });
+
+      clientSocket =
+          await Socket.connect(serverSocket.address, serverSocket.port);
+      await serverSideReady.future;
+
+      var db = Db('mongodb://127.0.0.1:27017/test-mongo-dart');
+      var manager = ConnectionManager(db);
+      connection = Connection(
+        manager,
+        ServerConfig(
+          host: '127.0.0.1',
+          port: serverSocket.port,
+          maxInFlightRequests: 1,
+          waitQueueTimeout: const Duration(milliseconds: 50),
+          socketTimeout: const Duration(seconds: 1),
+        ),
+      )
+        ..socket = clientSocket
+        ..connected = true
+        ..serverConfig.isAuthenticated = true;
+
+      var inFlightQuery = connection.query(DbCommand.createIsMasterCommand(db));
+
+      await expectLater(
+        connection.query(DbCommand.createIsMasterCommand(db)),
+        throwsA(
+          isA<ConnectionException>().having(
+            (error) => error.message,
+            'message',
+            contains('wait queue timed out'),
+          ),
+        ),
+      );
+      var inFlightFailure =
+          expectLater(inFlightQuery, throwsA(isA<ConnectionException>()));
+      await connection.close();
+      await inFlightFailure;
+    });
+  });
+
+  group('ConnectionManager open startup', () {
+    test('open returns once the primary is ready', () async {
+      var db = Db('mongodb://127.0.0.1:27017/test-mongo-dart');
+      db.databaseName = 'test-mongo-dart';
+      var manager = ConnectionManager(db);
+      db.debugAttachConnectionManager(manager);
+      addTearDown(() async {
+        await manager.close();
+      });
+
+      var primary = _OpenProbeConnection(
+        manager,
+        isPrimaryOnHello: true,
+        connectDelay: const Duration(milliseconds: 15),
+        helloDelay: const Duration(milliseconds: 15),
+        serverStatusDelay: const Duration(milliseconds: 250),
+        config: ServerConfig(
+          host: 'primary.example.test',
+          port: 27017,
+          maxPoolSize: 1,
+          minPoolSize: 1,
+          maxConnecting: 1,
+        ),
+      );
+      var secondary = _OpenProbeConnection(
+        manager,
+        isPrimaryOnHello: false,
+        connectDelay: const Duration(milliseconds: 250),
+        helloDelay: const Duration(milliseconds: 15),
+        config: ServerConfig(
+          host: 'secondary.example.test',
+          port: 27018,
+          maxPoolSize: 1,
+          minPoolSize: 1,
+          maxConnecting: 1,
+        ),
+      );
+      manager.debugAddConnection(primary);
+      manager.debugAddConnection(secondary);
+
+      var stopwatch = Stopwatch()..start();
+      await manager.open(WriteConcern.acknowledged);
+      stopwatch.stop();
+
+      expect(db.state, equals(State.open));
+      expect(manager.masterConnection, same(primary));
+      expect(stopwatch.elapsedMilliseconds, lessThan(180));
+      expect(primary.serverStatusRequests, equals(0));
+      expect(secondary.helloRequests, equals(0));
+
+      await Future.delayed(const Duration(milliseconds: 450));
+
+      expect(primary.serverStatusRequests, equals(1));
+      expect(secondary.connectCalls, greaterThanOrEqualTo(1));
+      expect(secondary.helloRequests, greaterThanOrEqualTo(1));
     });
   });
 }
@@ -152,8 +446,12 @@ class _ScriptedConnectionManager extends ConnectionManager {
   late Connection operationalConnection;
   int refreshTopologyCount = 0;
   int waitForMasterCount = 0;
+  Connection? promotedConnection;
+  bool promoteOnWaitForMaster = false;
+  bool promoteOnRefreshTopology = false;
 
   void bind(Connection connection) {
+    connection.isMaster = true;
     operationalConnection = connection;
     debugSetMasterConnection(connection);
   }
@@ -169,11 +467,19 @@ class _ScriptedConnectionManager extends ConnectionManager {
   @override
   Future<void> refreshTopology() async {
     refreshTopologyCount++;
+    if (promoteOnRefreshTopology && promotedConnection != null) {
+      operationalConnection = promotedConnection!;
+      debugSetMasterConnection(promotedConnection);
+    }
   }
 
   @override
   Future<Connection?> waitForMaster({required Duration timeout}) async {
     waitForMasterCount++;
+    if (promoteOnWaitForMaster && promotedConnection != null) {
+      operationalConnection = promotedConnection!;
+      debugSetMasterConnection(promotedConnection);
+    }
     return operationalConnection;
   }
 }
@@ -197,6 +503,7 @@ class _ScriptedConnection extends Connection {
               ),
         ) {
     connected = true;
+    isMaster = true;
     serverConfig.userName = 'test-user';
     serverConfig.isAuthenticated = true;
     serverCapabilities.supportsOpMsg = true;
@@ -238,5 +545,90 @@ class _ScriptedConnection extends Connection {
       );
     }
     return MongoModernMessage(<String, Object>{'ok': 1.0});
+  }
+}
+
+class _OpenProbeConnection extends Connection {
+  _OpenProbeConnection(ConnectionManager manager,
+      {required this.isPrimaryOnHello,
+      this.connectDelay = Duration.zero,
+      this.helloDelay = Duration.zero,
+      this.serverStatusDelay = Duration.zero,
+      ServerConfig? config})
+      : super(
+          manager,
+          config ??
+              ServerConfig(
+                host: '127.0.0.1',
+                port: 27017,
+                maxPoolSize: 1,
+                minPoolSize: 1,
+                maxConnecting: 1,
+              ),
+        );
+
+  final bool isPrimaryOnHello;
+  final Duration connectDelay;
+  final Duration helloDelay;
+  final Duration serverStatusDelay;
+  int connectCalls = 0;
+  int helloRequests = 0;
+  int serverStatusRequests = 0;
+
+  @override
+  Future<bool> connect() async {
+    connectCalls++;
+    if (connectDelay > Duration.zero) {
+      await Future.delayed(connectDelay);
+    }
+    connected = true;
+    isMaster = false;
+    serverConfig.isAuthenticated = false;
+    return true;
+  }
+
+  @override
+  Future<MongoModernMessage> executeModernMessage(
+      MongoModernMessage modernMessage) async {
+    var command = modernMessage.sections
+        .firstWhere((section) =>
+            section.payloadType == MongoModernMessage.basePayloadType)
+        .payload
+        .content;
+    if (command.containsKey('hello')) {
+      helloRequests++;
+      if (helloDelay > Duration.zero) {
+        await Future.delayed(helloDelay);
+      }
+      return MongoModernMessage(_helloResponse(isPrimary: isPrimaryOnHello));
+    }
+    if (command.containsKey('serverStatus')) {
+      serverStatusRequests++;
+      if (serverStatusDelay > Duration.zero) {
+        await Future.delayed(serverStatusDelay);
+      }
+      return MongoModernMessage(<String, Object>{
+        'ok': 1.0,
+        'version': '6.0.0',
+        'process': 'mongod',
+        'host': serverConfig.hostUrl,
+      });
+    }
+    return MongoModernMessage(<String, Object>{'ok': 1.0});
+  }
+
+  Map<String, Object> _helloResponse({required bool isPrimary}) {
+    return <String, Object>{
+      'ok': 1.0,
+      'isWritablePrimary': isPrimary,
+      'secondary': !isPrimary,
+      'localTime': DateTime.utc(2026, 1, 1),
+      'logicalSessionTimeoutMinutes': 30,
+      'minWireVersion': 0,
+      'maxWireVersion': 17,
+      'maxBsonObjectSize': 16 * 1024 * 1024,
+      'maxMessageSizeBytes': 48000000,
+      'maxWriteBatchSize': 100000,
+    };
   }
 }

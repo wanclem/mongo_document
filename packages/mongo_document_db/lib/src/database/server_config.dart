@@ -43,7 +43,7 @@ class ServerConfig {
       this.maxPoolSize = 20,
       this.minPoolSize = 0,
       this.maxConnecting = 4,
-      this.maxInFlightRequests = 128})
+      this.maxInFlightRequests = 1})
       : isSecure = isSecure ?? false,
         connectTimeout = connectTimeout ?? const Duration(seconds: 5),
         tlsAllowInvalidCertificates = tlsAllowInvalidCertificates ?? false;

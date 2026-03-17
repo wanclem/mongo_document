@@ -8,6 +8,7 @@ void main() {
     expect(config.maxPoolSize, equals(20));
     expect(config.minPoolSize, equals(0));
     expect(config.maxConnecting, equals(4));
+    expect(config.maxInFlightRequests, equals(1));
     expect(config.waitQueueTimeout, isNull);
     expect(config.maxConnectionIdleTime, isNull);
     expect(config.maxConnectionLifeTime, isNull);
@@ -26,6 +27,7 @@ void main() {
       maxPoolSize: 12,
       minPoolSize: 3,
       maxConnecting: 4,
+      maxInFlightRequests: 2,
     )
       ..userName = 'user'
       ..password = 'pass';
@@ -43,6 +45,7 @@ void main() {
     expect(clone.maxPoolSize, equals(12));
     expect(clone.minPoolSize, equals(3));
     expect(clone.maxConnecting, equals(4));
+    expect(clone.maxInFlightRequests, equals(2));
     expect(clone.userName, equals('user'));
     expect(clone.password, equals('pass'));
     expect(clone.isAuthenticated, isFalse);

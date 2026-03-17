@@ -224,6 +224,7 @@ bool _isServerCommandNotOk(dynamic okValue) => !_isServerCommandOk(okValue);
 class Db {
   static const mongoDefaultPort = 27017;
   static const _maxHealthyTopologyReadReplays = 2;
+  static final Object _replayDeadlineZoneKey = Object();
   final _log = Logger('Db');
   final List<String> _uriList = <String>[];
 
@@ -265,7 +266,7 @@ class Db {
   int _maxPoolSize = 20;
   int _minPoolSize = 0;
   int _maxConnecting = 4;
-  int _maxInFlightRequests = 128;
+  int _maxInFlightRequests = 1;
   Duration _waitQueueTimeout = const Duration(seconds: 15);
   Duration? _maxConnectionIdleTime;
   Duration? _maxConnectionLifeTime;
@@ -673,7 +674,7 @@ class Db {
 
   bool _hasHealthyMaster() {
     var master = _masterConnection;
-    if (master == null || !master.connected) {
+    if (master == null || !master.connected || !master.isMaster) {
       return false;
     }
     var authRequired = _authenticationScheme == AuthenticationScheme.X509 ||
@@ -863,8 +864,7 @@ class Db {
     if (manager == null) {
       return;
     }
-    var master = _masterConnection;
-    if (master != null && master.connected) {
+    if (_hasHealthyMaster()) {
       return;
     }
     await manager.waitForMaster(timeout: _serverSelectionProbeTimeout());
@@ -903,22 +903,32 @@ class Db {
 
     final replayRecoverableErrors =
         allowReconnect && allowReplayUntilSelectionTimeout;
-    final replayDeadline = replayRecoverableErrors
+    DateTime? replayDeadline = replayRecoverableErrors
         ? DateTime.now().add(_serverSelectionTimeout)
         : null;
     var replayAttempt = 0;
     var healthyTopologyReplayCount = 0;
 
     try {
-      return await operation();
+      return await _invokeOperationWithReplayBudget(operation, replayDeadline);
     } catch (error, stackTrace) {
       Object currentError = error;
       StackTrace currentStackTrace = stackTrace;
       while (true) {
+        var speculativeReadTimeout =
+            _isSpeculativeReadTimeoutError(currentError);
         if (!allowReconnect ||
             _explicitlyClosed ||
             !_isRecoverableConnectionError(currentError)) {
           Error.throwWithStackTrace(currentError, currentStackTrace);
+        }
+        if (speculativeReadTimeout) {
+          var speculativeReplayDeadline =
+              DateTime.now().add(const Duration(milliseconds: 1200));
+          if (replayDeadline == null ||
+              speculativeReplayDeadline.isBefore(replayDeadline)) {
+            replayDeadline = speculativeReplayDeadline;
+          }
         }
         if (replayDeadline != null && DateTime.now().isAfter(replayDeadline)) {
           Error.throwWithStackTrace(currentError, currentStackTrace);
@@ -940,12 +950,14 @@ class Db {
           }
         }
         if (!replayRecoverableErrors) {
-          return operation();
+          return _invokeOperationWithReplayBudget(operation, replayDeadline);
         }
         if (replayDeadline != null && DateTime.now().isAfter(replayDeadline)) {
           Error.throwWithStackTrace(currentError, currentStackTrace);
         }
-        var backoff = _operationReplayBackoff(replayAttempt);
+        var backoff = speculativeReadTimeout
+            ? Duration.zero
+            : _operationReplayBackoff(replayAttempt);
         if (replayDeadline != null && backoff > Duration.zero) {
           var remaining = replayDeadline.difference(DateTime.now());
           if (remaining <= Duration.zero) {
@@ -958,13 +970,28 @@ class Db {
           await Future.delayed(backoff);
         }
         try {
-          return await operation();
+          return await _invokeOperationWithReplayBudget(
+              operation, replayDeadline);
         } catch (nextError, nextStackTrace) {
           currentError = nextError;
           currentStackTrace = nextStackTrace;
         }
       }
     }
+  }
+
+  bool _isSpeculativeReadTimeoutError(Object error) {
+    return error is ConnectionException &&
+        error.message.contains('Read operation timed out after');
+  }
+
+  Future<T> _invokeOperationWithReplayBudget<T>(
+      Future<T> Function() operation, DateTime? replayDeadline) {
+    if (replayDeadline == null) {
+      return operation();
+    }
+    return runZoned<Future<T>>(operation,
+        zoneValues: <Object, Object?>{_replayDeadlineZoneKey: replayDeadline});
   }
 
   Future<void> _reconnect({DateTime? deadline}) async {
@@ -1038,7 +1065,9 @@ class Db {
           _connectionManager!
               .selectOperationalConnection(requireAuthentication: true);
 
-      return locConnection.query(queryMessage);
+      return _runReadWithSpeculativeTimeout(
+          () => locConnection.query(queryMessage),
+          connection: locConnection);
     },
         allowReconnect: connection == null,
         allowReplayUntilSelectionTimeout: connection == null);
@@ -1089,7 +1118,11 @@ class Db {
       var locConnection =
           selectedConnection ?? _masterConnectionVerifiedAnyState;
 
-      var response = await locConnection.executeModernMessage(message);
+      var response = replayReadsUntilSelectionTimeout
+          ? await _runReadWithSpeculativeTimeout(
+              () => locConnection.executeModernMessage(message),
+              connection: locConnection)
+          : await locConnection.executeModernMessage(message);
 
       var section = response.sections.firstWhere((Section section) =>
           section.payloadType == MongoModernMessage.basePayloadType);
@@ -1101,6 +1134,50 @@ class Db {
             connection == null &&
             !skipStateCheck &&
             !_explicitlyClosed);
+  }
+
+  Future<T> _runReadWithSpeculativeTimeout<T>(Future<T> Function() operation,
+      {required Connection connection}) async {
+    var timeout = _effectiveSpeculativeReadTimeout(connection);
+    if (timeout == null) {
+      return operation();
+    }
+    try {
+      return await operation().timeout(timeout);
+    } on TimeoutException {
+      if (!connection._closed && connection.connected) {
+        unawaited(connection._closeSocketOnError(
+            socketError:
+                'Read operation timed out after ${timeout.inMilliseconds}ms'));
+      } else if (!connection._closed) {
+        unawaited(connection.close());
+      }
+      throw ConnectionException(
+          'Read operation timed out after ${timeout.inMilliseconds}ms');
+    }
+  }
+
+  Duration? _speculativeReadTimeout(Connection connection) {
+    if (connection.serverConfig.socketTimeout != null) {
+      return null;
+    }
+    return const Duration(milliseconds: 1500);
+  }
+
+  Duration? _effectiveSpeculativeReadTimeout(Connection connection) {
+    var timeout = _speculativeReadTimeout(connection);
+    if (timeout == null) {
+      return null;
+    }
+    var replayDeadline = Zone.current[_replayDeadlineZoneKey] as DateTime?;
+    if (replayDeadline == null) {
+      return timeout;
+    }
+    var remaining = replayDeadline.difference(DateTime.now());
+    if (remaining <= Duration.zero) {
+      return Duration.zero;
+    }
+    return remaining < timeout ? remaining : timeout;
   }
 
   Future open(
@@ -1201,8 +1278,7 @@ class Db {
   /// and at least the primary connection is connected
   ///
   /// Connections can disconect because of network or database server problems.
-  bool get isConnected =>
-      state == State.open && (_masterConnection?.connected ?? false);
+  bool get isConnected => state == State.open && _hasHealthyMaster();
 
   Future<Map<String, dynamic>> executeDbCommand(MongoMessage message,
       {Connection? connection,

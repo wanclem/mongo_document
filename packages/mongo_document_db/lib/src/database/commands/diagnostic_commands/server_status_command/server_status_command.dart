@@ -7,10 +7,11 @@ var _command = <String, Object>{keyServerStatus: 1};
 class ServerStatusCommand extends CommandOperation {
   ServerStatusCommand(Db db,
       {ServerStatusOptions? serverStatusOptions,
-      Map<String, Object>? rawOptions})
+      Map<String, Object>? rawOptions,
+      Connection? connection})
       : super(db,
             <String, Object>{...?serverStatusOptions?.options, ...?rawOptions},
-            command: _command);
+            command: _command, connection: connection);
 
   Future<ServerStatusResult> executeDocument() async {
     var result = await super.execute();

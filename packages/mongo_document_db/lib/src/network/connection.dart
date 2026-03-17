@@ -129,7 +129,8 @@ class Connection {
   Socket? socket;
   final Set _pendingQueries = <int>{};
   final Map<int, Completer<MongoResponseMessage>> _replyCompleters = {};
-  final Queue<MongoMessage> _sendQueue = Queue<MongoMessage>();
+  final Queue<_QueuedMessage> _sendQueue = Queue<_QueuedMessage>();
+  final Map<int, Timer> _queueTimers = {};
   final Map<int, Timer> _responseTimers = {};
   int _inFlightRequests = 0;
   StreamSubscription<MongoResponseMessage>? _repliesSubscription;
@@ -286,13 +287,15 @@ class Connection {
     // single-connection semantics while reducing per-message syscall overhead.
     var buffer = BytesBuilder(copy: false);
     while (_sendQueue.isNotEmpty) {
-      var mongoMessage = _sendQueue.first;
+      var queuedMessage = _sendQueue.first;
+      var mongoMessage = queuedMessage.message;
       var expectsReply = _replyCompleters.containsKey(mongoMessage.requestId);
       if (expectsReply &&
           _inFlightRequests >= serverConfig.maxInFlightRequests) {
         break;
       }
       _sendQueue.removeFirst();
+      _cancelQueueTimer(mongoMessage.requestId);
       if (expectsReply) {
         _inFlightRequests++;
         _startResponseTimer(mongoMessage.requestId);
@@ -313,12 +316,13 @@ class Connection {
       _replyCompleters[queryMessage.requestId] = completer;
       _pendingQueries.add(queryMessage.requestId);
       _log.finer(() => 'Query $queryMessage');
-      _sendQueue.addLast(queryMessage);
+      _sendQueue.addLast(_QueuedMessage(queryMessage));
+      _startQueueTimer(queryMessage.requestId);
       try {
         _sendBuffer();
       } catch (error) {
-        _sendQueue.removeWhere(
-            (message) => message.requestId == queryMessage.requestId);
+        _removeQueuedMessage(queryMessage.requestId);
+        _cancelQueueTimer(queryMessage.requestId);
         _cancelResponseTimer(queryMessage.requestId);
         _replyCompleters.remove(queryMessage.requestId);
         _pendingQueries.remove(queryMessage.requestId);
@@ -343,7 +347,7 @@ class Connection {
           'Invalid state: Connection already closed.');
     }
     _log.finer(() => 'Execute $mongoMessage');
-    _sendQueue.addLast(mongoMessage);
+    _sendQueue.addLast(_QueuedMessage(mongoMessage));
     if (runImmediately) {
       _sendBuffer();
     }
@@ -379,12 +383,13 @@ class Connection {
       _replyCompleters[modernMessage.requestId] = completer;
       _pendingQueries.add(modernMessage.requestId);
       _log.finer(() => 'Message $modernMessage');
-      _sendQueue.addLast(modernMessage);
+      _sendQueue.addLast(_QueuedMessage(modernMessage));
+      _startQueueTimer(modernMessage.requestId);
       try {
         _sendBuffer();
       } catch (error) {
-        _sendQueue.removeWhere(
-            (message) => message.requestId == modernMessage.requestId);
+        _removeQueuedMessage(modernMessage.requestId);
+        _cancelQueueTimer(modernMessage.requestId);
         _cancelResponseTimer(modernMessage.requestId);
         _replyCompleters.remove(modernMessage.requestId);
         _pendingQueries.remove(modernMessage.requestId);
@@ -441,6 +446,10 @@ class Connection {
   }
 
   void _failPendingQueries(ConnectionException ex) {
+    for (var timer in _queueTimers.values) {
+      timer.cancel();
+    }
+    _queueTimers.clear();
     for (var timer in _responseTimers.values) {
       timer.cancel();
     }
@@ -454,6 +463,37 @@ class Connection {
     _pendingQueries.clear();
     _sendQueue.clear();
     _inFlightRequests = 0;
+  }
+
+  void _startQueueTimer(int requestId) {
+    var timeout = serverConfig.waitQueueTimeout;
+    if (timeout == null || timeout <= Duration.zero) {
+      return;
+    }
+    _cancelQueueTimer(requestId);
+    _queueTimers[requestId] = Timer(timeout, () {
+      var removed = _removeQueuedMessage(requestId);
+      if (!removed) {
+        _queueTimers.remove(requestId);
+        return;
+      }
+      _queueTimers.remove(requestId);
+      var completer = _replyCompleters.remove(requestId);
+      _pendingQueries.remove(requestId);
+      if (completer != null && !completer.isCompleted) {
+        completer.completeError(ConnectionException(
+            'Operation wait queue timed out after ${timeout.inMilliseconds}ms'));
+      }
+      if (!_closed) {
+        try {
+          _sendBuffer();
+        } catch (_) {}
+      }
+    });
+  }
+
+  void _cancelQueueTimer(int requestId) {
+    _queueTimers.remove(requestId)?.cancel();
   }
 
   void _startResponseTimer(int requestId) {
@@ -483,6 +523,13 @@ class Connection {
   void _cancelResponseTimer(int requestId) {
     _responseTimers.remove(requestId)?.cancel();
   }
+
+  bool _removeQueuedMessage(int requestId) {
+    var originalLength = _sendQueue.length;
+    _sendQueue.removeWhere(
+        (queuedMessage) => queuedMessage.message.requestId == requestId);
+    return _sendQueue.length != originalLength;
+  }
 }
 
 class ConnectionException implements Exception {
@@ -492,4 +539,10 @@ class ConnectionException implements Exception {
 
   @override
   String toString() => 'MongoDB ConnectionException: $message';
+}
+
+class _QueuedMessage {
+  final MongoMessage message;
+
+  const _QueuedMessage(this.message);
 }
