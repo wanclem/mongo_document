@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.30
+
+- Fixed the remaining latency tail by enforcing queue wait deadlines, defaulting to one in-flight request per socket, warming multiple authenticated primary sockets, and removing pool-scaling bottlenecks that could cause fast startup followed by slow CRUD under sustained load.
+- Hardened replica-set routing so stepped-down primaries are no longer treated as healthy targets, failed primary sockets are evicted and replaced, and recovery waits for a genuinely writable authenticated node before sending CRUD again.
+- Reduced startup latency by letting `db.open()` return as soon as the primary is connected and authenticated, while standby warmup and `serverStatus` refresh continue in the background.
+- Added live probe tools plus regression coverage for queue timeout handling, pool warmup/replacement behavior, startup latency, and stale-primary routing.
+
 ## 1.7.29
 
 - Fixed the `1.7.28` read-retry regression that could keep replaying queries for the full `serverSelectionTimeoutMS` window and make simple reads appear hung.

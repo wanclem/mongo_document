@@ -1,3 +1,11 @@
+## 1.7.30
+
+### Fixed
+
+Updated `MongoDbConnection` to reuse and reopen the same `Db` instance instead of recreating clients unnecessarily, share in-flight connect attempts across callers, and block stale post-shutdown connects from re-registering themselves.
+
+Aligned dependency to `mongo_document_db: ^1.7.30` to consume the pool, failover, and startup latency fixes in the driver.
+
 ## 1.7.29
 
 ### Fixed
