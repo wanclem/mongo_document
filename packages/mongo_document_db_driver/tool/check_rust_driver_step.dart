@@ -9,8 +9,8 @@ Future<void> main(List<String> args) async {
   stdout.writeln('step=$step:start');
 
   if (step == 'libraryOpen') {
-    MongoRustLibrary.open();
-    stdout.writeln('library=open');
+    MongoRustBindings.open();
+    stdout.writeln('native-asset=open');
     return;
   }
 

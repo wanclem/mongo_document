@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.2
+
+- Bundled the Rust runtime through package-owned native assets so consumer apps pick up the shipped native library automatically during `dart pub get` / build-hook resolution.
+- Routed the FFI bindings through asset-backed exports instead of app-specific runtime path wiring.
+- Added verification around native asset registration and kept the published prebuilt targets aligned with the shipped runtime layout.
+
 ## 2.0.1
 
 - Removed the hardcoded Atlas credential from the Rust driver check tool and switched it to environment-based configuration.

@@ -8,7 +8,6 @@ class MongoRustLibrary {
   MongoRustLibrary._();
 
   static const libraryBaseName = 'mongo_document_db_driver_rust';
-  static const environmentOverride = 'MONGO_DOCUMENT_DB_RUST_LIB';
 
   static String platformLibraryName({Abi? abi}) {
     return switch (abi ?? Abi.current()) {
@@ -61,19 +60,6 @@ class MongoRustLibrary {
     return File(
       bundledLibraryPath(packageRoot: packageRoot, abi: abi),
     ).existsSync();
-  }
-
-  static DynamicLibrary open({
-    String? libraryPath,
-    String? packageRoot,
-    Abi? abi,
-  }) {
-    final overridePath = Platform.environment[environmentOverride];
-    final resolvedPath =
-        libraryPath ??
-        overridePath ??
-        bundledLibraryPath(packageRoot: packageRoot, abi: abi);
-    return DynamicLibrary.open(resolvedPath);
   }
 
   static String resolvePackageRoot() {

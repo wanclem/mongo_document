@@ -1,3 +1,9 @@
+## 2.0.2
+
+### Fixed
+
+Aligned dependency to `mongo_document_db_driver: ^2.0.2` to consume the package-owned Rust runtime asset bundling flow.
+
 ## 2.0.1
 
 ### Fixed

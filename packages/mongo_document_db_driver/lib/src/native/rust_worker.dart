@@ -7,7 +7,6 @@ import 'package:ffi/ffi.dart' as pkg_ffi;
 import 'package:mongo_document_db_driver/mongo_document_db_driver.dart';
 
 import 'rust_bindings.dart';
-import 'rust_library.dart';
 
 class RustWorkerCursorHandle {
   const RustWorkerCursorHandle({
@@ -35,13 +34,11 @@ class RustWorkerPool {
     required int workerCount,
   }) async {
     final resolvedWorkerCount = workerCount < 1 ? 1 : workerCount;
-    final libraryPath = MongoRustLibrary.bundledLibraryPath();
     final perWorkerConnectionString = _perWorkerConnectionString(
       connectionString,
       workerCount: resolvedWorkerCount,
     );
     final primaryWorker = await RustWorkerClient.spawn(
-      libraryPath: libraryPath,
       connectionString: perWorkerConnectionString,
       databaseName: databaseName,
       logContext: _workerLogContext(
@@ -55,7 +52,6 @@ class RustWorkerPool {
     if (resolvedWorkerCount > 1) {
       pool._warmupFuture = pool._warmAdditionalWorkers(
         additionalWorkers: resolvedWorkerCount - 1,
-        libraryPath: libraryPath,
         connectionString: perWorkerConnectionString,
         databaseName: databaseName,
         connectTimeout: connectTimeout,
@@ -111,7 +107,6 @@ class RustWorkerPool {
 
   Future<void> _warmAdditionalWorkers({
     required int additionalWorkers,
-    required String libraryPath,
     required String connectionString,
     required String databaseName,
     Duration? connectTimeout,
@@ -123,7 +118,6 @@ class RustWorkerPool {
       }
       try {
         final worker = await RustWorkerClient.spawn(
-          libraryPath: libraryPath,
           connectionString: connectionString,
           databaseName: databaseName,
           logContext: _workerLogContext(
@@ -243,7 +237,6 @@ class RustWorkerClient {
   String? get lastError => _lastError;
 
   static Future<RustWorkerClient> spawn({
-    required String libraryPath,
     required String connectionString,
     required String databaseName,
     required String logContext,
@@ -260,7 +253,6 @@ class RustWorkerClient {
       <String, Object?>{
         'readyPort': readyPort.sendPort,
         'responsePort': responsePort.sendPort,
-        'libraryPath': libraryPath,
         'connectionString': connectionString,
         'databaseName': databaseName,
         'logContext': logContext,
@@ -467,7 +459,6 @@ class RustWorkerClient {
 Future<void> _mongoRustWorkerMain(Map<String, Object?> message) async {
   final readyPort = message['readyPort'] as SendPort;
   final responsePort = message['responsePort'] as SendPort;
-  final libraryPath = message['libraryPath'] as String;
   final connectionString = message['connectionString'] as String;
   final databaseName = message['databaseName'] as String;
   final logContext = message['logContext'] as String? ?? 'worker pool';
@@ -475,7 +466,7 @@ Future<void> _mongoRustWorkerMain(Map<String, Object?> message) async {
   final serverSelectionTimeoutMs =
       message['serverSelectionTimeoutMs'] as int? ?? 0;
 
-  final bindings = MongoRustBindings.open(libraryPath: libraryPath);
+  final bindings = MongoRustBindings.open();
   final commandPort = ReceivePort();
   final cursors = <int, Pointer<RustCursorHandle>>{};
   var nextCursorId = 1;

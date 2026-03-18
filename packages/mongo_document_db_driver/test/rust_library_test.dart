@@ -61,25 +61,6 @@ void main() {
     );
   });
 
-  test('isAvailable is false when no bundled or overridden library exists', () {
-    expect(
-      MongoRustBindings.isAvailable(
-        packageRoot: '/tmp/mongo_document_db_does_not_exist',
-      ),
-      isFalse,
-    );
-  });
-
-  test('bundled library is loadable when staged for the current platform', () {
-    final packageRoot = _resolvePackageRoot();
-    if (!MongoRustLibrary.hasBundledLibrary(packageRoot: packageRoot)) {
-      return;
-    }
-
-    final bindings = MongoRustBindings.open(packageRoot: packageRoot);
-    expect(bindings.abiVersion(), equals(MongoRustBindings.currentAbiVersion));
-  });
-
   test('release prebuilt artifacts exist for shipped platforms', () {
     final packageRoot = _resolvePackageRoot();
 
@@ -110,6 +91,28 @@ void main() {
       ).existsSync(),
       isTrue,
     );
+  });
+
+  test('native assets manifest is generated for the current package', () {
+    final packageRoot = _resolvePackageRoot();
+    final manifestFile = File(
+      p.join(packageRoot, '.dart_tool', 'native_assets.yaml'),
+    );
+
+    expect(manifestFile.existsSync(), isTrue);
+    expect(
+      manifestFile.readAsStringSync(),
+      contains('package:mongo_document_db_driver/src/native/rust_exports.dart'),
+    );
+  });
+
+  test('native asset bindings are loadable on the current platform', () {
+    if (!MongoRustBindings.isAvailable()) {
+      fail('Expected the bundled Rust native asset to be available.');
+    }
+
+    final bindings = MongoRustBindings.open();
+    expect(bindings.abiVersion(), equals(MongoRustBindings.currentAbiVersion));
   });
 }
 
