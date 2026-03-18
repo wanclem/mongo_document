@@ -54,6 +54,14 @@ class RecoverableErrorClassifier {
         normalized.contains('SOCKET');
   }
 
+  static bool isCursorSessionMismatchMessage(String message) {
+    var normalized = message.toUpperCase();
+    return (normalized.contains('CURSOR SESSION ID') &&
+            normalized.contains("OPERATION CONTEXT'S SESSION ID")) ||
+        normalized.contains('CURSOR SESSION STATE WAS LOST') ||
+        normalized.contains('CURSOR MUST BE RESUMED');
+  }
+
   static bool isAuthenticationRequiredMessage(String message) {
     var normalized = message.toUpperCase();
     return normalized.contains('REQUIRES AUTHENTICATION') ||
@@ -76,6 +84,7 @@ class RecoverableErrorClassifier {
     }
     var message = error[keyErrmsg]?.toString() ?? '';
     return isAuthenticationStateFailureDocument(error) ||
+        isCursorSessionMismatchMessage(message) ||
         isConnectionLifecycleFailureMessage(message) ||
         isPrimaryRoutingFailureMessage(message);
   }

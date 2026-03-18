@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.3
+
+- Hardened change-stream cursor recovery so lost session state resumes from stored resume tokens instead of surfacing the old fatal session mismatch path.
+- Softened handled recovery logging for resumable change-stream interruptions and background worker warmup timeouts.
+- Rebuilt the shipped native runtimes for `macos-arm64`, `linux-x64`, and `windows-x64`.
+
 ## 2.0.2
 
 - Bundled the Rust runtime through package-owned native assets so consumer apps pick up the shipped native library automatically during `dart pub get` / build-hook resolution.

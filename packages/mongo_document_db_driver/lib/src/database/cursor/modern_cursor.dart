@@ -10,28 +10,32 @@ import 'package:mongo_document_db_driver/src/database/commands/aggregation_comma
 import 'package:mongo_document_db_driver/src/database/commands/aggregation_commands/wrapper/change_stream/change_stream_handler.dart';
 import 'package:mongo_document_db_driver/src/database/commands/query_and_write_operation_commands/get_more_command/get_more_command.dart';
 import 'package:mongo_document_db_driver/src/database/commands/query_and_write_operation_commands/get_more_command/get_more_options.dart';
+import 'package:mongo_document_db_driver/src/database/utils/recoverable_error_classifier.dart';
 
 import '../../../mongo_document_db_driver.dart';
 import '../commands/base/db_admin_command_operation.dart';
 import '../commands/base/operation_base.dart';
+import '../utils/map_keys.dart' as mk;
 
 typedef MonadicBlock = void Function(Map<String, dynamic> value);
 
 const defaultBatchSize = 101;
 
 class ModernCursor {
-  ModernCursor(CommandOperation operation,
-      {bool? checksumPresent,
-      bool? moreToCome,
-      bool? exhaustAllowed,
-      int? batchSize})
-      // ignore: prefer_initializing_formals
-      : operation = operation,
-        collection = operation.collection,
-        db = operation.collection?.db ?? operation.db,
-        checksumPresent = checksumPresent ?? false,
-        moreToCome = moreToCome ?? false,
-        exhaustAllowed = exhaustAllowed ?? false {
+  ModernCursor(
+    CommandOperation operation, {
+    bool? checksumPresent,
+    bool? moreToCome,
+    bool? exhaustAllowed,
+    int? batchSize,
+  })
+    // ignore: prefer_initializing_formals
+    : operation = operation,
+       collection = operation.collection,
+       db = operation.collection?.db ?? operation.db,
+       checksumPresent = checksumPresent ?? false,
+       moreToCome = moreToCome ?? false,
+       exhaustAllowed = exhaustAllowed ?? false {
     if (operation is FindOperation && collection == null) {
       throw MongoDartError('Collection required in cursor initialization');
     }
@@ -54,18 +58,20 @@ class ModernCursor {
 
     _batchSize = internalBatchSize ?? defaultBatchSize;
   }
-  ModernCursor.fromDbAdmincommand(DbAdminCommandOperation command,
-      {bool? checksumPresent,
-      bool? moreToCome,
-      bool? exhaustAllowed,
-      int? batchSize})
-      // ignore: prefer_initializing_formals
-      : operation = command,
-        //collection = command.collection,
-        db = command.db,
-        checksumPresent = checksumPresent ?? false,
-        moreToCome = moreToCome ?? false,
-        exhaustAllowed = exhaustAllowed ?? false {
+  ModernCursor.fromDbAdmincommand(
+    DbAdminCommandOperation command, {
+    bool? checksumPresent,
+    bool? moreToCome,
+    bool? exhaustAllowed,
+    int? batchSize,
+  })
+    // ignore: prefer_initializing_formals
+    : operation = command,
+       //collection = command.collection,
+       db = command.db,
+       checksumPresent = checksumPresent ?? false,
+       moreToCome = moreToCome ?? false,
+       exhaustAllowed = exhaustAllowed ?? false {
     if (command is FindOperation && collection == null) {
       throw MongoDartError('Collection required in cursor initialization');
     }
@@ -94,22 +100,25 @@ class ModernCursor {
   /// or other read operation has been executed, without generating
   /// an explicit cursor. This way, for getting the extra documents,
   /// we may need a cursor.
-  ModernCursor.fromOpenId(DbCollection collection, this.cursorId,
-      {bool? tailable,
-      bool? awaitData,
-      bool? isChangeStream,
-      bool? checksumPresent,
-      bool? moreToCome,
-      bool? exhaustAllowed})
-      // ignore: prefer_initializing_formals
-      : collection = collection,
-        collectionName = collection.collectionName,
-        tailable = tailable ?? false,
-        awaitData = awaitData ?? false,
-        isChangeStream = isChangeStream ?? false,
-        checksumPresent = checksumPresent ?? false,
-        moreToCome = moreToCome ?? false,
-        exhaustAllowed = exhaustAllowed ?? false {
+  ModernCursor.fromOpenId(
+    DbCollection collection,
+    this.cursorId, {
+    bool? tailable,
+    bool? awaitData,
+    bool? isChangeStream,
+    bool? checksumPresent,
+    bool? moreToCome,
+    bool? exhaustAllowed,
+  })
+    // ignore: prefer_initializing_formals
+    : collection = collection,
+       collectionName = collection.collectionName,
+       tailable = tailable ?? false,
+       awaitData = awaitData ?? false,
+       isChangeStream = isChangeStream ?? false,
+       checksumPresent = checksumPresent ?? false,
+       moreToCome = moreToCome ?? false,
+       exhaustAllowed = exhaustAllowed ?? false {
     state = State.open;
     db = collection.db;
     if (this.isChangeStream) {
@@ -129,6 +138,8 @@ class ModernCursor {
 
   // Batch size for the getMore command if different from the default
   late int _batchSize;
+  Map<String, Object>? _lastChangeStreamResumeToken;
+
   int get batchSize => _batchSize;
   set batchSize(int value) {
     if (value < 0) {
@@ -170,8 +181,10 @@ class ModernCursor {
 
   void extractCursorData(Map<String, dynamic> operationReturnMap) {
     if (operationReturnMap[keyCursor] == null) {
-      throw MongoDartError('The operation type ${operation.runtimeType} '
-          'does not return a cursor');
+      throw MongoDartError(
+        'The operation type ${operation.runtimeType} '
+        'does not return a cursor',
+      );
     }
     var cursorMap = operationReturnMap[keyCursor] as Map<String, dynamic>?;
     if (cursorMap == null) {
@@ -196,6 +209,95 @@ class ModernCursor {
     for (var doc in documents) {
       items.add(doc);
     }
+    if (isChangeStream) {
+      _updateChangeStreamResumeToken(cursorMap, documents);
+    }
+  }
+
+  void _updateChangeStreamResumeToken(
+    Map<String, dynamic> cursorMap,
+    List<Map<String, dynamic>> documents,
+  ) {
+    if (documents.isNotEmpty) {
+      var lastDocumentId = documents.last[mk.key_id];
+      if (lastDocumentId is Map) {
+        _lastChangeStreamResumeToken = Map<String, Object>.from(lastDocumentId);
+        return;
+      }
+    }
+
+    var postBatchResumeToken = cursorMap[mk.keyPostBatchResumeToken];
+    if (postBatchResumeToken is Map) {
+      _lastChangeStreamResumeToken = Map<String, Object>.from(
+        postBatchResumeToken,
+      );
+    }
+  }
+
+  bool get _canAutoResumeChangeStream =>
+      isChangeStream && operation is ChangeStreamOperation;
+
+  bool _shouldResumeChangeStreamFromMessage(String message) {
+    return RecoverableErrorClassifier.isCursorSessionMismatchMessage(message) ||
+        RecoverableErrorClassifier.isConnectionLifecycleFailureMessage(
+          message,
+        ) ||
+        RecoverableErrorClassifier.isPrimaryRoutingFailureMessage(message) ||
+        RecoverableErrorClassifier.isAuthenticationRequiredMessage(message);
+  }
+
+  bool _shouldResumeChangeStreamFromError(Object error) {
+    if (!_canAutoResumeChangeStream) {
+      return false;
+    }
+    return switch (error) {
+      ConnectionException exception => _shouldResumeChangeStreamFromMessage(
+        exception.message,
+      ),
+      MongoDartError mongoError => _shouldResumeChangeStreamFromMessage(
+        mongoError.message,
+      ),
+      _ => _shouldResumeChangeStreamFromMessage(error.toString()),
+    };
+  }
+
+  bool _shouldResumeChangeStreamFromServerError(
+    Map<String, dynamic> serverError,
+  ) {
+    return _canAutoResumeChangeStream &&
+        RecoverableErrorClassifier.isRecoverableServerErrorDocument(
+          serverError,
+        );
+  }
+
+  bool _prepareChangeStreamResume() {
+    if (!_canAutoResumeChangeStream) {
+      return false;
+    }
+
+    var changeStreamOperation = operation! as ChangeStreamOperation;
+    if (changeStreamOperation.pipeline.isEmpty) {
+      return false;
+    }
+
+    var firstStage = changeStreamOperation.pipeline.first;
+    var rawChangeStreamStage = firstStage[mk.aggregateChangeStream];
+    if (rawChangeStreamStage is! Map) {
+      return false;
+    }
+
+    var changeStreamStage = Map<String, Object>.from(rawChangeStreamStage);
+    if (_lastChangeStreamResumeToken != null) {
+      changeStreamStage[mk.keyResumeAfter] = _lastChangeStreamResumeToken!;
+      changeStreamStage.remove(mk.keyStartAfter);
+      changeStreamStage.remove(mk.keyStartAtOperationTime);
+    }
+    firstStage[mk.aggregateChangeStream] = changeStreamStage;
+
+    items.clear();
+    cursorId = Int64.ZERO;
+    state = State.init;
+    return true;
   }
 
   Future<void> _serverSideCursorClose() async {
@@ -243,25 +345,40 @@ class ModernCursor {
         await _serverSideCursorClose();
         return null;
       }
-      var command = GetMoreCommand(collection, cursorId,
-          db: db,
-          collectionName: collectionName,
-          getMoreOptions: GetMoreOptions(batchSize: _batchSize));
+      var command = GetMoreCommand(
+        collection,
+        cursorId,
+        db: db,
+        collectionName: collectionName,
+        getMoreOptions: GetMoreOptions(batchSize: _batchSize),
+      );
       if (tailable || awaitData || isChangeStream) {
         command.disableSpeculativeReadTimeout = true;
       }
-      result = await command.execute();
+      try {
+        result = await command.execute();
+      } catch (error) {
+        if (_shouldResumeChangeStreamFromError(error) &&
+            _prepareChangeStreamResume()) {
+          return nextObject();
+        }
+        rethrow;
+      }
     }
     if (result == null) {
       throw MongoDartError('Could not execut a further search');
     }
     if (result[keyOk] == 0.0) {
+      if (_shouldResumeChangeStreamFromServerError(result) &&
+          _prepareChangeStreamResume()) {
+        return nextObject();
+      }
       await close();
       throw MongoDartError(
-          result[keyErrmsg] as String? ??
-              'Generic error in nextObject() method',
-          mongoCode: result[keyCode] as int?,
-          errorCodeName: result[keyCodeName] as String?);
+        result[keyErrmsg] as String? ?? 'Generic error in nextObject() method',
+        mongoCode: result[keyCode] as int?,
+        errorCodeName: result[keyCodeName] as String?,
+      );
     }
     var cursorMap = result[keyCursor] as Map<String, dynamic>?;
     cursorId = cursorMap == null
@@ -287,7 +404,9 @@ class ModernCursor {
         return null;
       }
       return Future.delayed(
-          Duration(milliseconds: tailableRetryInterval), () => null);
+        Duration(milliseconds: tailableRetryInterval),
+        () => null,
+      );
     }
     // residual check, it should never pass here.
     await close();

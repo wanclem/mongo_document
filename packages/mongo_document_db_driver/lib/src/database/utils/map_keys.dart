@@ -208,6 +208,7 @@ const keyPersistent = 'persistent';
 const keyPid = 'pid';
 const keyPipeline = 'pipeline';
 const keyPlatform = 'platform';
+const keyPostBatchResumeToken = 'postBatchResumeToken';
 const keyPreference = 'preference';
 const keyPrimary = 'primary';
 const keyProcess = 'process';

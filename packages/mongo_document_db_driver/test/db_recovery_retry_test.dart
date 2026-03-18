@@ -120,6 +120,173 @@ void main() {
     );
 
     test(
+      'change streams resume from the last token after cursor session loss',
+      () async {
+        Map<String, Object?>? resumedAggregateCommand;
+        var aggregateCalls = 0;
+        var getMoreFailures = 0;
+        var connection = _ScriptedConnection(
+          manager,
+          modernCommandHandler: (command) {
+            if (command['aggregate'] == 'posts') {
+              aggregateCalls++;
+              var pipeline = (command[keyPipeline] as List).cast<Map>();
+              var changeStreamStage = Map<String, Object?>.from(
+                pipeline.first[aggregateChangeStream] as Map,
+              );
+              if (aggregateCalls == 1) {
+                expect(changeStreamStage[keyResumeAfter], isNull);
+                return MongoModernMessage(<String, Object>{
+                  'ok': 1.0,
+                  'cursor': <String, Object>{
+                    'id': Int64(41),
+                    'ns': '${db.databaseName}.posts',
+                    'firstBatch': <Map<String, Object>>[
+                      <String, Object>{
+                        key_id: <String, Object>{'_data': 'token-1'},
+                        keyOperationType: 'insert',
+                      },
+                    ],
+                  },
+                });
+              }
+              resumedAggregateCommand = command;
+              expect(
+                changeStreamStage[keyResumeAfter],
+                equals(<String, Object>{'_data': 'token-1'}),
+              );
+              return MongoModernMessage(<String, Object>{
+                'ok': 1.0,
+                'cursor': <String, Object>{
+                  'id': Int64.ZERO,
+                  'ns': '${db.databaseName}.posts',
+                  'firstBatch': <Map<String, Object>>[
+                    <String, Object>{
+                      key_id: <String, Object>{'_data': 'token-2'},
+                      keyOperationType: 'update',
+                    },
+                  ],
+                },
+              });
+            }
+
+            if (command.containsKey(keyGetMore) && getMoreFailures == 0) {
+              getMoreFailures++;
+              return MongoModernMessage(<String, Object>{
+                'ok': 0.0,
+                'errmsg':
+                    'Cursor session id (token-1) is not the same as the operation context\'s session id (token-2)',
+                'code': 13,
+                'codeName': 'Unauthorized',
+              });
+            }
+
+            return null;
+          },
+        );
+        manager.bind(connection);
+        var collection = DbCollection(db, 'posts');
+        var cursor = ModernCursor(
+          ChangeStreamOperation(
+            <Map<String, Object>>[],
+            collection: collection,
+          ),
+        );
+
+        var first = await cursor.nextObject();
+        var second = await cursor.nextObject();
+
+        expect(first?[key_id], equals(<String, Object>{'_data': 'token-1'}));
+        expect(second?[key_id], equals(<String, Object>{'_data': 'token-2'}));
+        expect(aggregateCalls, equals(2));
+        expect(getMoreFailures, equals(1));
+        expect(resumedAggregateCommand, isNotNull);
+      },
+    );
+
+    test(
+      'change streams resume from postBatchResumeToken after worker session loss',
+      () async {
+        Map<String, Object?>? resumedAggregateCommand;
+        var aggregateCalls = 0;
+        var getMoreFailures = 0;
+        var connection = _ScriptedConnection(
+          manager,
+          modernCommandHandler: (command) {
+            if (command['aggregate'] == 'posts') {
+              aggregateCalls++;
+              var pipeline = (command[keyPipeline] as List).cast<Map>();
+              var changeStreamStage = Map<String, Object?>.from(
+                pipeline.first[aggregateChangeStream] as Map,
+              );
+              if (aggregateCalls == 1) {
+                expect(changeStreamStage[keyResumeAfter], isNull);
+                return MongoModernMessage(<String, Object>{
+                  'ok': 1.0,
+                  'cursor': <String, Object>{
+                    'id': Int64(41),
+                    'ns': '${db.databaseName}.posts',
+                    'postBatchResumeToken': <String, Object>{
+                      '_data': 'token-empty-1',
+                    },
+                    'firstBatch': const <Map<String, Object>>[],
+                  },
+                });
+              }
+              resumedAggregateCommand = command;
+              expect(
+                changeStreamStage[keyResumeAfter],
+                equals(<String, Object>{'_data': 'token-empty-1'}),
+              );
+              return MongoModernMessage(<String, Object>{
+                'ok': 1.0,
+                'cursor': <String, Object>{
+                  'id': Int64.ZERO,
+                  'ns': '${db.databaseName}.posts',
+                  'firstBatch': <Map<String, Object>>[
+                    <String, Object>{
+                      key_id: <String, Object>{'_data': 'token-2'},
+                      keyOperationType: 'insert',
+                    },
+                  ],
+                },
+              });
+            }
+
+            if (command.containsKey(keyGetMore) && getMoreFailures == 0) {
+              getMoreFailures++;
+              throw MongoDartError(
+                'getMore failed: cursor session state was lost; cursor must be resumed',
+              );
+            }
+
+            return null;
+          },
+        );
+        manager.bind(connection);
+        var collection = DbCollection(db, 'posts');
+        var cursor = ModernCursor(
+          ChangeStreamOperation(
+            <Map<String, Object>>[],
+            collection: collection,
+          ),
+        );
+
+        var heartbeat = await cursor.nextObject();
+        var resumedEvent = await cursor.nextObject();
+
+        expect(heartbeat, isNull);
+        expect(
+          resumedEvent?[key_id],
+          equals(<String, Object>{'_data': 'token-2'}),
+        );
+        expect(aggregateCalls, equals(2));
+        expect(getMoreFailures, equals(1));
+        expect(resumedAggregateCommand, isNotNull);
+      },
+    );
+
+    test(
       'write command operations keep conservative single replay behavior',
       () async {
         var connection = _ScriptedConnection(
@@ -635,6 +802,7 @@ class _ScriptedConnection extends Connection {
     this.queryFailuresRemaining = 0,
     this.modernFailuresRemaining = 0,
     this.modernAuthRequiredFailuresRemaining = 0,
+    this.modernCommandHandler,
     this.modernDelay = Duration.zero,
     this.getMoreDelay = Duration.zero,
     this.getMoreCursorId,
@@ -663,6 +831,8 @@ class _ScriptedConnection extends Connection {
   int queryFailuresRemaining;
   int modernFailuresRemaining;
   int modernAuthRequiredFailuresRemaining;
+  final FutureOr<MongoModernMessage?> Function(Map<String, Object?> command)?
+  modernCommandHandler;
   final Duration modernDelay;
   final Duration getMoreDelay;
   final Int64? getMoreCursorId;
@@ -695,13 +865,19 @@ class _ScriptedConnection extends Connection {
     MongoModernMessage modernMessage,
   ) async {
     modernAttempts++;
-    var command = modernMessage.sections
-        .firstWhere(
-          (section) =>
-              section.payloadType == MongoModernMessage.basePayloadType,
-        )
-        .payload
-        .content;
+    var command = Map<String, Object?>.from(
+      modernMessage.sections
+          .firstWhere(
+            (section) =>
+                section.payloadType == MongoModernMessage.basePayloadType,
+          )
+          .payload
+          .content,
+    );
+    var handled = await modernCommandHandler?.call(command);
+    if (handled != null) {
+      return handled;
+    }
     if (command.containsKey('getMore') && getMoreCursorId != null) {
       if (getMoreDelay > Duration.zero) {
         await Future.delayed(getMoreDelay);

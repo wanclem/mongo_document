@@ -901,7 +901,9 @@ fn run_get_more_with_stored_session(
 ) -> Result<Document, String> {
     let stored_state = client.command_sessions.borrow_mut().remove(&cursor_id);
     let Some(mut state) = stored_state else {
-        return run_plain_command(client, database_name, request, command_label);
+        return Err(format!(
+            "{command_label} failed: cursor session state was lost; cursor must be resumed"
+        ));
     };
 
     let result = client
@@ -962,7 +964,7 @@ fn run_kill_cursors_with_stored_session(
             }
         }
     } else {
-        run_plain_command(client, database_name, request, command_label)?
+        Document::from_iter([(String::from("ok"), Bson::Double(1.0))])
     };
 
     let mut command_sessions = client.command_sessions.borrow_mut();
@@ -2431,7 +2433,7 @@ fn write_bytes_result(
 }
 
 fn write_error(error_out: *mut *mut c_char, message: &str) {
-    log_rust_error(message);
+    log_rust_ffi_error(message);
     if error_out.is_null() {
         return;
     }
@@ -2441,6 +2443,37 @@ fn write_error(error_out: *mut *mut c_char, message: &str) {
     unsafe {
         *error_out = message.into_raw();
     }
+}
+
+fn log_rust_ffi_error(message: &str) {
+    if is_resumable_cursor_session_loss_message(message) {
+        log_rust_info(message);
+        return;
+    }
+
+    if is_change_stream_monitor_timeout_message(message)
+        || is_worker_warmup_connectivity_warning(message)
+    {
+        log_rust_warn(message);
+        return;
+    }
+
+    log_rust_error(message);
+}
+
+fn is_resumable_cursor_session_loss_message(message: &str) -> bool {
+    message.contains("cursor session state was lost; cursor must be resumed")
+}
+
+fn is_change_stream_monitor_timeout_message(message: &str) -> bool {
+    message.starts_with("changeStream ")
+        && message.contains("getMore failed:")
+        && message.contains("server monitor timeout")
+}
+
+fn is_worker_warmup_connectivity_warning(message: &str) -> bool {
+    message.contains("worker pool warmup")
+        && message.contains("initial connectivity check failed")
 }
 
 fn log_slow_operation(label: &str, started_at: Instant) {

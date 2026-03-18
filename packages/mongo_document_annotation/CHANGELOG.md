@@ -1,3 +1,9 @@
+## 2.0.3
+
+### Fixed
+
+Aligned dependency to `mongo_document_db_driver: ^2.0.3` to pick up the change-stream resume hardening and updated recovery logging.
+
 ## 2.0.2
 
 ### Fixed
