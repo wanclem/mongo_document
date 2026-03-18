@@ -41,8 +41,15 @@ Future<void> main(List<String> args) async {
     return;
   }
 
-  const uri =
-      'mongodb+srv://agana:Le54snFoefZA9gvf@cluster0.nk509tk.mongodb.net/agama?retryWrites=true&w=majority&authSource=admin';
+  final uri = Platform.environment['MONGO_DOCUMENT_CHECK_URI'];
+  if (uri == null || uri.isEmpty) {
+    stderr.writeln(
+      'Missing MONGO_DOCUMENT_CHECK_URI. Export a MongoDB connection string '
+      'before running steps that require a live database.',
+    );
+    exitCode = 64;
+    return;
+  }
 
   if (step == 'create') {
     final db = await Db.create(uri);
