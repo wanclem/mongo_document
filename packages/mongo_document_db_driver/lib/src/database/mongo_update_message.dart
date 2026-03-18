@@ -1,0 +1,48 @@
+part of '../../mongo_document_db_driver.dart';
+
+class MongoUpdateMessage extends MongoMessage {
+  final BsonCString _collectionFullName;
+  int flags;
+  //int numberToSkip;
+  //int numberToReturn;
+  final BsonMap _selector;
+  late BsonMap _document;
+
+  MongoUpdateMessage(String collectionFullName, Map<String, dynamic> selector,
+      document, this.flags)
+      : _collectionFullName = BsonCString(collectionFullName),
+        _selector = BsonMap(selector) {
+    if (document is ModifierBuilder) {
+      document = document.map;
+    }
+    _document = BsonMap(document as Map<String, dynamic>);
+    opcode = MongoMessage.update;
+  }
+
+  @override
+  int get messageLength {
+    return 16 +
+        4 +
+        _collectionFullName.totalByteLength +
+        4 +
+        _selector.totalByteLength +
+        _document.totalByteLength;
+  }
+
+  @override
+  BsonBinary serialize() {
+    var buffer = BsonBinary(messageLength);
+    writeMessageHeaderTo(buffer);
+    buffer.writeInt(0);
+    _collectionFullName.packValue(buffer);
+    buffer.writeInt(flags);
+    _selector.packValue(buffer);
+    _document.packValue(buffer);
+    buffer.offset = 0;
+    return buffer;
+  }
+
+  @override
+  String toString() => 'MongoUpdateMessage($requestId, '
+      '${_collectionFullName.value}, ${_selector.value}, ${_document.value})';
+}

@@ -1,0 +1,130 @@
+@Timeout(Duration(seconds: 100))
+library;
+
+import 'package:mongo_document_db_driver/mongo_document_db_driver.dart';
+import 'package:test/test.dart';
+import 'package:uuid/uuid.dart';
+
+const dbName = 'test';
+const dbAddress = '127.0.0.1';
+
+const defaultUri = 'mongodb://$dbAddress:27017/$dbName';
+
+late Db db;
+Uuid uuid = Uuid();
+List<String> usedCollectionNames = [];
+
+String getRandomCollectionName() {
+  var name = uuid.v4();
+  usedCollectionNames.add(name);
+  return name;
+}
+
+void main() async {
+  Future initializeDatabase() async {
+    db = Db(defaultUri);
+    await db.open();
+  }
+
+  Future cleanupDatabase() async {
+    await db.close();
+  }
+
+  group('Commands', () {
+    var cannotRunTests = false;
+
+    setUp(() async {
+      await initializeDatabase();
+      if (!db.masterConnection.serverCapabilities.supportsOpMsg) {
+        cannotRunTests = true;
+      }
+    });
+
+    tearDown(() async {
+      await cleanupDatabase();
+    });
+    tearDownAll(() async {
+      await db.open();
+      await Future.forEach(usedCollectionNames,
+          (String collectionName) => db.collection(collectionName).drop());
+      await db.close();
+    });
+    group('Uuid:', () {
+      test('read Uuid', () async {
+        if (cannotRunTests) {
+          return;
+        }
+        var collectionName = getRandomCollectionName();
+        var collection = db.collection(collectionName);
+
+        var uuid = Uuid().v4obj();
+        await collection.insertOne({'uuid': uuid, 'null': null});
+
+        var values = await collection.find(where.eq('uuid', uuid)).toList();
+
+        expect(values.length, 1);
+        expect(values.first['uuid'], uuid);
+        expect(values.first['null'], isNull);
+      });
+
+      test('update Uuid', () async {
+        if (cannotRunTests) {
+          return;
+        }
+        var collectionName = getRandomCollectionName();
+        var collection = db.collection(collectionName);
+
+        var uuid = Uuid().v4obj();
+        await collection.insertOne({'uuid': uuid, 'null': null});
+
+        await collection.updateOne(
+            where.eq('null', null), ModifierBuilder().set('newField', 12));
+
+        var values = await collection.find().toList();
+
+        expect(values.length, 1);
+        expect(values.first['uuid'], uuid);
+        expect(values.first['null'], isNull);
+        expect(values.first['newField'], 12);
+      });
+
+      test('replace Uuid', () async {
+        if (cannotRunTests) {
+          return;
+        }
+        var collectionName = getRandomCollectionName();
+        var collection = db.collection(collectionName);
+        var uuid = Uuid().v4obj();
+        await collection.insertOne({'uuid': uuid, 'null': null});
+
+        var uuidNew = Uuid().v4obj();
+        await collection.replaceOne(
+            where.eq('notNull', 0), {'uuid': uuidNew, 'notNull': 0},
+            upsert: true);
+
+        var values = await collection.find().toList();
+
+        expect(values.length, 2);
+        expect(values.first['uuid'], uuid);
+        expect(values.first['null'], isNull);
+        expect(values.last['uuid'], uuidNew);
+      });
+
+      test('delete Uuid', () async {
+        if (cannotRunTests) {
+          return;
+        }
+        var collectionName = getRandomCollectionName();
+        var collection = db.collection(collectionName);
+        var uuid = Uuid().v4obj();
+        await collection.insertOne({'uuid': uuid, 'null': null});
+
+        await collection.deleteOne(where.eq('uuid', uuid));
+
+        var values = await collection.find().toList();
+
+        expect(values.isEmpty, isTrue);
+      });
+    });
+  });
+}

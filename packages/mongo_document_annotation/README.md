@@ -1,63 +1,32 @@
-[![pub package](https://img.shields.io/pub/v/mongo_document.svg)](https://pub.dev/packages/mongo_document_annotation) [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![pub package](https://img.shields.io/pub/v/mongo_document_annotation.svg)](https://pub.dev/packages/mongo_document_annotation)
+[![license](https://img.shields.io/badge/license-MIT-green)](../../LICENSE)
 
-For AI agents and coding assistants: see [README.AI.md](README.AI.md).
+# mongo_document_annotation
 
-<!-- TOC -->
+`mongo_document_annotation` provides the annotations, converters, runtime helpers, and shared connection wrapper used by generated `mongo_document` model APIs.
 
-## Table of Contents
+`mongo_document_annotation` pairs with `mongo_document_db_driver`, a Rust-backed driver that delegates live MongoDB execution to MongoDB's official Rust driver on supported native targets.
 
-1. [Overview](#overview)
-2. [Getting Started](#getting-started)
+## What This Package Gives You
 
-   * [Prerequisites](#prerequisites)
-   * [Installation](#installation)
-   * [Initialization](#initialization)
-3. [Usage](#usage)
+- `@MongoDocument(...)` annotations
+- `ObjectId`, date, and nested model converters
+- `MongoDbConnection` shared connection wrapper
+- query/projection helper types used by generated code
 
-   * [Using Freezed Classes](#using-freezed-classes)
-   * [Using Regular Classes](#using-regular-classes)
-   * [CRUD Examples](#crud-examples)
-   * [Lookups & Projections](#lookups--projections)
-4. [Configuration & Conventions](#configuration--conventions)
-5. [Troubleshooting](#troubleshooting)
-6. [Contributing](#contributing)
-7. [License](#license)
-
-<!-- /TOC -->
-
-## Overview
-
-**mongo_document** simplifies interaction between Dart classes and MongoDB using `mongo_document_db`. It generates zero-boilerplate, type-safe CRUD methods, query builders, and supports cross-collection lookups and projections. It works seamlessly with both `freezed` and plain Dart classes.
-
-This package allows you to:
-
-* Perform type-safe CRUD operations directly from your Dart classes.
-* Respect Dart naming conventions (e.g., camelCase) while mapping to your MongoDB schema (e.g., snake_case).
-* Define complex queries, projections, and cross-collection lookups with minimal boilerplate.
-
-## Getting Started
-
-### Prerequisites
-
-* Dart SDK ≥ 3.0
-* A running MongoDB instance (local or remote)
-* MongoDB server version ≥ 3.6
-
-### Installation
-
-Add to `pubspec.yaml`:
+## Installation
 
 ```yaml
 dependencies:
-  freezed_annotation: ">=2.4.4 <4.0.0"
+  mongo_document_annotation: ^2.0.0
   json_annotation: ^4.9.0
-  mongo_document_annotation: ^1.7.19
+  freezed_annotation: ">=2.4.4 <4.0.0" # optional
 
 dev_dependencies:
-  build_runner: ^2.4.14
-  freezed: ">=2.5.8 <4.0.0"
+  mongo_document: ^2.0.0
+  build_runner: ^2.10.3
   json_serializable: ^6.9.3
-  mongo_document: ^1.7.19
+  freezed: ">=2.5.8 <4.0.0" # optional
 ```
 
 Then:
@@ -66,31 +35,27 @@ Then:
 dart pub get
 ```
 
-### Initialization
-
-Configure your MongoDB connection once in your application entrypoint:
+## Initialize the Shared Connection
 
 ```dart
+import 'dart:io';
+
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 
 Future<void> main() async {
-  await MongoConnection.initialize('mongodb://localhost:27017/mydb');
+  final uri = Platform.environment['MONGODB_URI']!;
+  await MongoDbConnection.initialize(uri);
 
-  // Graceful shutdown
   ProcessSignal.sigint.watch().listen((_) async {
-    await MongoDbConnection.shutdown();
-    exit(0);
-  });
-  ProcessSignal.sigterm.watch().listen((_) async {
-    await MongoDbConnection.shutdown();
+    await MongoDbConnection.shutdownDb();
     exit(0);
   });
 }
 ```
 
-## Usage
+Put TLS and auth settings in the connection string itself. The connection helper is intentionally URI-first now.
 
-### Using Freezed Classes
+## Freezed Example
 
 ```dart
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -107,7 +72,6 @@ abstract class Post with _$Post {
   const factory Post({
     @ObjectIdConverter() @JsonKey(name: '_id') ObjectId? id,
     String? body,
-    User? author,
     @DateTimeConverter() DateTime? createdAt,
     @DateTimeConverter() DateTime? updatedAt,
   }) = _Post;
@@ -116,7 +80,7 @@ abstract class Post with _$Post {
 }
 ```
 
-### Using Regular Classes (No Freezed)
+## Regular Class Example
 
 ```dart
 import 'package:json_annotation/json_annotation.dart';
@@ -124,112 +88,83 @@ import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 
 part 'post.mongo_document.dart';
 
-/// Post (Regular Class)
-/// This class shows how to use mongo_document without freezed.
-/// The user must implement copyWith(), fromJson(), and toJson().
 @MongoDocument(collection: 'posts')
 @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
 class Post {
-  final String? body;
-  final User? author;
-  final ObjectId? id;
-
   Post({
     @ObjectIdConverter() @JsonKey(name: '_id') this.id,
     this.body,
-    this.author,
   });
 
-  Post copyWith({ObjectId? id, String? body, User? author}) {
+  final ObjectId? id;
+  final String? body;
+
+  Post copyWith({ObjectId? id, String? body}) {
     return Post(
       id: id ?? this.id,
       body: body ?? this.body,
-      author: author ?? this.author,
     );
   }
 
-  factory Post.fromJson(Map<String, dynamic> json) => throw UnimplementedError();
+  factory Post.fromJson(Map<String, dynamic> json) =>
+      throw UnimplementedError();
 
   Map<String, dynamic> toJson() => throw UnimplementedError();
 }
 ```
 
-### CRUD Examples
+## Generated CRUD Example
 
 ```dart
-// Create & Save
-final post = await Post(body: 'Hello world').save();
+final saved = await Post(body: 'Hello world').save();
 
-// Batch Save
-await Posts.saveMany([Post(body: 'A'), Post(body: 'B')]);
+final latest = await Posts.findOne(
+  (q) => q.body.eq('Hello world'),
+);
 
-// Update via copyWith then save
-await post?.copyWith(body: 'Updated').save();
-
-// Targeted updateOne
 await Posts.updateOne(
-  (p) => p.body.eq('Hello world'),
-  body: 'Updated via updateOne'
+  (q) => q.id.eq(saved?.id),
+  body: 'Updated',
 );
 ```
 
-### Lookups & Projections
-
-**Cross-collection lookup example:** fetch posts with the latest 3 comments each.
+## Lookups and Projections
 
 ```dart
 final posts = await Posts.findMany(
-  (p) => p.body.contains("Hello"),
+  (q) => q.body.contains('Hello'),
   lookups: [
     Lookup(
       from: Comments.collection,
-      as: "comments",
+      as: 'comments',
+      localField: '_id',
+      foreignField: 'post',
       limit: 3,
-      localField: "_id",
-      foreignField: "post",
     ),
+  ],
+  projections: [
+    PostAuthorProjections(),
+    PostProjection(),
   ],
 );
 ```
 
-**Projecting fields of related documents:** fetch posts with author details.
+## Platform Notes
 
-```dart
-final posts = await Posts.findMany(
-  (p) => p.body.contains("Hello"),
-  projections: [PostAuthorProjections()]
-);
-```
+- This package can safely live in shared Dart/Flutter codebases.
+- On web, shared types and converters compile, but live MongoDB runtime access is unsupported.
+- On Android/iOS, Flutter apps compile, but live MongoDB runtime requires mobile native Rust libraries that are not bundled yet.
+- On supported native server/desktop targets, the actual DB execution path is Rust-backed.
 
-**Combining lookups and projections:**
+## Conventions
 
-```dart
-final posts = await Posts.findMany(
-  (p) => p.body.contains("Hello"),
-  lookups: [
-    Lookup(
-      from: Comments.collection,
-      as: "comments",
-      limit: 3,
-      localField: "_id",
-      foreignField: "post",
-    ),
-  ],
-  projections: [PostAuthorProjections(), PostProjection()]
-);
-```
-
-This fetches each post, includes the author information, and the latest 3 comments.
-
-## Configuration & Conventions
-
-* Ensure `_id` is annotated with `@ObjectIdConverter()` and `@JsonKey(name: '_id')`.
-* Use `@JsonSerializable(fieldRename: FieldRename.snake)` to map camelCase fields to MongoDB style.
-* Nested `@MongoDocument` types generate projection helpers automatically.
+- Annotate `_id` with `@ObjectIdConverter()` and `@JsonKey(name: '_id')`.
+- Use `@JsonSerializable(fieldRename: FieldRename.snake)` when your MongoDB documents use `snake_case`.
+- Do not manually edit generated `*.mongo_document.dart` files.
 
 ## Troubleshooting
 
-Add to `analysis_options.yaml`:
+If you need to silence annotation-target warnings:
 
 ```yaml
 analyzer:
@@ -237,10 +172,6 @@ analyzer:
     invalid_annotation_target: ignore
 ```
 
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
 ## License
 
-MIT License — see [LICENSE](LICENSE).
+MIT — see [LICENSE](../../LICENSE).

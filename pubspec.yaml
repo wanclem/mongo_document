@@ -3,10 +3,7 @@ publish_to: none
 environment:
   sdk: ^3.7.0
 workspace:
+  - packages/mongo_document_db_driver
   - packages/mongo_document_annotation
   - packages/mongo_document_generator
   - packages/mongo_document_annotation/example
-
-dependency_overrides:
-  mongo_document_db:
-    path: packages/mongo_document_db

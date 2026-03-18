@@ -1,5 +1,5 @@
 import 'package:meta/meta.dart';
-import 'package:mongo_document_db/mongo_document_db.dart';
+import 'package:mongo_document_db_driver/mongo_document_db_driver.dart';
 
 class MongoDbConnection {
   static Db? _instance;
@@ -7,47 +7,33 @@ class MongoDbConnection {
   static int _connectionGeneration = 0;
   static Future<Db> Function(String databaseUri) _dbFactory = Db.create;
 
-  static String? _databaseUri;
-  static bool? _secure;
-  static bool? _tlsAllowInvalidCertificates;
-  static String? _tlsCAFile;
-  static String? _tlsCertificateKeyFile;
-  static String? _tlsCertificateKeyFilePassword;
+  static String? _connectionUri;
 
   MongoDbConnection._();
 
   static Future<void> initialize(
     String databaseUri, {
-    bool secure = true,
-    bool tlsAllowInvalidCertificates = false,
-    String? tlsCAFile,
-    String? tlsCertificateKeyFile,
-    String? tlsCertificateKeyFilePassword,
+    @Deprecated('Put TLS settings in the MongoDB connection string instead.')
+    bool? secure,
   }) async {
-    if (_databaseUri != null &&
-        (_databaseUri != databaseUri ||
-            _secure != secure ||
-            _tlsAllowInvalidCertificates != tlsAllowInvalidCertificates ||
-            _tlsCAFile != tlsCAFile ||
-            _tlsCertificateKeyFile != tlsCertificateKeyFile ||
-            _tlsCertificateKeyFilePassword != tlsCertificateKeyFilePassword)) {
+    final normalizedUri = _normalizeDatabaseUri(
+      databaseUri,
+      secure: secure,
+    );
+
+    if (_connectionUri != null && _connectionUri != normalizedUri) {
       throw StateError(
-        'MongoDbConnection is already initialized with different settings.',
+        'MongoDbConnection is already initialized with a different connection string.',
       );
     }
 
-    _databaseUri = databaseUri;
-    _secure = secure;
-    _tlsAllowInvalidCertificates = tlsAllowInvalidCertificates;
-    _tlsCAFile = tlsCAFile;
-    _tlsCertificateKeyFile = tlsCertificateKeyFile;
-    _tlsCertificateKeyFilePassword = tlsCertificateKeyFilePassword;
+    _connectionUri = normalizedUri;
 
     await instance;
   }
 
   static Future<Db> get instance async {
-    if (_databaseUri == null) {
+    if (_connectionUri == null) {
       throw StateError(
         'MongoDbConnection.initialize must be called before instance.',
       );
@@ -86,18 +72,12 @@ class MongoDbConnection {
   }
 
   static Future<Db> _connect({required int generation}) async {
-    final newDb = await _dbFactory(_databaseUri!);
+    final newDb = await _dbFactory(_connectionUri!);
     return _openDb(newDb, generation: generation);
   }
 
   static Future<Db> _openDb(Db db, {required int generation}) async {
-    await db.open(
-      secure: _secure ?? true,
-      tlsAllowInvalidCertificates: _tlsAllowInvalidCertificates ?? false,
-      tlsCAFile: _tlsCAFile,
-      tlsCertificateKeyFile: _tlsCertificateKeyFile,
-      tlsCertificateKeyFilePassword: _tlsCertificateKeyFilePassword,
-    );
+    await db.open();
     if (generation != _connectionGeneration) {
       await db.close();
       throw StateError(
@@ -146,16 +126,27 @@ class MongoDbConnection {
     _connecting = null;
     _connectionGeneration = 0;
     _dbFactory = Db.create;
-    _databaseUri = null;
-    _secure = null;
-    _tlsAllowInvalidCertificates = null;
-    _tlsCAFile = null;
-    _tlsCertificateKeyFile = null;
-    _tlsCertificateKeyFilePassword = null;
+    _connectionUri = null;
   }
 
   static Future<DbCollection> getCollection(String collectionName) async {
     final db = await instance;
     return db.collection(collectionName);
+  }
+
+  static String _normalizeDatabaseUri(
+    String databaseUri, {
+    bool? secure,
+  }) {
+    if (secure == null) {
+      return databaseUri;
+    }
+
+    final uri = Uri.parse(databaseUri);
+    final queryParameters = Map<String, String>.from(uri.queryParameters);
+
+    queryParameters['tls'] = secure.toString();
+
+    return uri.replace(queryParameters: queryParameters).toString();
   }
 }

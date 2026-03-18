@@ -1,0 +1,62 @@
+import 'package:mongo_document_db_driver/mongo_document_db_driver.dart'
+    show
+        Connection,
+        Db,
+        DbCommand,
+        MongoDartError,
+        MongoQueryMessage,
+        keyCode,
+        keyCodeName,
+        keyErrmsg,
+        keyOk;
+import 'package:mongo_document_db_driver/src/auth/auth.dart';
+
+import '../database/commands/authentication_commands/x509_command.dart';
+
+class X509Authenticator extends Authenticator {
+  X509Authenticator(this.username, this.db) : super();
+
+  final String? username;
+  Db db;
+  static final String name = 'MONGODB-X509';
+
+  @override
+  Future authenticate(Connection connection) async {
+    if (connection.serverCapabilities.supportsOpMsg) {
+      return modernAuthenticate(connection);
+    }
+    return legacyAuthenticate(connection);
+  }
+
+  Future legacyAuthenticate(Connection connection) async {
+    var command = createMongoDbX509AuthenticationCommand(db, username);
+    return db
+        .executeDbCommand(command, connection: connection)
+        .then((res) => res['ok'] == 1);
+  }
+
+  static DbCommand createMongoDbX509AuthenticationCommand(
+      Db db, String? username) {
+    var command = {
+      'authenticate': 1,
+      'mechanism': name,
+      if (username != null && username.isNotEmpty) 'user': username,
+    };
+
+    return DbCommand(db.authSourceDb ?? db, DbCommand.SYSTEM_COMMAND_COLLECTION,
+        MongoQueryMessage.OPTS_NONE, 0, 1, command, null);
+  }
+
+  Future<void> modernAuthenticate(Connection connection) async {
+    var command = X509Command(db.authSourceDb ?? db, name, username,
+        connection: connection);
+    var result = await command.execute();
+
+    if (result[keyOk] == 0.0) {
+      throw MongoDartError(result[keyErrmsg],
+          mongoCode: result[keyCode],
+          errorCode: result[keyCode] == null ? null : '${result[keyCode]}',
+          errorCodeName: result[keyCodeName]);
+    }
+  }
+}

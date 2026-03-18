@@ -1,94 +1,100 @@
+## 2.0.0
+
+### Changed
+
+Aligned dependency to `mongo_document_db_driver: ^2.0.0` and simplified `MongoDbConnection` around a URI-first connection flow for the Rust-backed runtime.
+
 ## 1.7.30
 
 ### Fixed
 
 Updated `MongoDbConnection` to reuse and reopen the same `Db` instance instead of recreating clients unnecessarily, share in-flight connect attempts across callers, and block stale post-shutdown connects from re-registering themselves.
 
-Aligned dependency to `mongo_document_db: ^1.7.30` to consume the pool, failover, and startup latency fixes in the driver.
+Aligned dependency to `mongo_document_db_driver: ^1.7.30` to consume the pool, failover, and startup latency fixes in the driver.
 
 ## 1.7.29
 
 ### Fixed
 
-Aligned dependency to `mongo_document_db: ^1.7.29` to consume the bounded read-retry latency fix for the `1.7.28` query slowdown regression.
+Aligned dependency to `mongo_document_db_driver: ^1.7.29` to consume the bounded read-retry latency fix for the `1.7.28` query slowdown regression.
 
 ## 1.7.28
 
 ### Fixed
 
-Aligned dependency to `mongo_document_db: ^1.7.28` to consume improved primary-election recovery, read retry resilience, and connection provisioning throttling.
+Aligned dependency to `mongo_document_db_driver: ^1.7.28` to consume improved primary-election recovery, read retry resilience, and connection provisioning throttling.
 
 ## 1.7.27
 
 ### Fixed
 
-Aligned dependency to `mongo_document_db: ^1.7.27` to consume failover retry classification hardening for primary stepdown/election windows.
+Aligned dependency to `mongo_document_db_driver: ^1.7.27` to consume failover retry classification hardening for primary stepdown/election windows.
 
 ## 1.7.26
 
 ### Fixed
 
-Aligned dependency to `mongo_document_db: ^1.7.26` to consume concurrency and startup performance improvements.
+Aligned dependency to `mongo_document_db_driver: ^1.7.26` to consume concurrency and startup performance improvements.
 
 ## 1.7.25
 
 ### Fixed
 
-Aligned dependency to `mongo_document_db: ^1.7.25` to consume updated logging defaults and lifecycle/error signal tuning.
+Aligned dependency to `mongo_document_db_driver: ^1.7.25` to consume updated logging defaults and lifecycle/error signal tuning.
 
 ## 1.7.24
 
 ### Fixed
 
-Aligned dependency to `mongo_document_db: ^1.7.24` to consume socket-reset resilience and reconnect stability fixes.
+Aligned dependency to `mongo_document_db_driver: ^1.7.24` to consume socket-reset resilience and reconnect stability fixes.
 
 ## 1.7.23
 
 ### Fixed
 
-Aligned dependency to `mongo_document_db: ^1.7.23` to consume per-host pooling support and reconnect/heartbeat hardening.
+Aligned dependency to `mongo_document_db_driver: ^1.7.23` to consume per-host pooling support and reconnect/heartbeat hardening.
 
 ## 1.7.22
 
 ### Fixed
 
-Aligned dependency to `mongo_document_db: ^1.7.22` to consume SCRAM conversation single-flight hardening and recovery stability fixes.
+Aligned dependency to `mongo_document_db_driver: ^1.7.22` to consume SCRAM conversation single-flight hardening and recovery stability fixes.
 
 ## 1.7.21
 
 ### Fixed
 
-Aligned dependency to `mongo_document_db: ^1.7.21` to consume topology-refresh serialization and connection-churn recovery hardening.
+Aligned dependency to `mongo_document_db_driver: ^1.7.21` to consume topology-refresh serialization and connection-churn recovery hardening.
 
 ## 1.7.20
 
 ### Fixed
 
-Aligned dependency to `mongo_document_db: ^1.7.20` to consume failover/authentication race hardening and reconnect stability updates.
+Aligned dependency to `mongo_document_db_driver: ^1.7.20` to consume failover/authentication race hardening and reconnect stability updates.
 
 ## 1.7.19
 
 ### Fixed
 
-Aligned dependency to `mongo_document_db: ^1.7.19` to consume primary-election/write-retry resilience updates.
+Aligned dependency to `mongo_document_db_driver: ^1.7.19` to consume primary-election/write-retry resilience updates.
 
 ## 1.7.18
 
 ### Fixed
 
-Aligned dependency to `mongo_document_db: ^1.7.18` to consume the latest connection stability and failover hardening updates.
+Aligned dependency to `mongo_document_db_driver: ^1.7.18` to consume the latest connection stability and failover hardening updates.
 
 ## 1.7.17
 
 ### Fixed
 
-Synchronized package versioning across the repository and aligned dependency to `mongo_document_db: ^1.7.17`.
+Synchronized package versioning across the repository and aligned dependency to `mongo_document_db_driver: ^1.7.17`.
 
 ## 1.7.16
 
 ### Fixed
 
-Aligned dependency to `mongo_document_db: ^0.10.12` to consume the latest connection lifecycle hardening and URI log redaction fixes.
+Aligned dependency to `mongo_document_db_driver: ^0.10.12` to consume the latest connection lifecycle hardening and URI log redaction fixes.
 
 ## 1.7.15
 
@@ -98,13 +104,13 @@ Added AI-oriented package documentation (`README.AI.md`) to improve usage by cod
 
 ### Fixed
 
-Aligned dependency to `mongo_document_db: ^0.10.11`.
+Aligned dependency to `mongo_document_db_driver: ^0.10.11`.
 
 ## 1.7.14
 
 ### Fixed
 
-Switch to `mongo_document_db` dependency `^0.10.9` and align runtime connection behavior with the rewritten driver.
+Switch to `mongo_document_db_driver` dependency `^0.10.9` and align runtime connection behavior with the rewritten driver.
 Remove automatic `safeAtlas` URI mutation and simplify connection handling to rely on driver-level reconnect/state management.
 
 ## 1.7.13
@@ -135,7 +141,7 @@ Align with generator patch release.
 
 ### Fixed
 
-Use mongo_document_db 0.10.7 and simplify connection handling to rely on safeAtlas.
+Use mongo_document_db_driver 0.10.7 and simplify connection handling to rely on safeAtlas.
 Automatically append safeAtlas=true to connection strings when missing.
 
 ## 1.7.8

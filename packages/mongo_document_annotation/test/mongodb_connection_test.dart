@@ -105,18 +105,14 @@ class _FakeDb extends Db {
   Future open({
     WriteConcern writeConcern = WriteConcern.acknowledged,
     bool secure = false,
-    bool tlsAllowInvalidCertificates = false,
-    String? tlsCAFile,
-    String? tlsCertificateKeyFile,
-    String? tlsCertificateKeyFilePassword,
   }) async {
     openCalls++;
-    state = State.open;
+    debugSetState(State.open);
   }
 
   @override
   Future close() async {
     closeCalls++;
-    state = State.closed;
+    debugSetState(State.closed);
   }
 }

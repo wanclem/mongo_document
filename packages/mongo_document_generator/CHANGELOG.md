@@ -1,10 +1,18 @@
+## 2.0.0
+
+### Changed
+
+Aligned dependencies:
+- `mongo_document_annotation: ^2.0.0`
+- `mongo_document_db_driver: ^2.0.0`
+
 ## 1.7.30
 
 ### Fixed
 
 Aligned dependencies:
 - `mongo_document_annotation: ^1.7.30`
-- `mongo_document_db: ^1.7.30`
+- `mongo_document_db_driver: ^1.7.30`
 
 ## 1.7.29
 
@@ -12,7 +20,7 @@ Aligned dependencies:
 
 Aligned dependencies:
 - `mongo_document_annotation: ^1.7.29`
-- `mongo_document_db: ^1.7.29`
+- `mongo_document_db_driver: ^1.7.29`
 
 ## 1.7.28
 
@@ -20,7 +28,7 @@ Aligned dependencies:
 
 Aligned dependencies:
 - `mongo_document_annotation: ^1.7.28`
-- `mongo_document_db: ^1.7.28`
+- `mongo_document_db_driver: ^1.7.28`
 
 ## 1.7.27
 
@@ -28,7 +36,7 @@ Aligned dependencies:
 
 Aligned dependencies:
 - `mongo_document_annotation: ^1.7.27`
-- `mongo_document_db: ^1.7.27`
+- `mongo_document_db_driver: ^1.7.27`
 
 ## 1.7.26
 
@@ -36,7 +44,7 @@ Aligned dependencies:
 
 Aligned dependencies:
 - `mongo_document_annotation: ^1.7.26`
-- `mongo_document_db: ^1.7.26`
+- `mongo_document_db_driver: ^1.7.26`
 
 ## 1.7.25
 
@@ -44,7 +52,7 @@ Aligned dependencies:
 
 Aligned dependencies:
 - `mongo_document_annotation: ^1.7.25`
-- `mongo_document_db: ^1.7.25`
+- `mongo_document_db_driver: ^1.7.25`
 
 ## 1.7.24
 
@@ -52,7 +60,7 @@ Aligned dependencies:
 
 Aligned dependencies:
 - `mongo_document_annotation: ^1.7.24`
-- `mongo_document_db: ^1.7.24`
+- `mongo_document_db_driver: ^1.7.24`
 
 ## 1.7.23
 
@@ -60,7 +68,7 @@ Aligned dependencies:
 
 Aligned dependencies:
 - `mongo_document_annotation: ^1.7.23`
-- `mongo_document_db: ^1.7.23`
+- `mongo_document_db_driver: ^1.7.23`
 
 ## 1.7.22
 
@@ -68,7 +76,7 @@ Aligned dependencies:
 
 Aligned dependencies:
 - `mongo_document_annotation: ^1.7.22`
-- `mongo_document_db: ^1.7.22`
+- `mongo_document_db_driver: ^1.7.22`
 
 ## 1.7.21
 
@@ -76,7 +84,7 @@ Aligned dependencies:
 
 Aligned dependencies:
 - `mongo_document_annotation: ^1.7.21`
-- `mongo_document_db: ^1.7.21`
+- `mongo_document_db_driver: ^1.7.21`
 
 ## 1.7.20
 
@@ -84,7 +92,7 @@ Aligned dependencies:
 
 Aligned dependencies:
 - `mongo_document_annotation: ^1.7.20`
-- `mongo_document_db: ^1.7.20`
+- `mongo_document_db_driver: ^1.7.20`
 
 ## 1.7.19
 
@@ -92,7 +100,7 @@ Aligned dependencies:
 
 Aligned dependencies:
 - `mongo_document_annotation: ^1.7.19`
-- `mongo_document_db: ^1.7.19`
+- `mongo_document_db_driver: ^1.7.19`
 
 ## 1.7.18
 
@@ -100,7 +108,7 @@ Aligned dependencies:
 
 Aligned dependencies:
 - `mongo_document_annotation: ^1.7.18`
-- `mongo_document_db: ^1.7.18`
+- `mongo_document_db_driver: ^1.7.18`
 
 ## 1.7.17
 
@@ -108,7 +116,7 @@ Aligned dependencies:
 
 Aligned dependencies:
 - `mongo_document_annotation: ^1.7.17`
-- `mongo_document_db: ^1.7.17`
+- `mongo_document_db_driver: ^1.7.17`
 
 ## 1.7.16
 
@@ -116,7 +124,7 @@ Aligned dependencies:
 
 Aligned dependencies:
 - `mongo_document_annotation: ^1.7.16`
-- `mongo_document_db: ^0.10.12`
+- `mongo_document_db_driver: ^0.10.12`
 
 ## 1.7.15
 
@@ -128,7 +136,7 @@ Added AI-oriented package documentation (`README.AI.md`) for coding-agent workfl
 
 Aligned dependencies:
 - `mongo_document_annotation: ^1.7.15`
-- `mongo_document_db: ^0.10.11`
+- `mongo_document_db_driver: ^0.10.11`
 
 ## 1.7.14
 
@@ -136,7 +144,7 @@ Aligned dependencies:
 
 Align dependencies with the rewritten local driver stack:
 - `mongo_document_annotation: ^1.7.14`
-- `mongo_document_db: ^0.10.9`
+- `mongo_document_db_driver: ^0.10.9`
 
 ## 1.7.13
 
@@ -148,7 +156,7 @@ Use where.id for update follow-up lookup with null-safe id guard.
 
 ### Fixed
 
-Handle nullable ids in update templates for newer mongo_document_db signatures.
+Handle nullable ids in update templates for newer mongo_document_db_driver signatures.
 
 ## 1.7.11
 
@@ -166,7 +174,7 @@ Remove unnecessary non-null assertion in update template.
 
 ### Fixed
 
-Upgrade mongo_document_db to 0.10.7.
+Upgrade mongo_document_db_driver to 0.10.7.
 
 ## 1.7.8
 

@@ -21,9 +21,9 @@
       <excludeFolder url="file://$MODULE_DIR$/packages/mongo_document_annotation/example/.dart_tool" />
       <excludeFolder url="file://$MODULE_DIR$/packages/mongo_document_annotation/example/.pub" />
       <excludeFolder url="file://$MODULE_DIR$/packages/mongo_document_annotation/example/build" />
-      <excludeFolder url="file://$MODULE_DIR$/packages/mongo_document_db/.dart_tool" />
-      <excludeFolder url="file://$MODULE_DIR$/packages/mongo_document_db/.pub" />
-      <excludeFolder url="file://$MODULE_DIR$/packages/mongo_document_db/build" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/mongo_document_db_driver/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/mongo_document_db_driver/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/mongo_document_db_driver/build" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

@@ -1,6 +1,6 @@
 # mongo_document
 
-> Type-safe MongoDB model code generation for Dart, backed by a local MongoDB driver package (`mongo_document_db`).
+> Type-safe MongoDB model code generation for Dart, backed by a local MongoDB driver package (`mongo_document_db_driver`).
 
 ## Canonical Docs
 
@@ -11,7 +11,7 @@
 
 - [mongo_document_annotation AI Guide](packages/mongo_document_annotation/README.AI.md): annotations, runtime helpers, connection lifecycle, generated API expectations.
 - [mongo_document AI Guide](packages/mongo_document_generator/README.AI.md): source_gen builder behavior and generation commands.
-- [mongo_document_db AI Guide](packages/mongo_document_db/README.AI.md): low-level driver usage and connection patterns.
+- [mongo_document_db_driver AI Guide](packages/mongo_document_db_driver/README.AI.md): low-level driver usage and connection patterns.
 
 ## Required Commands
 

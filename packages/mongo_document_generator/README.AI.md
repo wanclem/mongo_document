@@ -3,11 +3,15 @@
 `mongo_document` is the code generator package.
 It scans Dart model files and emits typed CRUD/query helpers into `*.mongo_document.dart`.
 
+## Runtime Relationship
+
+The generated code targets `mongo_document_annotation`, and live MongoDB execution ultimately flows into `mongo_document_db_driver`. On supported native targets, that runtime path is backed by MongoDB's official Rust driver.
+
 ## Install
 
 ```yaml
 dev_dependencies:
-  mongo_document: ^1.7.29
+  mongo_document: ^2.0.0
   build_runner: ^2.10.3
 ```
 
@@ -15,7 +19,7 @@ Runtime annotations/helpers must also be installed:
 
 ```yaml
 dependencies:
-  mongo_document_annotation: ^1.7.29
+  mongo_document_annotation: ^2.0.0
 ```
 
 ## Builder Behavior
@@ -46,22 +50,21 @@ Each model should include:
 - `part 'model.mongo_document.dart';`
 - `@MongoDocument(collection: '...')`
 
-If using freezed/json_serializable, include their `part` files too.
+If using `freezed` / `json_serializable`, include their `part` files too.
 
 ## Typical Generated Artifacts
 
-Given `post.dart`, output includes:
+Given `post.dart`, the output commonly includes:
 
-- `enum PostFields`
-- `class QPost` (typed query fields)
-- `class PostProjections` (+ nested projection helpers)
-- extension with instance operations (`save`, `delete`)
-- static collection class (`Posts`) with query/update/delete helpers
+- `QPost` typed query helpers
+- `PostProjections`
+- extension methods with instance operations such as `save` and `delete`
+- collection helpers such as `Posts.findOne`, `Posts.findMany`, `Posts.updateOne`, and `Posts.deleteMany`
 
 ## Failure Modes and Fixes
 
 - No generated file:
-  - Ensure model file is under `lib/` and has `part '...mongo_document.dart';`.
+  - Ensure the model file is under `lib/` and has `part '...mongo_document.dart';`.
 - Build conflict:
   - Use `--delete-conflicting-outputs`.
 - Analyzer warning on annotations:
@@ -72,3 +75,4 @@ Given `post.dart`, output includes:
 - Treat generated files as build artifacts.
 - Modify source model definitions, then regenerate.
 - Do not patch generated helpers directly.
+- Describe the generated runtime path as Rust-backed through MongoDB's official driver.

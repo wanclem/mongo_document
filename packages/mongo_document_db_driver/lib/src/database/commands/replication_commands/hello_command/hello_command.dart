@@ -1,0 +1,65 @@
+import 'package:mongo_document_db_driver/mongo_document_db_driver.dart';
+import 'package:mongo_document_db_driver/src/database/commands/base/command_operation.dart';
+import 'package:mongo_document_db_driver/src/database/commands/replication_commands/hello_command/client_metadata.dart';
+import 'package:mongo_document_db_driver/src/database/message/additional/section.dart';
+import 'package:mongo_document_db_driver/src/database/message/mongo_modern_message.dart';
+import 'package:vy_string_utils/vy_string_utils.dart';
+
+var _command = <String, Object>{keyHello: 1};
+
+/// The Hello command takes the following form:
+///
+/// `db.runCommand( { hello: 1 } )`
+///
+/// The hello command accepts optional fields saslSupportedMechs:
+/// <db.user> to return an additional field hello.saslSupportedMechs
+/// in its result and comment <String> to add a log comment associated
+/// with the command.
+///
+/// `db.runCommand( { hello: 1, saslSupportedMechs: "<db.username>",
+/// comment: <String> } )`
+class HelloCommand extends CommandOperation {
+  HelloCommand(Db db,
+      {String? username,
+      ClientMetadata? clientMetadata,
+      Map<String, Object>? rawOptions,
+      Connection? connection})
+      : super(
+            db,
+            <String, Object>{
+              ...?clientMetadata?.options,
+              ...?rawOptions,
+              if (connection?.serverConfig.loadBalanced == true)
+                keyLoadBalanced: true
+            },
+            command: {
+              ..._command,
+              if (filled(username))
+                keySaslSupportedMechs: '${db.databaseName}.$username'
+            },
+            connection: connection);
+
+  Future<HelloResult> executeDocument() async {
+    var result = await super.execute();
+    return HelloResult(result);
+  }
+
+  @override
+  Future<Map<String, dynamic>> execute({bool skipStateCheck = false}) async {
+    final db = this.db;
+
+    var command = $buildCommand();
+    processOptions(command);
+    command.addAll(options);
+
+    var message = MongoModernMessage(command);
+
+    connection ??= db.masterConnectionAnyState;
+
+    var response = await connection!.executeModernMessage(message);
+
+    var section = response.sections.firstWhere((Section section) =>
+        section.payloadType == MongoModernMessage.basePayloadType);
+    return section.payload.content;
+  }
+}

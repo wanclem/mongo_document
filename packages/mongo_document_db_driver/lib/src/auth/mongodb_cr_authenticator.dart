@@ -1,0 +1,46 @@
+//part of mongo_document_db_driver;
+// ignore_for_file: deprecated_member_use_from_same_package
+
+import 'package:crypto/crypto.dart' as crypto;
+import 'package:mongo_document_db_driver/mongo_document_db_driver.dart'
+    show Connection, Db, DbCommand, MongoQueryMessage;
+import 'package:mongo_document_db_driver/src/auth/auth.dart';
+import 'package:sasl_scram/sasl_scram.dart' show UsernamePasswordCredential;
+
+class MongoDbCRAuthenticator extends Authenticator {
+  MongoDbCRAuthenticator(this.db, this.credentials) : super();
+
+  static final String name = 'MONGODB-CR';
+
+  final Db db;
+  final UsernamePasswordCredential credentials;
+
+  @override
+  Future authenticate(Connection connection) {
+    return db.getNonce(connection: connection).then((msg) {
+      var nonce = msg['nonce'];
+      var command = createMongoDbCrAuthenticationCommand(
+          db, credentials, nonce.toString());
+      return db.executeDbCommand(command, connection: connection);
+    }).then((res) => res['ok'] == 1);
+  }
+
+  static DbCommand createMongoDbCrAuthenticationCommand(
+      Db db, UsernamePasswordCredential credentials, String nonce) {
+    var hashedPassword = crypto.md5
+        .convert(
+            '${credentials.username}:mongo:${credentials.password}'.codeUnits)
+        .toString();
+    var key = crypto.md5
+        .convert('$nonce${credentials.username}$hashedPassword'.codeUnits)
+        .toString();
+    var selector = {
+      'authenticate': 1,
+      'user': credentials.username,
+      'nonce': nonce,
+      'key': key
+    };
+    return DbCommand(db.authSourceDb ?? db, DbCommand.SYSTEM_COMMAND_COLLECTION,
+        MongoQueryMessage.OPTS_NONE, 0, -1, selector, null);
+  }
+}
