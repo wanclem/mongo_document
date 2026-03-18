@@ -49,7 +49,7 @@ class ListCollectionsCommand extends CommandOperation {
   Map<String, Object> $buildCommand() {
     return <String, Object>{
       keyListCollections: 1,
-      if (filter != null) keyFilter: filter!,
+      keyFilter: ?filter,
     };
   }
 }

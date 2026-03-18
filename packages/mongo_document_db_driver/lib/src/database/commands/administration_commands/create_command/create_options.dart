@@ -213,19 +213,18 @@ class CreateOptions {
   Map<String, Object> getOptions(Db db) => <String, Object>{
         if (/* capped != null && */ capped) keyCapped: capped,
         if (autoIndexId != null && !autoIndexId!) keyAutoIndexId: autoIndexId!,
-        if (size != null) keySize: size!,
-        if (max != null) keyMax: max!,
-        if (storageEngine != null) keyStorageEngine: storageEngine!,
-        if (validator != null) keyValidator: validator!,
-        if (validationLevel != null) keyValidationLevel: validationLevel!,
-        if (validationAction != null) keyValidationAction: validationAction!,
-        if (indexOptionDefaults != null)
-          keyIndexOptionDefaults: indexOptionDefaults!,
-        if (viewOn != null) keyViewOn: viewOn!,
-        if (pipeline != null) keyPipeline: pipeline!,
+        keySize: ?size,
+        keyMax: ?max,
+        keyStorageEngine: ?storageEngine,
+        keyValidator: ?validator,
+        keyValidationLevel: ?validationLevel,
+        keyValidationAction: ?validationAction,
+        keyIndexOptionDefaults: ?indexOptionDefaults,
+        keyViewOn: ?viewOn,
+        keyPipeline: ?pipeline,
         if (collation != null) keyCollation: collation!.options,
         if (writeConcern != null)
           keyWriteConcern: writeConcern!.asMap(db.writeConcernServerStatus),
-        if (comment != null) keyComment: comment!,
+        keyComment: ?comment,
       };
 }

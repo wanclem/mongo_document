@@ -34,7 +34,7 @@ mixin MoreExMixin {
     _key: {r'$gte': processedValue(min), r'$lte': processedValue(max)},
   });
 
-  Expression near(var value, [double? maxDistance]) => RawExpression({
+  Expression near(dynamic value, [double? maxDistance]) => RawExpression({
     _key: {
       r'$near': processedValue(value),
       if (maxDistance != null) r'$maxDistance': maxDistance,

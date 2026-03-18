@@ -87,13 +87,12 @@ class FindOperation extends CommandOperation {
     }
     return <String, Object>{
       keyFind: collection!.collectionName,
-      if (filter != null) keyFilter: filter!,
-      if (sort != null) keySort: sort!,
-      if (projection != null) keyProjection: projection!,
+      keyFilter: ?filter,
+      keySort: ?sort,
+      keyProjection: ?projection,
       if (hint != null)
         keyHint: hint!
-      else if (hintDocument != null)
-        keyHint: hintDocument!,
+      else keyHint: ?hintDocument,
       if (skip != null && skip! > 0) keySkip: skip!,
       if (limit != null && limit! > 0) keyLimit: limit!,
     };

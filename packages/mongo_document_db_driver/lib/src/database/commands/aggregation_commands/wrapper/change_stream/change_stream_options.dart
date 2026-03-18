@@ -67,11 +67,10 @@ class ChangeStreamOptions extends AggregateOptions {
   /// These options mut be passed to the $changeStream key in the aggregate
   /// command
   Map<String, Object> changeStreamSpecificOptions() => <String, Object>{
-        if (resumeAfter != null) keyResumeAfter: resumeAfter!,
-        if (startAfter != null) keyStartAfter: startAfter!,
-        if (fullDocument != null) keyFullDocument: fullDocument!,
-        if (maxAwaitTimeMS != null) keyMaxAwaitTimeMS: maxAwaitTimeMS!,
-        if (startAtOperationTime != null)
-          keyStartAtOperationTime: startAtOperationTime!,
+        keyResumeAfter: ?resumeAfter,
+        keyStartAfter: ?startAfter,
+        keyFullDocument: ?fullDocument,
+        keyMaxAwaitTimeMS: ?maxAwaitTimeMS,
+        keyStartAtOperationTime: ?startAtOperationTime,
       };
 }

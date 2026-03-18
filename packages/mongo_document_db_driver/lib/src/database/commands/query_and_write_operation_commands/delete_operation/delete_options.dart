@@ -35,7 +35,7 @@ class DeleteOptions {
       if (writeConcern != null)
         keyWriteConcern: writeConcern!.asMap(db.writeConcernServerStatus),
       if (!ordered) keyOrdered: ordered,
-      if (comment != null) keyComment: comment!
+      keyComment: ?comment
     };
   }
 }

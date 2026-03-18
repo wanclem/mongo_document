@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.1
+
+- Removed the hardcoded Atlas credential from the Rust driver check tool and switched it to environment-based configuration.
+- Cleaned up analyzer findings across the Dart-facing driver layer without changing the Rust-backed runtime behavior.
+
 ## 2.0.0
 
 - Delivered a Rust-backed MongoDB runtime that delegates live database execution to MongoDB's official Rust driver on supported native targets.

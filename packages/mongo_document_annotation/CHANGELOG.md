@@ -1,3 +1,9 @@
+## 2.0.1
+
+### Fixed
+
+Aligned dependency to `mongo_document_db_driver: ^2.0.1` and cleaned up analyzer findings in the annotation runtime helpers.
+
 ## 2.0.0
 
 ### Changed

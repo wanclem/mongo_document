@@ -107,7 +107,7 @@ Map<String, Object> parseIndexOptions(Object fieldOrSpec) {
 
   return {
     keyName: indexes.join('_'),
-    if (keys != null) keyKeys: keys,
+    keyKeys: ?keys,
     keyFieldHash: fieldHash
   };
 }

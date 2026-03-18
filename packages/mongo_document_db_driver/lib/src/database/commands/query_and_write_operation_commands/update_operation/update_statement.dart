@@ -136,11 +136,10 @@ class UpdateStatement {
       if (upsert) keyUpsert: upsert,
       if (multi) keyMulti: multi,
       if (collation != null) keyCollation: collation!.options,
-      if (arrayFilters != null) keyArrayFilters: arrayFilters!,
+      keyArrayFilters: ?arrayFilters,
       if (hint != null)
         keyHint: hint!
-      else if (hintDocument != null)
-        keyHint: hintDocument!,
+      else keyHint: ?hintDocument,
     };
   }
 }

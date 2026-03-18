@@ -55,15 +55,13 @@ class CreateIndexOptions {
         keySparseIndex: sparseIndex,
         keyBackground: background,
         keyDropDuplicatedEntries: dropDuplicatedEntries,
-        if (geoLowerBound != null) keyGeoLowerBound: geoLowerBound!,
-        if (geoHighBound != null) keyGeoHighBound: geoHighBound!,
-        if (formatVersion != null) keyFormatVersion: formatVersion!,
-        if (expireAfterSeconds != null)
-          keyExpireAfterSeconds: expireAfterSeconds!,
-        if (indexName != null) keyIndexName: indexName!,
-        if (partialFilterExpression != null)
-          keyPartialFilterExpression: partialFilterExpression!,
-        if (collation != null) keyCollation: collation!,
+        keyGeoLowerBound: ?geoLowerBound,
+        keyGeoHighBound: ?geoHighBound,
+        keyFormatVersion: ?formatVersion,
+        keyExpireAfterSeconds: ?expireAfterSeconds,
+        keyIndexName: ?indexName,
+        keyPartialFilterExpression: ?partialFilterExpression,
+        keyCollation: ?collation,
         //if (session 1= null) keySession: session
       };
 }

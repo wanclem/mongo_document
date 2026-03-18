@@ -30,7 +30,7 @@ class DistinctOperation extends CommandOperation {
     return <String, Object>{
       keyDistinct: collection!.collectionName,
       keyKey: key,
-      if (query != null) keyQuery: query!,
+      keyQuery: ?query,
     };
   }
 

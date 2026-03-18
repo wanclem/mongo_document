@@ -46,13 +46,12 @@ class CountOperation extends CommandOperation {
   Map<String, Object> $buildCommand() {
     return <String, Object>{
       keyCount: collection!.collectionName,
-      if (query != null) keyQuery: query!,
+      keyQuery: ?query,
       if (limit != null && limit! > 0) keyLimit: limit!,
       if (skip != null && skip! > 0) keySkip: skip!,
       if (hint != null)
         keyHint: hint!
-      else if (hintDocument != null)
-        keyHint: hintDocument!,
+      else keyHint: ?hintDocument,
     };
   }
 

@@ -171,12 +171,12 @@ class CollationOptions {
 
   Map<String, Object> get options => <String, Object>{
         keyLocale: locale,
-        if (strength != null) keyStrength: strength!,
+        keyStrength: ?strength,
         if (caseLevel) keyCaseLevel: caseLevel,
-        if (caseFirst != null) keyCaseFirst: caseFirst!,
+        keyCaseFirst: ?caseFirst,
         if (numericOrdering) keyNumericOrdering: numericOrdering,
-        if (alternate != null) keyAlternate: alternate!,
-        if (maxVariable != null) keyMaxVariable: maxVariable!,
+        keyAlternate: ?alternate,
+        keyMaxVariable: ?maxVariable,
         if (backwards) keyBackwards: backwards,
         if (normalization) keyNormalization: normalization,
       };

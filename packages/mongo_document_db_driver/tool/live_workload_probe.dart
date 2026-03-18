@@ -328,7 +328,7 @@ Future<int> main(List<String> args) async {
 
       if (id != null || scalarField != null) {
         final match = <String, Object>{
-          if (id != null) '_id': id,
+          '_id': ?id,
           if (id == null && scalarField != null)
             scalarField.key: scalarField.value,
         };

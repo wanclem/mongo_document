@@ -64,8 +64,7 @@ class DeleteStatement {
       if (collation != null) keyCollation: collation!.options,
       if (hint != null)
         keyHint: hint!
-      else if (hintDocument != null)
-        keyHint: hintDocument!,
+      else keyHint: ?hintDocument,
     };
   }
 }

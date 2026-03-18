@@ -87,8 +87,7 @@ class AggregateOperation extends CommandOperation {
       keyCursor: cursor,
       if (hint != null)
         keyHint: hint!
-      else if (hintDocument != null)
-        keyHint: hintDocument!,
+      else keyHint: ?hintDocument,
     };
   }
 

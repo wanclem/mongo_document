@@ -16,6 +16,6 @@ class GetParameterOptions {
   const GetParameterOptions({this.comment});
 
   Map<String, Object> get options => <String, Object>{
-        if (comment != null) keyComment: comment!,
+        keyComment: ?comment,
       };
 }

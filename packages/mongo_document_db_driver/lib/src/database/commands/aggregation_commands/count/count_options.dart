@@ -51,6 +51,6 @@ class CountOptions {
   Map<String, Object> get options => <String, Object>{
         if (readConcern != null) keyReadConcern: readConcern!.toMap(),
         if (collation != null) keyCollation: collation!.options,
-        if (comment != null) keyComment: comment!,
+        keyComment: ?comment,
       };
 }

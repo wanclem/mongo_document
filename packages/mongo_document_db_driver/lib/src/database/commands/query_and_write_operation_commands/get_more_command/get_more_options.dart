@@ -47,7 +47,7 @@ class GetMoreOptions {
 
   Map<String, Object> get options => <String, Object>{
         keyBatchSize: batchSize,
-        if (maxTimeMS != null) keyMaxTimeMS: maxTimeMS!,
-        if (comment != null) keyComment: comment!,
+        keyMaxTimeMS: ?maxTimeMS,
+        keyComment: ?comment,
       };
 }

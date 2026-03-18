@@ -31,6 +31,6 @@ class DropDatabaseOptions {
   Map<String, Object> getOptions(Db db) => <String, Object>{
         if (writeConcern != null)
           keyWriteConcern: writeConcern!.asMap(db.writeConcernServerStatus),
-        if (comment != null) keyComment: comment!,
+        keyComment: ?comment,
       };
 }

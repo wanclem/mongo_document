@@ -1,3 +1,13 @@
+## 2.0.1
+
+### Fixed
+
+Aligned dependencies:
+- `mongo_document_annotation: ^2.0.1`
+- `mongo_document_db_driver: ^2.0.1`
+
+Cleaned up analyzer findings in the generator templates.
+
 ## 2.0.0
 
 ### Changed

@@ -268,20 +268,13 @@ class Db {
 
   // Favor a warmer pool so the Rust driver has connections ready before
   // request bursts arrive.
-  int _maxPoolSize = 100;
-  int _minPoolSize = 10;
-  int _maxConnecting = 8;
-  int _maxInFlightRequests = 1;
-  Duration _waitQueueTimeout = const Duration(seconds: 15);
-  Duration? _maxConnectionIdleTime;
-  Duration? _maxConnectionLifeTime;
-  Duration _minHeartbeatInterval = const Duration(milliseconds: 500);
-  Duration _heartbeatInterval = const Duration(seconds: 10);
+  final int _maxPoolSize = 100;
+  final int _minPoolSize = 10;
+  final int _maxConnecting = 8;
+  final Duration _waitQueueTimeout = const Duration(seconds: 15);
   Duration _serverSelectionTimeout = const Duration(seconds: 30);
-  int _maxReconnectAttempts = 8;
-  bool _prewarmStandbyConnections = false;
-  Timer? _heartbeatTimer;
-  bool _heartbeatInProgress = false;
+  final int _maxReconnectAttempts = 8;
+  final bool _prewarmStandbyConnections = false;
 
   @override
   String toString() => 'Db($databaseName,$_debugInfo)';
@@ -460,11 +453,6 @@ class Db {
     return DbCollection(this, collectionName);
   }
 
-  void _stopHeartbeatMonitor() {
-    _heartbeatTimer?.cancel();
-    _heartbeatTimer = null;
-  }
-
   bool _hasHealthyLegacyMaster() {
     var master = _masterConnection;
     if (master == null || !master.connected || !master.isMaster) {
@@ -482,26 +470,6 @@ class Db {
       return !_explicitlyClosed && _isLifecycleOpen && rustBackend.isHealthy;
     }
     return !_explicitlyClosed && _isLifecycleOpen && _hasHealthyLegacyMaster();
-  }
-
-  Future<bool> _tryWaitForMaster(
-    ConnectionManager manager, {
-    int maxMilliseconds = 3000,
-  }) async {
-    var selected = await manager.waitForMaster(
-      timeout: _serverSelectionProbeTimeout(maxMilliseconds: maxMilliseconds),
-    );
-    if (selected == null) {
-      return false;
-    }
-    return _hasHealthyMaster();
-  }
-
-  Future<void> _reconnectIfTopologyFullyDown(ConnectionManager? manager) async {
-    if (manager != null && manager.hasAnyConnectedServer) {
-      return;
-    }
-    await _reconnect();
   }
 
   Duration _operationReplayBackoff(int replayAttempt) {
@@ -553,62 +521,6 @@ class Db {
       await reconnectInProgress;
     } else {
       await _reconnect(deadline: replayDeadline);
-    }
-  }
-
-  Future<void> _runHeartbeat() async {
-    if (_heartbeatInProgress || _explicitlyClosed || !_isLifecycleOpen) {
-      return;
-    }
-    _heartbeatInProgress = true;
-    try {
-      var manager = _connectionManager;
-      // Fast path: keep a healthy primary alive with a lightweight ping.
-      // Avoid full topology refresh churn on every heartbeat tick.
-      if (_hasHealthyMaster()) {
-        if (supportsOpMsg) {
-          await _runWithReconnect(
-            () => PingCommand(this).execute(),
-            allowReconnect: true,
-          );
-        }
-        return;
-      }
-
-      if (manager != null) {
-        await manager.refreshTopology();
-      }
-      if (!_hasHealthyMaster()) {
-        if (manager != null && await _tryWaitForMaster(manager)) {
-          return;
-        }
-        await _reconnectIfTopologyFullyDown(manager);
-        return;
-      }
-      if (supportsOpMsg) {
-        await _runWithReconnect(
-          () => PingCommand(this).execute(),
-          allowReconnect: true,
-        );
-      }
-    } catch (error) {
-      _log.fine(() => 'Heartbeat failed: $error');
-      if (!_explicitlyClosed) {
-        if (_hasHealthyMaster()) {
-          return;
-        }
-        var manager = _connectionManager;
-        if (manager != null && await _tryWaitForMaster(manager)) {
-          return;
-        }
-        try {
-          await _reconnectIfTopologyFullyDown(manager);
-        } catch (reconnectError) {
-          _log.fine(() => 'Heartbeat reconnect failed: $reconnectError');
-        }
-      }
-    } finally {
-      _heartbeatInProgress = false;
     }
   }
 
@@ -1277,18 +1189,15 @@ class Db {
       var rustOpened = await _maybeOpenRustBackend();
       if (_explicitlyClosed || !rustOpened) {
         _setLifecycleState(State.init);
-        _stopHeartbeatMonitor();
         if (_explicitlyClosed) {
           _setLifecycleState(State.closed);
         }
         openCompleter.complete();
         return;
       }
-      _stopHeartbeatMonitor();
       _setLifecycleState(State.open);
       openCompleter.complete();
     } catch (error, stackTrace) {
-      _stopHeartbeatMonitor();
       _setLifecycleState(_explicitlyClosed ? State.closed : State.init);
       if (!openCompleter.isCompleted) {
         openCompleter.completeError(error, stackTrace);
@@ -1493,7 +1402,6 @@ class Db {
     _log.fine(() => '$this closed');
     _explicitlyClosed = true;
     _reconnectInProgress = null;
-    _stopHeartbeatMonitor();
     _setLifecycleState(State.closing);
     await _closeRustBackend();
     var cm = _connectionManager;

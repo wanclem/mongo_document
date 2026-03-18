@@ -21,6 +21,6 @@ class DropIndexesOptions {
         if (writeConcern != null)
           keyWriteConcern:
               writeConcern!.asMap(collection.db.writeConcernServerStatus),
-        if (comment != null) keyComment: comment!,
+        keyComment: ?comment,
       };
 }

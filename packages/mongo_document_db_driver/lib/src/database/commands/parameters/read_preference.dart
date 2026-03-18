@@ -148,10 +148,9 @@ class ReadPreference {
 
   Map<String, Object> toMap() => <String, Object>{
         keyMode: getReadPreferenceModeString(mode),
-        if (tags != null) keyTags: tags!,
-        if (maxStalenessSeconds != null)
-          keyMaxStalenessSecond: maxStalenessSeconds!,
-        if (hedgeOptions != null) keyHedgeOptions: hedgeOptions!
+        keyTags: ?tags,
+        keyMaxStalenessSecond: ?maxStalenessSeconds,
+        keyHedgeOptions: ?hedgeOptions
       };
 }
 

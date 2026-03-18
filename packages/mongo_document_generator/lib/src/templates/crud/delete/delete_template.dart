@@ -4,7 +4,7 @@ import 'package:mongo_document/src/templates/parameter_template.dart';
 import 'package:source_gen/source_gen.dart';
 
 class DeleteTemplates {
-  static delete(String className) {
+  static String delete(String className) {
     return '''
   Future<bool> delete({Db? db}) async {
     if (id == null) return false;
@@ -16,7 +16,7 @@ class DeleteTemplates {
 ''';
   }
 
-  static deleteOne(String className) {
+  static String deleteOne(String className) {
     return '''
   static Future<bool> deleteOne(
     Expression Function(Q$className ${className[0].toLowerCase()}) predicate,
@@ -48,7 +48,7 @@ class DeleteTemplates {
 ''';
   }
 
-  static deleteOneByNamed(
+  static String deleteOneByNamed(
     String className,
     TypeChecker typeChecker,
     List<FormalParameterElement> params,
@@ -75,7 +75,7 @@ class DeleteTemplates {
 ''';
   }
 
-  static deleteManyByNamed(
+  static String deleteManyByNamed(
     String className,
     TypeChecker typeChecker,
     List<FormalParameterElement> params,

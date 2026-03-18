@@ -190,18 +190,17 @@ class FindAndModifyOperation extends CommandOperation {
   Map<String, Object> $buildCommand() {
     return <String, Object>{
       keyFindAndModify: collection!.collectionName,
-      if (query != null) keyQuery: query!,
-      if (sort != null) keySort: sort!,
+      keyQuery: ?query,
+      keySort: ?sort,
       if (remove) keyRemove: remove,
-      if (update != null) keyUpdate: update!,
+      keyUpdate: ?update,
       if (returnNew) keyNew: returnNew,
-      if (fields != null) keyFields: fields!,
+      keyFields: ?fields,
       if (upsert) keyUpsert: upsert,
-      if (arrayFilters != null) keyArrayFilters: arrayFilters!,
+      keyArrayFilters: ?arrayFilters,
       if (hint != null)
         keyHint: hint!
-      else if (hintDocument != null)
-        keyHint: hintDocument!,
+      else keyHint: ?hintDocument,
     };
   }
 

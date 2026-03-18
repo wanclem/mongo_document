@@ -335,13 +335,12 @@ final class MongoRustBackend {
   }) {
     final request = <String, Object?>{
       'collection': collectionName,
-      if (filter != null) 'filter': filter,
-      if (sort != null) 'sort': sort,
-      if (projection != null) 'projection': projection,
+      'filter': ?filter,
+      'sort': ?sort,
+      'projection': ?projection,
       if (hint != null)
         'hint': hint
-      else if (hintDocument != null)
-        'hint': hintDocument,
+      else 'hint': ?hintDocument,
       if (skip > 0) 'skip': skip,
     };
     _mergeCommandOptions(request, findOptions?.options);
@@ -376,13 +375,12 @@ final class MongoRustBackend {
   }) async* {
     final request = <String, Object?>{
       'collection': collectionName,
-      if (filter != null) 'filter': filter,
-      if (sort != null) 'sort': sort,
-      if (projection != null) 'projection': projection,
+      'filter': ?filter,
+      'sort': ?sort,
+      'projection': ?projection,
       if (hint != null)
         'hint': hint
-      else if (hintDocument != null)
-        'hint': hintDocument,
+      else 'hint': ?hintDocument,
       if (skip != null && skip > 0) 'skip': skip,
       if (limit != null && limit > 0) 'limit': limit,
     };
@@ -410,11 +408,10 @@ final class MongoRustBackend {
       'collection': collectionName,
       'pipeline': pipeline,
       if (explain == true) 'explain': true,
-      if (cursorOptions != null) 'cursor': cursorOptions,
+      'cursor': ?cursorOptions,
       if (hint != null)
         'hint': hint
-      else if (hintDocument != null)
-        'hint': hintDocument,
+      else 'hint': ?hintDocument,
     };
     _mergeCommandOptions(request, aggregateOptions?.getOptions(db));
     _mergeCommandOptions(request, rawOptions);
@@ -496,11 +493,10 @@ final class MongoRustBackend {
       'update': update,
       if (upsert == true) 'upsert': true,
       if (collation != null) 'collation': collation.options,
-      if (arrayFilters != null) 'arrayFilters': arrayFilters,
+      'arrayFilters': ?arrayFilters,
       if (hint != null)
         'hint': hint
-      else if (hintDocument != null)
-        'hint': hintDocument,
+      else 'hint': ?hintDocument,
     };
     _mergeCommandOptions(request, _writeConcernCommand(db, writeConcern));
     return await _executeCollectionAction(request);
@@ -526,8 +522,7 @@ final class MongoRustBackend {
       if (collation != null) 'collation': collation.options,
       if (hint != null)
         'hint': hint
-      else if (hintDocument != null)
-        'hint': hintDocument,
+      else 'hint': ?hintDocument,
     };
     _mergeCommandOptions(request, _writeConcernCommand(db, writeConcern));
     final result = await _executeCollectionAction(request);
@@ -605,8 +600,7 @@ final class MongoRustBackend {
       if (collation != null) 'collation': collation.options,
       if (hint != null)
         'hint': hint
-      else if (hintDocument != null)
-        'hint': hintDocument,
+      else 'hint': ?hintDocument,
     };
     _mergeCommandOptions(request, _writeConcernCommand(db, writeConcern));
     final result = await _executeCollectionAction(request);
@@ -629,8 +623,7 @@ final class MongoRustBackend {
       if (collation != null) 'collation': collation.options,
       if (hint != null)
         'hint': hint
-      else if (hintDocument != null)
-        'hint': hintDocument,
+      else 'hint': ?hintDocument,
     };
     _mergeCommandOptions(request, _writeConcernCommand(db, writeConcern));
     final result = await _executeCollectionAction(request);
@@ -649,13 +642,12 @@ final class MongoRustBackend {
   }) async {
     final command = <String, Object?>{
       'count': collectionName,
-      if (query != null) 'query': query,
+      'query': ?query,
       if (limit != null && limit > 0) 'limit': limit,
       if (skip != null && skip > 0) 'skip': skip,
       if (hint != null)
         'hint': hint
-      else if (hintDocument != null)
-        'hint': hintDocument,
+      else 'hint': ?hintDocument,
     };
     _mergeCommandOptions(command, countOptions?.options);
     _mergeCommandOptions(command, rawOptions);
@@ -673,7 +665,7 @@ final class MongoRustBackend {
     final command = <String, Object?>{
       'distinct': collectionName,
       'key': field,
-      if (query != null) 'query': query,
+      'query': ?query,
     };
     _mergeCommandOptions(command, distinctOptions?.options);
     _mergeCommandOptions(command, rawOptions);
@@ -715,18 +707,17 @@ final class MongoRustBackend {
   }) async {
     final command = <String, Object?>{
       'findAndModify': collectionName,
-      if (query != null) 'query': query,
-      if (sort != null) 'sort': sort,
+      'query': ?query,
+      'sort': ?sort,
       if (remove == true) 'remove': true,
-      if (update != null) 'update': update,
+      'update': ?update,
       if (returnNew == true) 'new': true,
-      if (fields != null) 'fields': fields,
+      'fields': ?fields,
       if (upsert == true) 'upsert': true,
-      if (arrayFilters != null) 'arrayFilters': arrayFilters,
+      'arrayFilters': ?arrayFilters,
       if (hint != null)
         'hint': hint
-      else if (hintDocument != null)
-        'hint': hintDocument,
+      else 'hint': ?hintDocument,
     };
     _mergeCommandOptions(command, findAndModifyOptions?.getOptions(db));
     _mergeCommandOptions(command, rawOptions);

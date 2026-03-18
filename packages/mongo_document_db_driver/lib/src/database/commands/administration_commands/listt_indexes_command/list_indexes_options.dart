@@ -20,6 +20,6 @@ class ListIndexesOptions {
 
   Map<String, Object> get options => <String, Object>{
         if (batchSize != null) keyCursor: {keyBatchSize: batchSize},
-        if (comment != null) keyComment: comment!,
+        keyComment: ?comment,
       };
 }

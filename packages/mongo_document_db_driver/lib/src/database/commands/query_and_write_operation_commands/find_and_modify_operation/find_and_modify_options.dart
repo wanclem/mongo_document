@@ -76,8 +76,8 @@ class FindAndModifyOptions {
           keyBypassDocumentValidation: bypassDocumentValidation,
         if (writeConcern != null)
           keyWriteConcern: writeConcern!.asMap(db.writeConcernServerStatus),
-        if (maxTimeMS != null) keyMaxTimeMS: maxTimeMS!,
+        keyMaxTimeMS: ?maxTimeMS,
         if (collation != null) keyCollation: collation!.options,
-        if (comment != null) keyComment: comment!,
+        keyComment: ?comment,
       };
 }

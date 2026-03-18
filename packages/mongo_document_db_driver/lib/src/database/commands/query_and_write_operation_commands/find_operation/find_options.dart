@@ -151,13 +151,13 @@ class FindOptions {
   }
 
   Map<String, Object> get options => <String, Object>{
-        if (batchSize != null) keyBatchSize: batchSize!,
+        keyBatchSize: ?batchSize,
         if (singleBatch) keySingleBatch: singleBatch,
-        if (comment != null) keyComment: comment!,
-        if (maxTimeMS != null) keyMaxTimeMS: maxTimeMS!,
+        keyComment: ?comment,
+        keyMaxTimeMS: ?maxTimeMS,
         if (readConcern != null) keyReadConcern: readConcern!.toMap(),
-        if (max != null) keyMax: max!,
-        if (min != null) keyMin: min!,
+        keyMax: ?max,
+        keyMin: ?min,
         if (returnKey) keyReturnKey: returnKey,
         if (showRecordId) keyShowRecordId: showRecordId,
         if (tailable) keyTailable: tailable,

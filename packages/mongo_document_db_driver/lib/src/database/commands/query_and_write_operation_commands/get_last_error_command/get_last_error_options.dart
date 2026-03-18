@@ -26,7 +26,7 @@ class GetLastErrorOptions {
   GetLastErrorOptions({this.wtimeout, this.comment});
 
   Map<String, Object> get options => <String, Object>{
-        if (wtimeout != null) keyWtimeout: wtimeout!,
-        if (comment != null) keyComment: comment!,
+        keyWtimeout: ?wtimeout,
+        keyComment: ?comment,
       };
 }

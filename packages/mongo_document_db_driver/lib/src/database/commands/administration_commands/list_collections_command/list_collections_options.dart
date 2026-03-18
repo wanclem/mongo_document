@@ -58,6 +58,6 @@ class ListCollectionsOptions {
         if (nameOnly != null && nameOnly!) keyNameOnly: nameOnly!,
         if (authorizedCollections != null && authorizedCollections!)
           keyAuthorizedCollections: authorizedCollections!,
-        if (comment != null) keyComment: comment!,
+        keyComment: ?comment,
       };
 }

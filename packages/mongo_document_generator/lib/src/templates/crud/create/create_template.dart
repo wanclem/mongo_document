@@ -2,7 +2,7 @@ import 'package:pluralize/pluralize.dart';
 import 'package:recase/recase.dart';
 
 class CreateTemplates {
-  static save(String className) {
+  static String save(String className) {
     String classNameVar = ReCase(className).camelCase;
     return '''
   Future<$className?> save({Db? db}) async {
@@ -48,7 +48,7 @@ class CreateTemplates {
 ''';
   }
 
-  static saveMany(String className) {
+  static String saveMany(String className) {
     String classNameVar = ReCase(className).camelCase;
     final classNamePlural = Pluralize().plural(classNameVar);
     return '''

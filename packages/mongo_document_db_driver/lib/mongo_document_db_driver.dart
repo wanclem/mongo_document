@@ -44,7 +44,6 @@ import 'package:mongo_document_db_driver/src/database/commands/query_and_write_o
 import 'package:mongo_document_db_driver/src/database/commands/query_and_write_operation_commands/update_operation/update_options.dart';
 import 'package:mongo_document_db_driver/src/database/commands/query_and_write_operation_commands/update_operation/update_statement.dart';
 import 'package:mongo_document_db_driver/src/database/commands/operation.dart';
-import 'package:mongo_document_db_driver/src/database/utils/dns_lookup.dart';
 import 'package:mongo_document_db_driver/src/database/utils/map_keys.dart';
 import 'package:mongo_document_db_driver/src/database/utils/parms_utils.dart';
 import 'package:mongo_document_db_driver/src/database/utils/recoverable_error_classifier.dart';

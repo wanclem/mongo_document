@@ -389,7 +389,7 @@ class RustWorkerClient {
       'op': operation,
       if (requestBytes != null)
         'requestData': TransferableTypedData.fromList(<Uint8List>[requestBytes]),
-      if (cursorId != null) 'cursorId': cursorId,
+      'cursorId': ?cursorId,
     });
     return completer.future;
   }
