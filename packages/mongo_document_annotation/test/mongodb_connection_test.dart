@@ -93,6 +93,39 @@ void main() {
       expect(freshDb.openCalls, equals(1));
     },
   );
+
+  test(
+    'returns the existing Db immediately while reconnecting in the background',
+    () async {
+      final db = _FakeDb();
+      MongoDbConnection.debugSetDbFactory((_) async => db);
+
+      await MongoDbConnection.initialize('mongodb://example.com/test');
+
+      final reopenCompleter = Completer<void>();
+      db.nextOpenCompleter = reopenCompleter;
+      db.markTransientlyClosed();
+
+      final first = await MongoDbConnection.instance.timeout(
+        const Duration(milliseconds: 50),
+      );
+      final second = await MongoDbConnection.instance.timeout(
+        const Duration(milliseconds: 50),
+      );
+
+      expect(first, same(db));
+      expect(second, same(db));
+      expect(db.openCalls, equals(2));
+      expect(db.state, equals(State.closed));
+      expect(db.isExplicitlyClosed, isFalse);
+
+      reopenCompleter.complete();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(db.state, equals(State.open));
+      expect(db.isExplicitlyClosed, isFalse);
+    },
+  );
 }
 
 class _FakeDb extends Db {
@@ -100,6 +133,15 @@ class _FakeDb extends Db {
 
   int openCalls = 0;
   int closeCalls = 0;
+  State _state = State.init;
+  bool _isExplicitlyClosed = false;
+  Completer<void>? nextOpenCompleter;
+
+  @override
+  State get state => _state;
+
+  @override
+  bool get isExplicitlyClosed => _isExplicitlyClosed;
 
   @override
   Future open({
@@ -107,12 +149,24 @@ class _FakeDb extends Db {
     bool secure = false,
   }) async {
     openCalls++;
-    debugSetState(State.open);
+    final completer = nextOpenCompleter;
+    nextOpenCompleter = null;
+    if (completer != null) {
+      await completer.future;
+    }
+    _state = State.open;
+    _isExplicitlyClosed = false;
   }
 
   @override
   Future close() async {
     closeCalls++;
-    debugSetState(State.closed);
+    _state = State.closed;
+    _isExplicitlyClosed = true;
+  }
+
+  void markTransientlyClosed() {
+    _state = State.closed;
+    _isExplicitlyClosed = false;
   }
 }

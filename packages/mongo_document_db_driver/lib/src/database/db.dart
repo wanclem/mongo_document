@@ -269,7 +269,7 @@ class Db {
   // Favor a warmer pool so the Rust driver has connections ready before
   // request bursts arrive.
   final int _maxPoolSize = 100;
-  final int _minPoolSize = 10;
+  final int _minPoolSize = 0;
   final int _maxConnecting = 8;
   final Duration _waitQueueTimeout = const Duration(seconds: 15);
   Duration _serverSelectionTimeout = const Duration(seconds: 30);
@@ -1216,6 +1216,8 @@ class Db {
   /// Connections can disconect because of network or database server problems.
   bool get isConnected => !_explicitlyClosed && _hasHealthyMaster();
 
+  bool get isExplicitlyClosed => _explicitlyClosed;
+
   Future<Map<String, dynamic>> executeDbCommand(
     MongoMessage message, {
     Connection? connection,
@@ -1470,7 +1472,9 @@ class Db {
       return null;
     }
     final metadataUri = _rustMetadataUri();
-    final queryParameters = Map<String, String>.from(metadataUri.queryParameters);
+    final queryParameters = Map<String, String>.from(
+      metadataUri.queryParameters,
+    );
     final secureQueryValue = queryParameters['tls'] ?? queryParameters['ssl'];
     final secureFromUri = secureQueryValue?.toLowerCase() == 'true';
 

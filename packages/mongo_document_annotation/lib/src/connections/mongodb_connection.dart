@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:meta/meta.dart';
 import 'package:mongo_document_db_driver/mongo_document_db_driver.dart';
 
@@ -16,10 +18,7 @@ class MongoDbConnection {
     @Deprecated('Put TLS settings in the MongoDB connection string instead.')
     bool? secure,
   }) async {
-    final normalizedUri = _normalizeDatabaseUri(
-      databaseUri,
-      secure: secure,
-    );
+    final normalizedUri = _normalizeDatabaseUri(databaseUri, secure: secure);
 
     if (_connectionUri != null && _connectionUri != normalizedUri) {
       throw StateError(
@@ -39,25 +38,20 @@ class MongoDbConnection {
       );
     }
 
+    var currentDb = _instance;
+    if (currentDb != null) {
+      if (!currentDb.isExplicitlyClosed) {
+        if (currentDb.state == State.closed) {
+          _reconnectInBackground(currentDb);
+        }
+        return currentDb;
+      }
+      return _reopenCurrentDb(currentDb);
+    }
+
     final connecting = _connecting;
     if (connecting != null) {
       return connecting;
-    }
-
-    var currentDb = _instance;
-    if (currentDb != null) {
-      if (currentDb.state != State.closed) {
-        return currentDb;
-      }
-      final reopenTask = _openDb(currentDb, generation: _connectionGeneration);
-      _connecting = reopenTask;
-      try {
-        return await reopenTask;
-      } finally {
-        if (identical(_connecting, reopenTask)) {
-          _connecting = null;
-        }
-      }
     }
 
     final connectTask = _connect(generation: _connectionGeneration);
@@ -74,6 +68,41 @@ class MongoDbConnection {
   static Future<Db> _connect({required int generation}) async {
     final newDb = await _dbFactory(_connectionUri!);
     return _openDb(newDb, generation: generation);
+  }
+
+  static Future<Db> _reopenCurrentDb(Db db) async {
+    final connecting = _connecting;
+    if (connecting != null) {
+      return connecting;
+    }
+
+    final reopenTask = _openDb(db, generation: _connectionGeneration);
+    _connecting = reopenTask;
+    try {
+      return await reopenTask;
+    } finally {
+      if (identical(_connecting, reopenTask)) {
+        _connecting = null;
+      }
+    }
+  }
+
+  static void _reconnectInBackground(Db db) {
+    if (_connecting != null) {
+      return;
+    }
+
+    final reopenTask = _openDb(db, generation: _connectionGeneration);
+    _connecting = reopenTask;
+    unawaited(
+      reopenTask
+          .then<void>((_) {}, onError: (Object error, StackTrace stackTrace) {})
+          .whenComplete(() {
+            if (identical(_connecting, reopenTask)) {
+              _connecting = null;
+            }
+          }),
+    );
   }
 
   static Future<Db> _openDb(Db db, {required int generation}) async {
@@ -134,10 +163,7 @@ class MongoDbConnection {
     return db.collection(collectionName);
   }
 
-  static String _normalizeDatabaseUri(
-    String databaseUri, {
-    bool? secure,
-  }) {
+  static String _normalizeDatabaseUri(String databaseUri, {bool? secure}) {
     if (secure == null) {
       return databaseUri;
     }

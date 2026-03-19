@@ -1,3 +1,9 @@
+## 2.0.4
+
+### Fixed
+
+Aligned dependency to `mongo_document_db_driver: ^2.0.4` and updated `MongoDbConnection` so existing `Db` instances return immediately while transient reconnects continue in the background.
+
 ## 2.0.3
 
 ### Fixed

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.4
+
+- Made `MongoDbConnection.instance` return the existing `Db` immediately during transient reconnects so health checks do not stall behind background reopen work.
+- Reduced eager Rust pool warmup pressure by defaulting `minPoolSize` to `0` for the packaged worker-pool configuration.
+- Tightened Rust backend health evaluation so a single noisy worker no longer poisons the whole `Db` while healthy workers still exist.
+
 ## 2.0.3
 
 - Hardened change-stream cursor recovery so lost session state resumes from stored resume tokens instead of surfacing the old fatal session mismatch path.

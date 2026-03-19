@@ -56,7 +56,9 @@ final class _MongoRustCursorStreamHandle {
     return _backend._runGuarded(() async {
       final result = await _handle.worker.nextCursorBatch(_handle.cursorId);
       final exhausted = result['exhausted'] == true;
-      final bytes = MongoRustBackend._extractTransferBytes(result['resultData']);
+      final bytes = MongoRustBackend._extractTransferBytes(
+        result['resultData'],
+      );
       final documents = bytes == null || bytes.isEmpty
           ? const <Map<String, dynamic>>[]
           : MongoRustBackend._decodeBsonDocumentList(bytes);
@@ -84,14 +86,13 @@ final class MongoRustBackend {
   final Map<int, RustWorkerClient> _commandCursorWorkers =
       <int, RustWorkerClient>{};
   bool _closed = false;
-  bool _healthy = true;
   String? _lastHealthError;
   static int _debugCommandCalls = 0;
   static int _debugCursorCommandCalls = 0;
 
   static bool get isRuntimeAvailable => MongoRustBindings.isAvailable();
 
-  bool get isHealthy => !_closed && _healthy && _workerPool.hasHealthyWorker;
+  bool get isHealthy => !_closed && _workerPool.hasHealthyWorker;
 
   String? get lastHealthError => _lastHealthError ?? _workerPool.lastError;
 
@@ -126,7 +127,6 @@ final class MongoRustBackend {
     if (_closed) {
       return;
     }
-    _healthy = false;
     _lastHealthError = reason;
   }
 
@@ -134,7 +134,6 @@ final class MongoRustBackend {
     if (_closed) {
       return;
     }
-    _healthy = true;
     _lastHealthError = null;
   }
 
@@ -338,9 +337,7 @@ final class MongoRustBackend {
       'filter': ?filter,
       'sort': ?sort,
       'projection': ?projection,
-      if (hint != null)
-        'hint': hint
-      else 'hint': ?hintDocument,
+      if (hint != null) 'hint': hint else 'hint': ?hintDocument,
       if (skip > 0) 'skip': skip,
     };
     _mergeCommandOptions(request, findOptions?.options);
@@ -378,9 +375,7 @@ final class MongoRustBackend {
       'filter': ?filter,
       'sort': ?sort,
       'projection': ?projection,
-      if (hint != null)
-        'hint': hint
-      else 'hint': ?hintDocument,
+      if (hint != null) 'hint': hint else 'hint': ?hintDocument,
       if (skip != null && skip > 0) 'skip': skip,
       if (limit != null && limit > 0) 'limit': limit,
     };
@@ -409,9 +404,7 @@ final class MongoRustBackend {
       'pipeline': pipeline,
       if (explain == true) 'explain': true,
       'cursor': ?cursorOptions,
-      if (hint != null)
-        'hint': hint
-      else 'hint': ?hintDocument,
+      if (hint != null) 'hint': hint else 'hint': ?hintDocument,
     };
     _mergeCommandOptions(request, aggregateOptions?.getOptions(db));
     _mergeCommandOptions(request, rawOptions);
@@ -494,9 +487,7 @@ final class MongoRustBackend {
       if (upsert == true) 'upsert': true,
       if (collation != null) 'collation': collation.options,
       'arrayFilters': ?arrayFilters,
-      if (hint != null)
-        'hint': hint
-      else 'hint': ?hintDocument,
+      if (hint != null) 'hint': hint else 'hint': ?hintDocument,
     };
     _mergeCommandOptions(request, _writeConcernCommand(db, writeConcern));
     return await _executeCollectionAction(request);
@@ -520,9 +511,7 @@ final class MongoRustBackend {
       'replacement': replacement,
       if (upsert == true) 'upsert': true,
       if (collation != null) 'collation': collation.options,
-      if (hint != null)
-        'hint': hint
-      else 'hint': ?hintDocument,
+      if (hint != null) 'hint': hint else 'hint': ?hintDocument,
     };
     _mergeCommandOptions(request, _writeConcernCommand(db, writeConcern));
     final result = await _executeCollectionAction(request);
@@ -598,9 +587,7 @@ final class MongoRustBackend {
       'collection': collectionName,
       'filter': selector,
       if (collation != null) 'collation': collation.options,
-      if (hint != null)
-        'hint': hint
-      else 'hint': ?hintDocument,
+      if (hint != null) 'hint': hint else 'hint': ?hintDocument,
     };
     _mergeCommandOptions(request, _writeConcernCommand(db, writeConcern));
     final result = await _executeCollectionAction(request);
@@ -621,9 +608,7 @@ final class MongoRustBackend {
       'collection': collectionName,
       'filter': selector,
       if (collation != null) 'collation': collation.options,
-      if (hint != null)
-        'hint': hint
-      else 'hint': ?hintDocument,
+      if (hint != null) 'hint': hint else 'hint': ?hintDocument,
     };
     _mergeCommandOptions(request, _writeConcernCommand(db, writeConcern));
     final result = await _executeCollectionAction(request);
@@ -645,9 +630,7 @@ final class MongoRustBackend {
       'query': ?query,
       if (limit != null && limit > 0) 'limit': limit,
       if (skip != null && skip > 0) 'skip': skip,
-      if (hint != null)
-        'hint': hint
-      else 'hint': ?hintDocument,
+      if (hint != null) 'hint': hint else 'hint': ?hintDocument,
     };
     _mergeCommandOptions(command, countOptions?.options);
     _mergeCommandOptions(command, rawOptions);
@@ -715,9 +698,7 @@ final class MongoRustBackend {
       'fields': ?fields,
       if (upsert == true) 'upsert': true,
       'arrayFilters': ?arrayFilters,
-      if (hint != null)
-        'hint': hint
-      else 'hint': ?hintDocument,
+      if (hint != null) 'hint': hint else 'hint': ?hintDocument,
     };
     _mergeCommandOptions(command, findAndModifyOptions?.getOptions(db));
     _mergeCommandOptions(command, rawOptions);
@@ -730,7 +711,6 @@ final class MongoRustBackend {
       return;
     }
     _closed = true;
-    _healthy = false;
     _commandCursorWorkers.clear();
     await _workerPool.close();
   }
@@ -879,11 +859,13 @@ final class MongoRustBackend {
       return const <int>[];
     }
     return rawIds
-        .map<int?>((value) => switch (value) {
-          final Int64 int64Value => int64Value.toInt(),
-          final num numericValue => numericValue.toInt(),
-          _ => null,
-        })
+        .map<int?>(
+          (value) => switch (value) {
+            final Int64 int64Value => int64Value.toInt(),
+            final num numericValue => numericValue.toInt(),
+            _ => null,
+          },
+        )
         .whereType<int>()
         .toList(growable: false);
   }
