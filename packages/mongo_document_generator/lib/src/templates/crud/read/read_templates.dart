@@ -16,42 +16,56 @@ class ReadTemplates {
     List<BaseProjections> projections=const [],
   }) async {
     if (id == null) return null;
-    if (id is String) id = ObjectId.fromHexString(id);
+    if (id is String) {
+      final parsedId = ObjectId.tryParse(id);
+      if (parsedId == null) {
+        throw ArgumentError('Invalid id value: \$id');
+      }
+      id = parsedId;
+    }
     if (id is! ObjectId) {
       throw ArgumentError('Invalid id type: \${id.runtimeType}');
     }
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
-    bool foundLookups = false;
-    List<Map<String, Object>> pipeline = [];
-    if (projections.isNotEmpty) {
-      foundLookups = true;
-      ${buildAggregationPipeline("${className}Projections()", ['''{
-        r"\$match": {'_id': id}
-      }'''])}
-    }
-    if (lookups.isNotEmpty) {
-      bool hasMatch = pipeline.any((stage) => stage.containsKey('\\\$match'));
-      if (!hasMatch) {
-        pipeline.add({
-          r"\\\$match": {'_id': id},
-        });
-      }
+    final normalizedLookups = remapLookups(lookups, _${classNameVar}FieldMappings);
+    final normalizedProjections = normalizeProjectionList(
+      projections,
+      ${className}Projections(),
+    );
+    final projDoc =
+        projections.isNotEmpty ? buildProjectionDoc(normalizedProjections) : null;
+    final canUseDirectProjection =
+        projDoc != null && projectionDocSupportsDirectFind(projDoc);
+
+    var (foundLookups, pipeline) = toAggregationPipelineWithMap(
+      lookupRef: _nestedCollections,
+      lookups: normalizedLookups,
+      projections: projDoc,
+      limit: 1,
+      raw: {'_id': id},
+      cleaned: {'_id': id},
+    );
+    if (normalizedLookups.isNotEmpty) {
       (foundLookups, pipeline) = mergeLookups(
-        lookups: lookups,
+        lookups: normalizedLookups,
         existingPipeline: foundLookups ? pipeline : null,
-        limit: 1,
+        queryMap: foundLookups ? null : {'_id': id},
+        limit: foundLookups ? null : 1,
       );
     }
     if (foundLookups) {
       final collisionFreePipeline = withNoCollisions(pipeline);
       final results = await coll.aggregateToStream(collisionFreePipeline).toList();
       if (results.isEmpty) return null;
-      return $className.fromJson(results.first.withRefs());
+      return _${classNameVar}DeserializeDocument(results.first);
     }
     // fallback: return entire $classNameVar
-    final $classNameVar = await coll.findOne(where.eq(r'_id', id));
-    return $classNameVar == null ? null : $className.fromJson($classNameVar.withRefs());
+    final $classNameVar = await coll.modernFindOne(
+      filter: {'_id': id},
+      projection: canUseDirectProjection ? projDoc.cast<String, Object>() : null,
+    );
+    return $classNameVar == null ? null : _${classNameVar}DeserializeDocument($classNameVar);
   }
 
 ''';
@@ -68,30 +82,38 @@ class ReadTemplates {
   
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
+    final normalizedLookups = remapLookups(lookups, _${classNameVar}FieldMappings);
+    final normalizedProjections = normalizeProjectionList(
+      projections,
+      ${className}Projections(),
+    );
 
     if (predicate == null) {
       final $classNameVar = await coll.modernFindOne(sort: {'created_at': -1});
       if ($classNameVar == null) return null;
-      return $className.fromJson($classNameVar.withRefs());
+      return _${classNameVar}DeserializeDocument($classNameVar);
     }
     
     final selectorBuilder = predicate(Q$className()).toSelectorBuilder();
     final selectorMap = selectorBuilder.map;
 
     final projDoc =
-        projections.isNotEmpty ? buildProjectionDoc(projections) : null;
+        projections.isNotEmpty ? buildProjectionDoc(normalizedProjections) : null;
+    final canUseDirectProjection =
+        projDoc != null && projectionDocSupportsDirectFind(projDoc);
         
     var (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
+      lookups: normalizedLookups,
       projections: projDoc,
       limit: 1,
       raw: selectorMap.raw(),
       cleaned: selectorMap.cleaned(),
     );
     
-    if (lookups.isNotEmpty) {
+    if (normalizedLookups.isNotEmpty) {
       (foundLookups, pipeline) = mergeLookups(
-        lookups: lookups,
+        lookups: normalizedLookups,
         existingPipeline: foundLookups ? pipeline : null,
         queryMap: foundLookups ? null : selectorMap.cleaned(),
         limit: 1,
@@ -102,12 +124,17 @@ class ReadTemplates {
       final collisionFreePipeline = withNoCollisions(pipeline);
       final results = await coll.aggregateToStream(collisionFreePipeline).toList();
       if (results.isEmpty) return null;
-      return $className.fromJson(results.first.withRefs());
+      return _${classNameVar}DeserializeDocument(results.first);
     }
 
     // fallback to simple findOne
-    final ${classNameVar}Result = await coll.findOne(selectorMap.cleaned());
-    return ${classNameVar}Result == null ? null : $className.fromJson(${classNameVar}Result.withRefs());
+    final ${classNameVar}Result = await coll.modernFindOne(
+      filter: selectorMap.cleaned(),
+      projection: canUseDirectProjection ? projDoc.cast<String, Object>() : null,
+    );
+    return ${classNameVar}Result == null
+        ? null
+        : _${classNameVar}DeserializeDocument(${classNameVar}Result);
   }
 ''';
   }
@@ -126,6 +153,11 @@ class ReadTemplates {
   static Future<$className?> findOneByNamed({${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db,List<Lookup>lookups=const [],List<BaseProjections> projections=const [],})async{
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
+    final normalizedLookups = remapLookups(lookups, _${classNameVar}FieldMappings);
+    final normalizedProjections = normalizeProjectionList(
+      projections,
+      ${className}Projections(),
+    );
 
     final selector = <String, dynamic>{};
     
@@ -134,40 +166,52 @@ class ReadTemplates {
       final key = ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
       return '''if ($paramName != null) selector['$key'] = ${nestedCollectionMap.containsKey(key) ? "$paramName.id" : paramName};''';
     }).join('\n')}
-    if (selector.isEmpty) {
+    if (selector.isEmpty && projections.isEmpty && normalizedLookups.isEmpty) {
       final $classNameVar = await coll.modernFindOne(sort: {'created_at': -1});
       if ($classNameVar == null) return null;
-      return $className.fromJson($classNameVar.withRefs());
+      return _${classNameVar}DeserializeDocument($classNameVar);
     }
-    
-    bool foundLookups = false;
-    List<Map<String, Object>> pipeline = [];
-    
-    if (projections.isNotEmpty) {
-     foundLookups = true;
-     ${buildAggregationPipeline("${className}Projections()", ['''{
-        r"\$match": selector
-      }'''])}
-    }
-    
-    if (lookups.isNotEmpty) {
+
+    final projDoc =
+        projections.isNotEmpty ? buildProjectionDoc(normalizedProjections) : null;
+    final canUseDirectProjection =
+        projDoc != null && projectionDocSupportsDirectFind(projDoc);
+
+    var (foundLookups, pipeline) = toAggregationPipelineWithMap(
+      lookupRef: _nestedCollections,
+      lookups: normalizedLookups,
+      projections: projDoc,
+      limit: 1,
+      sort: selector.isEmpty ? ('created_at', -1) : null,
+      raw: selector,
+      cleaned: selector.cleaned(),
+    );
+
+    if (normalizedLookups.isNotEmpty) {
       (foundLookups, pipeline) = mergeLookups(
-        lookups: lookups,
+        lookups: normalizedLookups,
         existingPipeline: foundLookups ? pipeline : null,
-        queryMap: foundLookups ? null : selector,
-        limit: 1,
+        queryMap: foundLookups ? null : selector.cleaned(),
+        sort: foundLookups || selector.isNotEmpty ? null : ('created_at', -1),
+        limit: foundLookups ? null : 1,
       );
     }
-    
+
     if (foundLookups) {
       final collisionFreePipeline = withNoCollisions(pipeline);
       final $classNamePlural = await coll.aggregateToStream(collisionFreePipeline).toList();
       if ($classNamePlural.isEmpty) return null;
-      return $classNamePlural.map((d)=>$className.fromJson(d.withRefs())).toList().first;
+      return _${classNameVar}DeserializeDocument($classNamePlural.first);
     }
-    
-    final ${classNameVar}Result = await coll.findOne(selector);
-    return ${classNameVar}Result == null ? null : $className.fromJson(${classNameVar}Result.withRefs());
+
+    final ${classNameVar}Result = await coll.modernFindOne(
+      filter: selector.cleaned(),
+      sort: selector.isEmpty ? {'created_at': -1} : null,
+      projection: canUseDirectProjection ? projDoc.cast<String, Object>() : null,
+    );
+    return ${classNameVar}Result == null
+        ? null
+        : _${classNameVar}DeserializeDocument(${classNameVar}Result);
   }
 ''';
   }
@@ -188,15 +232,23 @@ class ReadTemplates {
   }) async {
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
+    final normalizedLookups = remapLookups(lookups, _${classNameVar}FieldMappings);
+    final normalizedProjections = normalizeProjectionList(
+      projections,
+      ${className}Projections(),
+    );
 
     var selectorBuilder = predicate(Q$className()).toSelectorBuilder();
     var selectorMap = selectorBuilder.map;
 
     final projDoc =
-        projections.isNotEmpty ? buildProjectionDoc(projections) : null;
+        projections.isNotEmpty ? buildProjectionDoc(normalizedProjections) : null;
+    final canUseDirectProjection =
+        projDoc != null && projectionDocSupportsDirectFind(projDoc);
         
     var (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
+      lookups: normalizedLookups,
       projections: projDoc,
       raw: selectorMap.raw(),
       sort: sort,
@@ -205,9 +257,9 @@ class ReadTemplates {
       cleaned: selectorMap.cleaned(),
     );
     
-    if (lookups.isNotEmpty) {
+    if (normalizedLookups.isNotEmpty) {
       (foundLookups, pipeline) = mergeLookups(
-        lookups: lookups,
+        lookups: normalizedLookups,
         existingPipeline: foundLookups ? pipeline : null,
         queryMap: foundLookups ? null : selectorMap.cleaned(),
         sort: foundLookups ? null : sort,
@@ -220,16 +272,19 @@ class ReadTemplates {
       final collisionFreePipeline = withNoCollisions(pipeline);
       final $classNamePlural = await coll.aggregateToStream(collisionFreePipeline).toList();
       if ($classNamePlural.isEmpty) return [];
-      return $classNamePlural.map((d)=>$className.fromJson(d.withRefs())).toList();
+      return _${classNameVar}DeserializeDocuments($classNamePlural);
     }
 
-    if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
-    selectorBuilder = selectorBuilder.limit(limit);
-
-    selectorMap=selectorBuilder.map;
-
-    final $classNamePlural = await coll.find(selectorMap.cleaned()).toList();
-    return $classNamePlural.map((e) => $className.fromJson(e.withRefs())).toList();
+    final $classNamePlural = await coll
+        .modernFind(
+          filter: selectorMap.cleaned(),
+          sort: {sort.\$1: sort.\$2},
+          projection: canUseDirectProjection ? projDoc.cast<String, Object>() : null,
+          skip: skip,
+          limit: limit,
+        )
+        .toList();
+    return _${classNameVar}DeserializeDocuments($classNamePlural);
  }
 ''';
   }
@@ -250,6 +305,11 @@ class ReadTemplates {
 
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
+    final normalizedLookups = remapLookups(lookups, _${classNameVar}FieldMappings);
+    final normalizedProjections = normalizeProjectionList(
+      projections,
+      ${className}Projections(),
+    );
 
     final selector = <String, dynamic>{};
     
@@ -259,29 +319,31 @@ class ReadTemplates {
       return '''if ($paramName != null) selector['$key'] = ${nestedCollectionMap.containsKey(key) ? "$paramName.id" : paramName};''';
     }).join('\n')}
     
-    if (selector.isEmpty) {
+    if (selector.isEmpty && projections.isEmpty && normalizedLookups.isEmpty) {
       final $classNamePlural = await coll.modernFind(sort: sort ,limit:limit,skip:skip).toList();
       if ($classNamePlural.isEmpty) return [];
-     return $classNamePlural.map((e) => $className.fromJson(e.withRefs())).toList();
+     return _${classNameVar}DeserializeDocuments($classNamePlural);
     }
-    
-    bool foundLookups = false;
-    List<Map<String, Object>> pipeline = [];
 
-    if (projections.isNotEmpty) {
-       foundLookups = true;
-       ${buildAggregationPipeline("${className}Projections()", ['''{
-          r"\$match": selector
-        }''', '''{
-          r"\$sort": sort
-        }''', '''{
-          r"\$limit": limit
-        }'''])}
-    }
-    
-    if (lookups.isNotEmpty) {
+    final projDoc =
+        projections.isNotEmpty ? buildProjectionDoc(normalizedProjections) : null;
+    final canUseDirectProjection =
+        projDoc != null && projectionDocSupportsDirectFind(projDoc);
+
+    var (foundLookups, pipeline) = toAggregationPipelineWithMap(
+      lookupRef: _nestedCollections,
+      lookups: normalizedLookups,
+      projections: projDoc,
+      sort: firstEntryToTuple(sort),
+      skip: skip,
+      limit: limit,
+      raw: selector,
+      cleaned: selector.cleaned(),
+    );
+
+    if (normalizedLookups.isNotEmpty) {
       (foundLookups, pipeline) = mergeLookups(
-        lookups: lookups,
+        lookups: normalizedLookups,
         existingPipeline: foundLookups ? pipeline : null,
         queryMap: foundLookups ? null : selector.cleaned(),
         sort: foundLookups ? null : firstEntryToTuple(sort),
@@ -290,15 +352,23 @@ class ReadTemplates {
       );
     }
     
-    if(foundLookups && pipeline.isNotEmpty){
+    if(foundLookups){
       final collisionFreePipeline = withNoCollisions(pipeline);
       final $classNamePlural = await coll.aggregateToStream(collisionFreePipeline).toList();
       if ($classNamePlural.isEmpty) return [];
-      return $classNamePlural.map((d)=>$className.fromJson(d.withRefs())).toList();
+      return _${classNameVar}DeserializeDocuments($classNamePlural);
     }
     
-    final $classNamePlural = await coll.modernFind(filter:selector,limit:limit,skip:skip,sort:sort).toList();
-    return $classNamePlural.map((e) => $className.fromJson(e.withRefs())).toList();
+    final $classNamePlural = await coll
+        .modernFind(
+          filter: selector.cleaned(),
+          projection: canUseDirectProjection ? projDoc.cast<String, Object>() : null,
+          limit: limit,
+          skip: skip,
+          sort: sort,
+        )
+        .toList();
+    return _${classNameVar}DeserializeDocuments($classNamePlural);
   }
 ''';
   }
@@ -340,60 +410,4 @@ class ReadTemplates {
 }
 ''';
   }
-}
-
-String addStages(List<dynamic> stages) {
-  String stageString = "";
-  for (var stage in stages) {
-    stageString += "pipeline.add($stage);";
-  }
-  return stageString;
-}
-
-String buildAggregationPipeline(String baseProjection, List<dynamic> stages) {
-  return '''
-     final projDoc = <String, int>{};
-     ${addStages(stages)}
-     for (var p in projections) {
-        final selected = <String, int>{};
-        final inclusions = p.inclusions??[];
-        final exclusions = p.exclusions??[];
-        final allProjections = p.toProjection();
-        final localField = allProjections.keys.first.split(".").first;
-        final foreignColl = _nestedCollections[localField];
-        if(inclusions.isNotEmpty){
-         for (var f in inclusions) {
-            final path = p.fieldMappings[(f as Enum).name]!;
-            selected[path] = 1;
-          }
-        }
-        if(exclusions.isNotEmpty){
-         for (var f in exclusions) {
-            final path = p.fieldMappings[(f as Enum).name]!;
-            selected[path] = 0;
-          }
-        }
-        if(selected.isEmpty){
-          projDoc.addAll(allProjections);
-        }else {
-          projDoc.addAll(selected);
-        }
-        if(foreignColl != null){
-          pipeline.add({
-            r'\$lookup': {
-              'from': foreignColl,
-              'localField': localField,
-              'foreignField': '_id',
-              'as': localField,
-            }
-          });
-          pipeline.add({r'\$unwind': {"path":"\\\$\${localField}","preserveNullAndEmptyArrays": true}});
-       }
-      }
-      final _hasBaseType = projections.any((p) => p is ${baseProjection.replaceAll("(", "").replaceAll(")", "")});
-      if (!_hasBaseType) {
-        projDoc.addAll($baseProjection.toProjection());
-      }
-      pipeline.add({r'\$project': projDoc});
-''';
 }

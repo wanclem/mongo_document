@@ -20,6 +20,7 @@
 /// final user = VanillaUser(firstName: 'Alice', lastName: 'Smith');
 /// final updatedUser = user.copyWith(firstName: 'Bob');
 /// await updatedUser.save();
+/// await updatedUser.saveChanges();
 /// ```
 
 library;
@@ -27,6 +28,7 @@ library;
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 
+part 'vanilla_user.g.dart';
 part 'vanilla_user.mongo_document.dart';
 
 @MongoDocument(collection: 'vanilla_users')
@@ -53,7 +55,7 @@ class VanillaUser {
   }
 
   factory VanillaUser.fromJson(Map<String, dynamic> json) =>
-      throw UnimplementedError();
+      _$VanillaUserFromJson(json);
 
-  Map<String, dynamic> toJson() => throw UnimplementedError();
+  Map<String, dynamic> toJson() => _$VanillaUserToJson(this);
 }

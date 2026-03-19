@@ -1,0 +1,45 @@
+# mongo_document_db_driver
+
+This package is the low-level MongoDB driver layer.
+
+## What It Is For
+
+Use this package when you need direct access to:
+
+- `Db`
+- `DbCollection`
+- low-level read/write operations
+- command-style access
+
+For most apps in this repository, higher-level generated CRUD is preferred.
+
+## Typical Usage
+
+```dart
+final db = await Db.create(uri);
+await db.open();
+
+final users = db.collection('users');
+final user = await users.modernFindOne(
+  filter: {'email': 'person@example.com'},
+);
+```
+
+## When To Use It Directly
+
+- debugging low-level behavior
+- custom command flows
+- collection access that is outside the generated model layer
+
+## When Not To Use It Directly
+
+If the generated API already expresses the operation clearly, prefer:
+
+- `Post(...).save()`
+- `Posts.findById(...)`
+- `Posts.findMany(...)`
+
+## Canonical Doc
+
+- [README.md](README.md)
+- [example/README.md](example/README.md)

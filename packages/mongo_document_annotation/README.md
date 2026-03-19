@@ -3,39 +3,41 @@
 
 # mongo_document_annotation
 
-`mongo_document_annotation` provides the annotations, converters, runtime helpers, and shared connection wrapper used by generated `mongo_document` model APIs.
+`mongo_document_annotation` is the package you usually import in your models and startup code.
 
-`mongo_document_annotation` pairs with `mongo_document_db_driver`, a Rust-backed driver that delegates live MongoDB execution to MongoDB's official Rust driver on supported native targets.
+It provides:
 
-## What This Package Gives You
+- `@MongoDocument(...)`
+- `MongoDbConnection.initialize(...)`
+- converters like `@ObjectIdConverter()` and `@DateTimeConverter()`
+- lookup types
+- projection types
+- the shared helpers used by generated CRUD code
 
-- `@MongoDocument(...)` annotations
-- `ObjectId`, date, and nested model converters
-- `MongoDbConnection` shared connection wrapper
-- query/projection helper types used by generated code
+If `mongo_document` gives you `Post.save()` and `Posts.findMany(...)`, this package gives the annotations, mapping rules, and query-shaping tools those generated helpers depend on.
 
-## Installation
+## Install
 
 ```yaml
 dependencies:
-  mongo_document_annotation: ^2.0.0
+  mongo_document_annotation: ^2.1.0
   json_annotation: ^4.9.0
   freezed_annotation: ">=2.4.4 <4.0.0" # optional
 
 dev_dependencies:
-  mongo_document: ^2.0.0
+  mongo_document: ^2.1.0
   build_runner: ^2.10.3
   json_serializable: ^6.9.3
   freezed: ">=2.5.8 <4.0.0" # optional
 ```
 
-Then:
-
 ```bash
 dart pub get
 ```
 
-## Initialize the Shared Connection
+## Initialize MongoDB
+
+Do this once during startup:
 
 ```dart
 import 'dart:io';
@@ -46,46 +48,32 @@ Future<void> main() async {
   final uri = Platform.environment['MONGODB_URI']!;
   await MongoDbConnection.initialize(uri);
 
-  ProcessSignal.sigint.watch().listen((_) async {
+  ProcessSignal.sigterm.watch().listen((_) async {
     await MongoDbConnection.shutdownDb();
     exit(0);
   });
 }
 ```
 
-Put TLS and auth settings in the connection string itself. The connection helper is intentionally URI-first now.
+That shared connection is what the generated CRUD helpers use by default.
 
-## Freezed Example
+Generated helpers default to `MongoDbConnection.instance`, which is the shared connection you initialized with `MongoDbConnection.initialize(...)` at startup. Every CRUD helper can still target a specific `Db` when you want a different database:
 
 ```dart
-import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:mongo_document_annotation/mongo_document_annotation.dart';
+final archiveDb = await Db.create(archiveMongoUri);
+await archiveDb.open();
 
-part 'post.freezed.dart';
-part 'post.g.dart';
-part 'post.mongo_document.dart';
-
-@MongoDocument(collection: 'posts')
-@freezed
-abstract class Post with _$Post {
-  @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
-  const factory Post({
-    @ObjectIdConverter() @JsonKey(name: '_id') ObjectId? id,
-    String? body,
-    @DateTimeConverter() DateTime? createdAt,
-    @DateTimeConverter() DateTime? updatedAt,
-  }) = _Post;
-
-  factory Post.fromJson(Map<String, dynamic> json) => _$PostFromJson(json);
-}
+final archivedPost = await Posts.findById(postId, db: archiveDb);
+await archivedPost?.copyWith(status: 'restored').save(db: archiveDb);
 ```
 
-## Regular Class Example
+## Annotate A Model
 
 ```dart
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 
+part 'post.g.dart';
 part 'post.mongo_document.dart';
 
 @MongoDocument(collection: 'posts')
@@ -94,84 +82,403 @@ class Post {
   Post({
     @ObjectIdConverter() @JsonKey(name: '_id') this.id,
     this.body,
+    this.status,
+    @DateTimeConverter() this.createdAt,
+    @DateTimeConverter() this.updatedAt,
   });
 
   final ObjectId? id;
   final String? body;
+  final String? status;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
-  Post copyWith({ObjectId? id, String? body}) {
-    return Post(
-      id: id ?? this.id,
-      body: body ?? this.body,
-    );
-  }
-
-  factory Post.fromJson(Map<String, dynamic> json) =>
-      throw UnimplementedError();
-
-  Map<String, dynamic> toJson() => throw UnimplementedError();
+  factory Post.fromJson(Map<String, dynamic> json) => _$PostFromJson(json);
+  Map<String, dynamic> toJson() => _$PostToJson(this);
 }
 ```
 
-## Generated CRUD Example
+From there, `mongo_document` generation builds the typed CRUD API around this model.
+
+## Dart Field Names Stay Clean
+
+This package respects:
+
+- `@JsonKey(name: ...)`
+- `@JsonSerializable(fieldRename: ...)`
+
+That means your Dart API can stay readable even if Mongo uses a different stored name.
 
 ```dart
-final saved = await Post(body: 'Hello world').save();
+@MongoDocument(collection: 'workspace_members')
+@JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
+class WorkspaceMember {
+  WorkspaceMember({
+    @ObjectIdConverter() @JsonKey(name: '_id') this.id,
+    @JsonKey(name: 'work_space') this.workspace,
+    this.role,
+  });
 
-final latest = await Posts.findOne(
-  (q) => q.body.eq('Hello world'),
-);
+  final ObjectId? id;
+  final Workspace? workspace;
+  final String? role;
 
-await Posts.updateOne(
-  (q) => q.id.eq(saved?.id),
-  body: 'Updated',
+  factory WorkspaceMember.fromJson(Map<String, dynamic> json) =>
+      _$WorkspaceMemberFromJson(json);
+  Map<String, dynamic> toJson() => _$WorkspaceMemberToJson(this);
+}
+```
+
+So your query code still reads like normal Dart:
+
+```dart
+final member = await WorkspaceMembers.findOne(
+  (wm) => wm.workspace.id.eq(workspaceId),
 );
 ```
 
-## Lookups and Projections
+and the package still maps that correctly to the Mongo field path.
+
+## Typed Object References
+
+A reference field does not have to be modeled as `ObjectId? authorId`.
+
+You can model it as the related Dart type:
+
+```dart
+@MongoDocument(collection: 'posts')
+@JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
+class CrossPost {
+  CrossPost({
+    @ObjectIdConverter() @JsonKey(name: '_id') this.id,
+    this.author,
+    @JsonKey(name: 'workSpace') this.workspace,
+    this.text,
+  });
+
+  final ObjectId? id;
+  final Account? author;
+  final Workspace? workspace;
+  final String? text;
+
+  factory CrossPost.fromJson(Map<String, dynamic> json) =>
+      _$CrossPostFromJson(json);
+  Map<String, dynamic> toJson() => _$CrossPostToJson(this);
+}
+```
+
+This keeps the field meaningful in Dart:
+
+```dart
+final posts = await CrossPosts.findMany(
+  (p) => p.author.id.eq(authenticatedUser.id),
+);
+```
+
+instead of forcing everything into an `authorId` naming style.
+
+Behind the scenes, the shared helpers in this package handle the reference conversion:
+
+- on writes, nested model references are reduced to `_id` values for MongoDB storage
+- on reads, stored reference ids are rewrapped into the shape your Dart model expects
+- if a lookup populates the reference, the same field can deserialize into a fuller nested model without changing the field name or type
+- query builders can still target `author.id`, `workspace.id`, and similar paths while the stored field remains the Mongo reference itself
+
+That is why the same field can work well across normal saves, reads, projections, and lookups.
+
+The internal helpers that make this work are used automatically by generated code. Most app code does not need to call `withRefs()` or `withValidObjectReferences()` directly, but those are the shared normalization helpers that keep typed references ergonomic on both the read and write paths.
+
+That same typed field also stays consistent when you project or look it up:
+
+```dart
+final posts = await CrossPosts.findMany(
+  (p) => p.workspace.id.eq(workspaceId),
+  projections: [
+    CrossPostProjections(
+      inclusions: [CrossPostFields.id, CrossPostFields.text],
+    ),
+    CrossPostAuthorProjections(
+      inclusions: [
+        CrossPostAuthorFields.id,
+        CrossPostAuthorFields.firstName,
+      ],
+    ),
+  ],
+);
+```
+
+That still works on `post.author`, not `post.authorId`, while the stored Mongo value remains a plain `ObjectId`.
+
+## When To Use Lookups
+
+Use a lookup when the read should return related data in the same trip to MongoDB.
+
+Lookups and projections are related, but they are not the same thing:
+
+- a lookup decides whether related data should be fetched at all
+- a lookup decides the shape of the related result, such as one object, many objects, a boolean, or a count
+- a projection decides which fields survive in the final payload
+- for typed object references, a nested projection can already trigger the default related-data materialization for that field
+- add an explicit lookup when you need more control, such as `unsetFields`, `where`, nested lookups, or a different result shape
+- explicit lookups use Dart field names like `author` or `user`, and the package remaps them to stored Mongo keys using `@JsonKey(...)` and `fieldRename`
+
+So `Lookup.single(as: 'author', ...)` and `PostAuthorProjections(...)` are not duplicates. The lookup loads `author` as a single nested object. The nested projection trims the fields on that nested object. If you pass both for the same field, the package merges them into one lookup pipeline instead of creating duplicate lookups.
+
+Typical examples:
+
+- a post with its author
+- a workspace member with its workspace
+- a `youFollow` boolean
+- a `commentCount`
+
+### One nested document: `Lookup.single(...)`
+
+```dart
+Lookup.single(
+  from: Users.collection,
+  localField: 'author',
+  foreignField: '_id',
+  as: 'author',
+)
+```
+
+### A nested list: `Lookup.array(...)`
+
+```dart
+Lookup.array(
+  from: Comments.collection,
+  localField: '_id',
+  foreignField: 'post',
+  as: 'recentComments',
+  sort: {'created_at': -1},
+  limit: 3,
+)
+```
+
+### A yes/no relationship flag: `Lookup.boolean(...)`
+
+```dart
+Lookup.boolean(
+  from: Followers.collection,
+  localField: 'author',
+  foreignField: 'leader',
+  as: 'youFollow',
+  where: {'follower': caller.id!},
+)
+```
+
+### A related count: `Lookup.count(...)`
+
+```dart
+Lookup.count(
+  from: Comments.collection,
+  localField: '_id',
+  foreignField: 'post',
+  as: 'commentCount',
+)
+```
+
+### A full lookup example
 
 ```dart
 final posts = await Posts.findMany(
-  (q) => q.body.contains('Hello'),
+  (q) => q.status.eq('published'),
   lookups: [
-    Lookup(
+    Lookup.single(
+      from: Users.collection,
+      localField: 'author',
+      foreignField: '_id',
+      as: 'author',
+      unsetFields: ['email', 'password', 'sessions'],
+    ),
+    Lookup.count(
       from: Comments.collection,
-      as: 'comments',
       localField: '_id',
       foreignField: 'post',
-      limit: 3,
+      as: 'commentCount',
     ),
-  ],
-  projections: [
-    PostAuthorProjections(),
-    PostProjection(),
   ],
 );
 ```
 
-## Platform Notes
+Use lookups when the endpoint genuinely needs related data back from the same read. If the base document already has the only foreign key you need, a lookup is usually unnecessary.
 
-- This package can safely live in shared Dart/Flutter codebases.
-- On web, shared types and converters compile, but live MongoDB runtime access is unsupported.
-- On Android/iOS, Flutter apps compile, but live MongoDB runtime requires mobile native Rust libraries that are not bundled yet.
-- On supported native server/desktop targets, the actual DB execution path is Rust-backed.
+### Lookup only
 
-## Conventions
+If the endpoint needs the related document and you are fine returning the full nested payload, a lookup alone is enough:
 
-- Annotate `_id` with `@ObjectIdConverter()` and `@JsonKey(name: '_id')`.
-- Use `@JsonSerializable(fieldRename: FieldRename.snake)` when your MongoDB documents use `snake_case`.
-- Do not manually edit generated `*.mongo_document.dart` files.
-
-## Troubleshooting
-
-If you need to silence annotation-target warnings:
-
-```yaml
-analyzer:
-  errors:
-    invalid_annotation_target: ignore
+```dart
+final posts = await Posts.findMany(
+  (q) => q.status.eq('published'),
+  lookups: [
+    Lookup.single(
+      from: Users.collection,
+      localField: 'author',
+      foreignField: '_id',
+      as: 'author',
+      unsetFields: ['email', 'password', 'sessions'],
+    ),
+  ],
+);
 ```
 
-## License
+If the Dart field is stored under a different Mongo key, still use the Dart field name:
 
-MIT — see [LICENSE](../../LICENSE).
+```dart
+final member = await WorkspaceMembers.findOne(
+  (wm) => wm.user.id.eq(authenticatedUser.id),
+  lookups: [
+    Lookup.single(
+      from: Accounts.collection,
+      localField: 'user',
+      foreignField: '_id',
+      as: 'user',
+      unsetFields: ['password'],
+    ),
+  ],
+);
+```
+
+If that field is stored as `user_id` in Mongo, the package remaps it behind the scenes.
+
+## When To Use Projections
+
+Use projections when you only need part of a document.
+
+Typical cases:
+
+- card/list pages
+- dashboard summaries
+- permission checks
+- nested documents where only a few fields should be loaded
+
+### Base projection
+
+```dart
+final posts = await Posts.findMany(
+  (q) => q.status.eq('published'),
+  projections: [
+    PostProjections(
+      inclusions: [
+        PostFields.id,
+        PostFields.body,
+        PostFields.createdAt,
+      ],
+    ),
+  ],
+);
+```
+
+### Nested projection
+
+```dart
+final member = await WorkspaceMembers.findOne(
+  (wm) =>
+      wm.user.id.eq(authenticatedUser.id) &
+      wm.workspace.id.eq(workspaceId),
+  projections: [
+    WorkspaceMemberWorkspaceProjections(),
+  ],
+);
+```
+
+Nested projection classes are for nested model fields. Sometimes that nested data is already stored inside the main document. Sometimes it is coming back from a lookup. In both cases, the nested projection lets you keep only the fields you need from that nested object while the base fields required to deserialize the main model are still kept automatically. So if you only pass `WorkspaceMemberWorkspaceProjections()`, the package still preserves the base fields needed to deserialize `WorkspaceMember` itself.
+
+For typed object references, a nested projection can also be enough to trigger the default related-data materialization for that field. You do not need an explicit lookup if you only want the normal related document on the same field with fewer nested fields.
+
+Projected models still deserialize into the same Dart type. Fields you did not ask for should be treated as unloaded and may come back as `null` in that projected model instance.
+
+### Projection + lookup together
+
+```dart
+final posts = await Posts.findMany(
+  (q) => q.status.eq('published'),
+  lookups: [
+    Lookup.single(
+      from: Users.collection,
+      localField: 'author',
+      foreignField: '_id',
+      as: 'author',
+      unsetFields: ['email', 'password', 'sessions'],
+    ),
+  ],
+  projections: [
+    PostProjections(
+      inclusions: [PostFields.id, PostFields.body],
+    ),
+    PostAuthorProjections(
+      inclusions: [
+        PostAuthorFields.id,
+        PostAuthorFields.firstName,
+      ],
+    ),
+  ],
+);
+```
+
+That pattern is useful when the parent document and the joined document both need to stay lean.
+
+In that example:
+
+- `Lookup.single(...)` fetches `author` and turns the joined result into one object instead of a list
+- `unsetFields` on the lookup trims sensitive fields before the final projection runs
+- `PostProjections(...)` trims the parent document
+- `PostAuthorProjections(...)` trims the nested joined `author`
+
+Typed object references fit especially well here:
+
+```dart
+final posts = await CrossPosts.findMany(
+  (p) => p.workspace.id.eq(workspaceId),
+  lookups: [
+    Lookup.single(
+      from: Accounts.collection,
+      localField: 'author',
+      foreignField: '_id',
+      as: 'author',
+    ),
+  ],
+  projections: [
+    CrossPostProjections(
+      inclusions: [CrossPostFields.id, CrossPostFields.text],
+    ),
+    CrossPostAuthorProjections(
+      inclusions: [
+        CrossPostAuthorFields.id,
+        CrossPostAuthorFields.firstName,
+      ],
+    ),
+  ],
+);
+```
+
+The field still stays `author` in Dart, even though the stored Mongo value is a reference and the looked-up value is a fuller nested document.
+
+## Shared Helpers Behind `save()` And `saveChanges()`
+
+This package also provides the shared helper layer used by generated immutable update flows:
+
+```dart
+final post = await Posts.findById(postId);
+if (post == null) return;
+
+final updated = await post.copyWith(body: 'Updated body').save();
+```
+
+or:
+
+```dart
+final updated = await post.copyWith(body: 'Updated body').saveChanges();
+```
+
+You do not pass `previous`.
+
+## Most Apps Import This Package Directly For
+
+- `MongoDbConnection.initialize(...)`
+- `@MongoDocument(...)`
+- `@ObjectIdConverter()`
+- `@DateTimeConverter()`
+- lookup and projection types in query code
+
+The generated CRUD surface itself comes from `mongo_document`.

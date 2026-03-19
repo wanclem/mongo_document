@@ -22,6 +22,7 @@ import 'connection_manager_recovery_policy_test.dart'
     as connection_manager_recovery;
 import 'db_recovery_retry_test.dart' as db_recovery_retry;
 import 'recoverable_error_classifier_test.dart' as recoverable_error_classifier;
+import 'rust_worker_retry_test.dart' as rust_worker_retry;
 import 'server_config_pooling_test.dart' as server_config_pooling;
 
 //import 'replica_tests.dart' as replica;
@@ -46,5 +47,6 @@ void main() {
   connection_manager_recovery.main();
   db_recovery_retry.main();
   recoverable_error_classifier.main();
+  rust_worker_retry.main();
   server_config_pooling.main();
 }

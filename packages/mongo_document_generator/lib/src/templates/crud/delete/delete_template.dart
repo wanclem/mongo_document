@@ -10,7 +10,10 @@ class DeleteTemplates {
     if (id == null) return false;
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
-    final res = await coll.deleteOne(where.eq(r'_id', id));
+    final res = await coll.deleteOne({'_id': id});
+    if (res.isSuccess) {
+      _${className[0].toLowerCase()}${className.substring(1)}ForgetSnapshotFor(id!);
+    }
     return res.isSuccess;
   }
 ''';

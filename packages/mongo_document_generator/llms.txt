@@ -1,0 +1,24 @@
+# mongo_document
+
+`mongo_document` generates a Dart-native CRUD API from annotated models.
+
+After generation, code should look like:
+
+```dart
+final post = await Post(body: 'Hello world').save();
+final updated = await post.copyWith(body: 'Updated').save();
+final drafts = await Posts.findMany((q) => q.status.eq('draft'));
+```
+
+Start here:
+
+- [README.md](README.md)
+- [llms-full.txt](llms-full.txt)
+- [example/README.md](example/README.md)
+
+Key rules:
+
+- run `dart run build_runner build --delete-conflicting-outputs`
+- regenerate after field, `@JsonKey`, `fieldRename`, lookup, projection, or ref changes
+- `copyWith(...).save()` and `saveChanges()` support partial immutable updates when the document came from generated reads
+- use lookups to fetch related data and projections to trim result fields

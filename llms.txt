@@ -1,31 +1,47 @@
 # mongo_document
 
-> Type-safe MongoDB model code generation for Dart, backed by a local MongoDB driver package (`mongo_document_db_driver`).
+`mongo_document` is a family of Dart packages for working with MongoDB in a Dart-native style.
 
-## Canonical Docs
+The main workflow is:
 
-- [Human README](README.md): high-level usage.
-- [AI Guide](README.AI.md): machine-oriented integration and operational rules.
+1. initialize Mongo once with `MongoDbConnection.initialize(uri)`
+2. annotate models with `@MongoDocument(...)`
+3. generate helpers with `build_runner`
+4. use generated CRUD like `Post(...).save()`, `Posts.findById(...)`, and `post.copyWith(...).save()`
 
-## Package AI Docs
+## Packages
 
-- [mongo_document_annotation AI Guide](packages/mongo_document_annotation/README.AI.md): annotations, runtime helpers, connection lifecycle, generated API expectations.
-- [mongo_document AI Guide](packages/mongo_document_generator/README.AI.md): source_gen builder behavior and generation commands.
-- [mongo_document_db_driver AI Guide](packages/mongo_document_db_driver/README.AI.md): low-level driver usage and connection patterns.
+- `mongo_document_annotation`: annotations, converters, connection helpers, lookup/projection types
+- `mongo_document`: code generator
+- `mongo_document_db_driver`: low-level driver package used underneath
+
+## Canonical Starting Points
+
+- [README.md](README.md)
+- [llms-full.txt](llms-full.txt)
+- [Generated API mental model](docs/generated-api-mental-model.md)
+- [Lookups and projections](docs/lookups-and-projections.md)
+- [Object references](docs/object-references.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Recipes index](docs/recipes/README.md)
 
 ## Required Commands
 
-- Install dependencies: `dart pub get`
-- Generate code: `dart run build_runner build --delete-conflicting-outputs`
-- Watch generation: `dart run build_runner watch --delete-conflicting-outputs`
+- `dart pub get`
+- `dart run build_runner build --delete-conflicting-outputs`
+- `dart run build_runner watch --delete-conflicting-outputs`
 
-## Runtime Contract
+## Rules That Matter Most
 
-- Initialize once: `MongoDbConnection.initialize(...)`
-- Reuse connection via: `MongoDbConnection.instance`
-- Clean shutdown: `MongoDbConnection.shutdownDb()`
+- Initialize the shared connection once with `MongoDbConnection.initialize(...)`.
+- Generated helpers default to `MongoDbConnection.instance`.
+- Use Dart field names in lookups like `author` or `user`, not stored Mongo keys like `author_id`.
+- For immutable updates, prefer `copyWith(...).save()` or `copyWith(...).saveChanges()`.
+- Typed object refs like `Account? author` store as `ObjectId` in Mongo behind the scenes.
+- Lookups fetch related data. Projections trim returned fields.
+- Regenerate after changing fields, `@JsonKey(...)`, `fieldRename`, refs, lookups, or projections.
 
-## Security Contract
+## Security
 
-- Do not commit connection strings with credentials.
-- Use environment variables for database URIs and secrets.
+- Never commit MongoDB URIs with credentials.
+- Use environment variables for secrets and connection strings.

@@ -68,9 +68,17 @@ class MongoDocumentGenerator extends GeneratorForAnnotation<MongoDocument> {
       _jsonKeyChecker,
       fieldRename,
     );
+    final rootFieldMappings = ParameterTemplates.buildFieldMappingsLiteral(
+      params,
+      _jsonKeyChecker,
+      fieldRename,
+    );
+    final classNameVar = className[0].toLowerCase() + className.substring(1);
     final template = '''
 ${ClassProjection.buildClassProjection(className, _jsonSerializableChecker, _jsonKeyChecker, params, fieldRename, nestedCollectionMap)}
 ${ObjectReferences.buildNestedCollectiontionsMapLiteral(nestedCollectionMap)}
+const _${classNameVar}FieldMappings = $rootFieldMappings;
+${CreateTemplates.buildPersistenceHelpers(className, collection, _jsonKeyChecker, params, fieldRename)}
 ${ObjectReferences.buildNestedCollectionProjectionClasses(className, _jsonSerializableChecker, _jsonKeyChecker, nestedCollectionMap, params, fieldRename)}
 ${QueryTemplates.buildQueryClass(_jsonKeyChecker, className, fieldRename, params)}
 

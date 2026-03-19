@@ -13,7 +13,11 @@ class Lookup {
   /// Field on the current model where results will be stored
   final String as;
 
-  /// Maximum number of documents to return (defaults to 1 if not specified)
+  /// Maximum number of documents to return.
+  ///
+  /// If omitted:
+  /// - [LookupResultType.single] and [LookupResultType.boolean] default to `1`
+  /// - [LookupResultType.array] and [LookupResultType.count] remain unlimited
   final int? limit;
 
   /// Sort order: 1 for ascending, -1 for descending
@@ -44,7 +48,58 @@ class Lookup {
     this.unsetFields,
   });
 
-  int get _effectiveLimit => limit ?? 1;
+  const Lookup.single({
+    required this.from,
+    this.localField,
+    this.foreignField = '_id',
+    required this.as,
+    this.limit = 1,
+    this.sort,
+    this.where,
+    this.nestedLookups,
+    this.unsetFields,
+  }) : resultType = LookupResultType.single;
+
+  const Lookup.array({
+    required this.from,
+    this.localField,
+    this.foreignField = '_id',
+    required this.as,
+    this.limit,
+    this.sort,
+    this.where,
+    this.nestedLookups,
+    this.unsetFields,
+  }) : resultType = LookupResultType.array;
+
+  const Lookup.boolean({
+    required this.from,
+    this.localField,
+    this.foreignField = '_id',
+    required this.as,
+    this.limit = 1,
+    this.sort,
+    this.where,
+    this.nestedLookups,
+    this.unsetFields,
+  }) : resultType = LookupResultType.boolean;
+
+  const Lookup.count({
+    required this.from,
+    this.localField,
+    this.foreignField = '_id',
+    required this.as,
+    this.limit,
+    this.sort,
+    this.where,
+    this.nestedLookups,
+    this.unsetFields,
+  }) : resultType = LookupResultType.count;
+
+  int? get _effectiveLimit => switch (resultType) {
+    LookupResultType.single || LookupResultType.boolean => limit ?? 1,
+    LookupResultType.array || LookupResultType.count => limit,
+  };
 
   List<Map<String, Object>> buildPipeline() {
     final stages = <Map<String, Object>>[];
@@ -86,7 +141,10 @@ class Lookup {
       pipeline.add({'\$sort': sort!});
     }
 
-    pipeline.add({'\$limit': _effectiveLimit});
+    final effectiveLimit = _effectiveLimit;
+    if (effectiveLimit != null) {
+      pipeline.add({'\$limit': effectiveLimit});
+    }
 
     if (nestedLookups != null && nestedLookups!.isNotEmpty) {
       for (final nestedLookup in nestedLookups!) {

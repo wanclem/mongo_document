@@ -52,6 +52,83 @@ const _nestedCollections = <String, String>{
   'user_id': 'accounts',
   'organization': 'organizations',
 };
+const _organizationMemberFieldMappings = <String, String>{
+  'id': '_id',
+  'user': 'user_id',
+  'organization': 'organization',
+  'occupation': 'occupation',
+  'role': 'role',
+  'title': 'title',
+  'createdAt': 'created_at',
+  'updatedAt': 'updated_at',
+};
+const _organizationMemberCollection = 'organizationmembers';
+const _organizationMemberTrackedPersistedKeys = <String>[
+  'user_id',
+  'organization',
+  'occupation',
+  'role',
+  'title',
+  'created_at',
+  'updated_at',
+];
+
+Map<String, dynamic> _organizationMemberNormalizePersistedDocument(
+  Map<String, dynamic> source,
+) {
+  final normalized = sanitizedDocument(Map<String, dynamic>.from(source));
+
+  for (final entry in source.entries) {
+    final root = entry.key;
+    if (!_nestedCollections.containsKey(root)) continue;
+
+    final value = entry.value;
+    final rawNestedId =
+        value is Map ? Map<String, dynamic>.from(value)['_id'] : value;
+    final nestedId =
+        rawNestedId is ObjectId
+            ? rawNestedId
+            : rawNestedId is String
+            ? ObjectId.tryParse(rawNestedId)
+            : null;
+
+    if (nestedId == null) {
+      normalized.remove(root);
+    } else {
+      normalized[root] = nestedId;
+    }
+  }
+
+  return normalized;
+}
+
+void _rememberOrganizationMemberSnapshot(Map<String, dynamic> document) {
+  rememberMongoDocumentSnapshot(
+    _organizationMemberCollection,
+    _organizationMemberNormalizePersistedDocument(document),
+  );
+}
+
+OrganizationMember _organizationMemberDeserializeDocument(
+  Map<String, dynamic> document,
+) {
+  _rememberOrganizationMemberSnapshot(document);
+  return OrganizationMember.fromJson(document.withRefs());
+}
+
+List<OrganizationMember> _organizationMemberDeserializeDocuments(
+  Iterable<Map<String, dynamic>> documents,
+) {
+  return documents.map(_organizationMemberDeserializeDocument).toList();
+}
+
+Map<String, dynamic>? _organizationMemberSnapshotFor(ObjectId id) {
+  return mongoDocumentSnapshot(_organizationMemberCollection, id);
+}
+
+void _organizationMemberForgetSnapshotFor(ObjectId id) {
+  forgetMongoDocumentSnapshot(_organizationMemberCollection, id);
+}
 
 enum OrganizationMemberUserFields {
   id,
@@ -176,52 +253,69 @@ extension $OrganizationMemberExtension on OrganizationMember {
     final now = DateTime.now().toUtc();
     final isInsert = id == null;
 
-    final organizationMemberMap = toJson()..remove('_id');
-    organizationMemberMap.update(
-      'created_at',
-      (v) => v ?? now,
-      ifAbsent: () => now,
-    );
-    organizationMemberMap.update('updated_at', (v) => now, ifAbsent: () => now);
-
-    var organizationMember = sanitizedDocument({...organizationMemberMap});
-    for (var entry in organizationMemberMap.entries) {
-      final root = entry.key;
-      if (_nestedCollections.containsKey(root)) {
-        final Map<String, dynamic> value =
-            entry.value is Map
-                ? Map<String, dynamic>.from(entry.value as Map)
-                : <String, dynamic>{};
-        if (value.isEmpty) continue;
-        final nestedId = value['_id'] as ObjectId?;
-        if (nestedId == null) {
-          organizationMember.remove(root);
-        } else {
-          organizationMember[root] = nestedId;
-        }
-      }
-    }
+    final rawOrganizationMemberMap = toJson()..remove('_id');
+    final persistedOrganizationMemberMap =
+        _organizationMemberNormalizePersistedDocument({
+          ...rawOrganizationMemberMap,
+        });
 
     if (isInsert) {
-      final result = await coll.insertOne(organizationMember);
+      persistedOrganizationMemberMap.update(
+        'created_at',
+        (value) => value ?? now,
+        ifAbsent: () => now,
+      );
+      persistedOrganizationMemberMap.update(
+        'updated_at',
+        (_) => now,
+        ifAbsent: () => now,
+      );
+
+      final result = await coll.insertOne(persistedOrganizationMemberMap);
       if (!result.isSuccess) return null;
-      final savedDoc = await coll.findOne(where.id(result.id));
-      return OrganizationMember.fromJson(savedDoc!.withRefs());
+      final savedDoc = await coll.modernFindOne(filter: {'_id': result.id});
+      if (savedDoc == null) return null;
+      return _organizationMemberDeserializeDocument(savedDoc);
+    }
+
+    var snapshot = _organizationMemberSnapshotFor(id!);
+    snapshot ??= await coll.modernFindOne(filter: {'_id': id});
+    if (snapshot == null) return null;
+    snapshot = _organizationMemberNormalizePersistedDocument(snapshot);
+
+    final updateMap = buildMongoUpdateMapFromSnapshot(
+      current: persistedOrganizationMemberMap,
+      snapshot: snapshot,
+      trackedKeys: _organizationMemberTrackedPersistedKeys,
+    );
+
+    if (updateMap.isEmpty) {
+      final savedDoc = await coll.modernFindOne(filter: {'_id': id});
+      if (savedDoc == null) return null;
+      return _organizationMemberDeserializeDocument(savedDoc);
     }
 
     var parentMod = modify.set('updated_at', now);
-    organizationMember.forEach((k, v) => parentMod = parentMod.set(k, v));
-    final res = await coll.updateOne(where.eq(r'_id', id), parentMod);
+    updateMap.forEach((key, value) => parentMod = parentMod.set(key, value));
+    final res = await coll.updateOne({'_id': id}, parentMod);
     if (!res.isSuccess) return null;
-    final savedDoc = await coll.findOne(where.id(id!));
-    return OrganizationMember.fromJson(savedDoc!.withRefs());
+    final savedDoc = await coll.modernFindOne(filter: {'_id': id});
+    if (savedDoc == null) return null;
+    return _organizationMemberDeserializeDocument(savedDoc);
+  }
+
+  Future<OrganizationMember?> saveChanges({Db? db}) async {
+    return save(db: db);
   }
 
   Future<bool> delete({Db? db}) async {
     if (id == null) return false;
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
-    final res = await coll.deleteOne(where.eq(r'_id', id));
+    final res = await coll.deleteOne({'_id': id});
+    if (res.isSuccess) {
+      _organizationMemberForgetSnapshotFor(id!);
+    }
     return res.isSuccess;
   }
 }
@@ -241,20 +335,17 @@ class OrganizationMembers {
     final List<Map<String, dynamic>> toInsert = [];
     final List<Map<String, dynamic>> toSave = [];
     for (final o in organizationMembers) {
-      final json = sanitizedDocument(o.toJson());
-      json.update('created_at', (v) => v ?? now, ifAbsent: () => now);
-      json.update('updated_at', (v) => now, ifAbsent: () => now);
-      final processed = json.map((key, value) {
-        if (_nestedCollections.containsKey(key) && value is Map) {
-          return MapEntry<String, dynamic>(key, value['_id'] as ObjectId?);
-        }
-        return MapEntry<String, dynamic>(key, value);
-      });
-      if (processed.containsKey('_id') && processed['_id'] != null) {
-        toSave.add(processed);
+      final json = _organizationMemberNormalizePersistedDocument(o.toJson());
+      final hasId = json.containsKey('_id') && json['_id'] != null;
+      if (hasId) {
+        json.update('updated_at', (_) => now, ifAbsent: () => now);
+        toSave.add(json);
       } else {
-        processed.remove('_id');
-        toInsert.add(processed);
+        json
+          ..remove('_id')
+          ..update('created_at', (v) => v ?? now, ifAbsent: () => now)
+          ..update('updated_at', (_) => now, ifAbsent: () => now);
+        toInsert.add(json);
       }
     }
     final affectedIds = <dynamic>[];
@@ -266,25 +357,42 @@ class OrganizationMembers {
       affectedIds.addAll(insertResult.ids!);
     }
     for (final doc in toSave) {
+      dynamic docId = doc['_id'];
       try {
-        final rawId = doc['_id'];
-        if (rawId is String && rawId.length == 24) {
-          doc['_id'] = ObjectId.fromHexString(rawId);
+        if (docId is String && docId.length == 24) {
+          docId = ObjectId.fromHexString(docId);
         }
       } catch (_) {
         // ignore invalid conversion and let the driver handle it
       }
+      if (docId == null) continue;
+      final updateDoc = Map<String, dynamic>.from(doc)..remove('_id');
       var parentMod = modify.set('updated_at', now);
-      doc.forEach((k, v) => parentMod = parentMod.set(k, v));
-      await coll.updateOne(where.eq(r'_id', doc['_id']), parentMod);
-      affectedIds.add(doc['_id']);
+      updateDoc.forEach((k, v) => parentMod = parentMod.set(k, v));
+      final updateResult = await coll.updateOne({'_id': docId}, parentMod);
+      if (updateResult.isSuccess) {
+        affectedIds.add(docId);
+      }
     }
-    final uniqueIds = affectedIds.where((e) => e != null).toSet().toList();
+    final uniqueIds = <dynamic>[];
+    for (final id in affectedIds) {
+      if (id == null || uniqueIds.contains(id)) continue;
+      uniqueIds.add(id);
+    }
     if (uniqueIds.isEmpty) return <OrganizationMember>[];
     final insertedDocs =
-        await coll.find(where.oneFrom('_id', uniqueIds)).toList();
-    return insertedDocs
-        .map((doc) => OrganizationMember.fromJson(doc.withRefs()))
+        await coll
+            .modernFind(
+              filter: {
+                '_id': {r'$in': uniqueIds},
+              },
+            )
+            .toList();
+    final docsById = {for (final doc in insertedDocs) doc['_id']: doc};
+    return uniqueIds
+        .map((id) => docsById[id])
+        .whereType<Map<String, dynamic>>()
+        .map(_organizationMemberDeserializeDocument)
         .toList();
   }
 
@@ -295,80 +403,45 @@ class OrganizationMembers {
     List<BaseProjections> projections = const [],
   }) async {
     if (id == null) return null;
-    if (id is String) id = ObjectId.fromHexString(id);
+    if (id is String) {
+      final parsedId = ObjectId.tryParse(id);
+      if (parsedId == null) {
+        throw ArgumentError('Invalid id value: $id');
+      }
+      id = parsedId;
+    }
     if (id is! ObjectId) {
       throw ArgumentError('Invalid id type: ${id.runtimeType}');
     }
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
-    bool foundLookups = false;
-    List<Map<String, Object>> pipeline = [];
-    if (projections.isNotEmpty) {
-      foundLookups = true;
-      final projDoc = <String, int>{};
-      pipeline.add({
-        r"$match": {'_id': id},
-      });
-      for (var p in projections) {
-        final selected = <String, int>{};
-        final inclusions = p.inclusions ?? [];
-        final exclusions = p.exclusions ?? [];
-        final allProjections = p.toProjection();
-        final localField = allProjections.keys.first.split(".").first;
-        final foreignColl = _nestedCollections[localField];
-        if (inclusions.isNotEmpty) {
-          for (var f in inclusions) {
-            final path = p.fieldMappings[(f as Enum).name]!;
-            selected[path] = 1;
-          }
-        }
-        if (exclusions.isNotEmpty) {
-          for (var f in exclusions) {
-            final path = p.fieldMappings[(f as Enum).name]!;
-            selected[path] = 0;
-          }
-        }
-        if (selected.isEmpty) {
-          projDoc.addAll(allProjections);
-        } else {
-          projDoc.addAll(selected);
-        }
-        if (foreignColl != null) {
-          pipeline.add({
-            r'$lookup': {
-              'from': foreignColl,
-              'localField': localField,
-              'foreignField': '_id',
-              'as': localField,
-            },
-          });
-          pipeline.add({
-            r'$unwind': {
-              "path": "\$${localField}",
-              "preserveNullAndEmptyArrays": true,
-            },
-          });
-        }
-      }
-      final _hasBaseType = projections.any(
-        (p) => p is OrganizationMemberProjections,
-      );
-      if (!_hasBaseType) {
-        projDoc.addAll(OrganizationMemberProjections().toProjection());
-      }
-      pipeline.add({r'$project': projDoc});
-    }
-    if (lookups.isNotEmpty) {
-      bool hasMatch = pipeline.any((stage) => stage.containsKey('\$match'));
-      if (!hasMatch) {
-        pipeline.add({
-          r"\$match": {'_id': id},
-        });
-      }
+    final normalizedLookups = remapLookups(
+      lookups,
+      _organizationMemberFieldMappings,
+    );
+    final normalizedProjections = normalizeProjectionList(
+      projections,
+      OrganizationMemberProjections(),
+    );
+    final projDoc =
+        projections.isNotEmpty
+            ? buildProjectionDoc(normalizedProjections)
+            : null;
+
+    var (foundLookups, pipeline) = toAggregationPipelineWithMap(
+      lookupRef: _nestedCollections,
+      lookups: normalizedLookups,
+      projections: projDoc,
+      limit: 1,
+      raw: {'_id': id},
+      cleaned: {'_id': id},
+    );
+    if (normalizedLookups.isNotEmpty) {
       (foundLookups, pipeline) = mergeLookups(
-        lookups: lookups,
+        lookups: normalizedLookups,
         existingPipeline: foundLookups ? pipeline : null,
-        limit: 1,
+        queryMap: foundLookups ? null : {'_id': id},
+        limit: foundLookups ? null : 1,
       );
     }
     if (foundLookups) {
@@ -376,13 +449,13 @@ class OrganizationMembers {
       final results =
           await coll.aggregateToStream(collisionFreePipeline).toList();
       if (results.isEmpty) return null;
-      return OrganizationMember.fromJson(results.first.withRefs());
+      return _organizationMemberDeserializeDocument(results.first);
     }
     // fallback: return entire organizationMember
-    final organizationMember = await coll.findOne(where.eq(r'_id', id));
+    final organizationMember = await coll.modernFindOne(filter: {'_id': id});
     return organizationMember == null
         ? null
-        : OrganizationMember.fromJson(organizationMember.withRefs());
+        : _organizationMemberDeserializeDocument(organizationMember);
   }
 
   /// Type-safe findOne by predicate
@@ -394,13 +467,21 @@ class OrganizationMembers {
   }) async {
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
+    final normalizedLookups = remapLookups(
+      lookups,
+      _organizationMemberFieldMappings,
+    );
+    final normalizedProjections = normalizeProjectionList(
+      projections,
+      OrganizationMemberProjections(),
+    );
 
     if (predicate == null) {
       final organizationMember = await coll.modernFindOne(
         sort: {'created_at': -1},
       );
       if (organizationMember == null) return null;
-      return OrganizationMember.fromJson(organizationMember.withRefs());
+      return _organizationMemberDeserializeDocument(organizationMember);
     }
 
     final selectorBuilder =
@@ -408,19 +489,22 @@ class OrganizationMembers {
     final selectorMap = selectorBuilder.map;
 
     final projDoc =
-        projections.isNotEmpty ? buildProjectionDoc(projections) : null;
+        projections.isNotEmpty
+            ? buildProjectionDoc(normalizedProjections)
+            : null;
 
     var (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
+      lookups: normalizedLookups,
       projections: projDoc,
       limit: 1,
       raw: selectorMap.raw(),
       cleaned: selectorMap.cleaned(),
     );
 
-    if (lookups.isNotEmpty) {
+    if (normalizedLookups.isNotEmpty) {
       (foundLookups, pipeline) = mergeLookups(
-        lookups: lookups,
+        lookups: normalizedLookups,
         existingPipeline: foundLookups ? pipeline : null,
         queryMap: foundLookups ? null : selectorMap.cleaned(),
         limit: 1,
@@ -432,14 +516,16 @@ class OrganizationMembers {
       final results =
           await coll.aggregateToStream(collisionFreePipeline).toList();
       if (results.isEmpty) return null;
-      return OrganizationMember.fromJson(results.first.withRefs());
+      return _organizationMemberDeserializeDocument(results.first);
     }
 
     // fallback to simple findOne
-    final organizationMemberResult = await coll.findOne(selectorMap.cleaned());
+    final organizationMemberResult = await coll.modernFindOne(
+      filter: selectorMap.cleaned(),
+    );
     return organizationMemberResult == null
         ? null
-        : OrganizationMember.fromJson(organizationMemberResult.withRefs());
+        : _organizationMemberDeserializeDocument(organizationMemberResult);
   }
 
   /// Type-safe findOne by named arguments
@@ -458,6 +544,14 @@ class OrganizationMembers {
   }) async {
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
+    final normalizedLookups = remapLookups(
+      lookups,
+      _organizationMemberFieldMappings,
+    );
+    final normalizedProjections = normalizeProjectionList(
+      projections,
+      OrganizationMemberProjections(),
+    );
 
     final selector = <String, dynamic>{};
 
@@ -469,77 +563,36 @@ class OrganizationMembers {
     if (title != null) selector['title'] = title;
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
-    if (selector.isEmpty) {
+    if (selector.isEmpty && projections.isEmpty && normalizedLookups.isEmpty) {
       final organizationMember = await coll.modernFindOne(
         sort: {'created_at': -1},
       );
       if (organizationMember == null) return null;
-      return OrganizationMember.fromJson(organizationMember.withRefs());
+      return _organizationMemberDeserializeDocument(organizationMember);
     }
 
-    bool foundLookups = false;
-    List<Map<String, Object>> pipeline = [];
+    final projDoc =
+        projections.isNotEmpty
+            ? buildProjectionDoc(normalizedProjections)
+            : null;
 
-    if (projections.isNotEmpty) {
-      foundLookups = true;
-      final projDoc = <String, int>{};
-      pipeline.add({r"$match": selector});
-      for (var p in projections) {
-        final selected = <String, int>{};
-        final inclusions = p.inclusions ?? [];
-        final exclusions = p.exclusions ?? [];
-        final allProjections = p.toProjection();
-        final localField = allProjections.keys.first.split(".").first;
-        final foreignColl = _nestedCollections[localField];
-        if (inclusions.isNotEmpty) {
-          for (var f in inclusions) {
-            final path = p.fieldMappings[(f as Enum).name]!;
-            selected[path] = 1;
-          }
-        }
-        if (exclusions.isNotEmpty) {
-          for (var f in exclusions) {
-            final path = p.fieldMappings[(f as Enum).name]!;
-            selected[path] = 0;
-          }
-        }
-        if (selected.isEmpty) {
-          projDoc.addAll(allProjections);
-        } else {
-          projDoc.addAll(selected);
-        }
-        if (foreignColl != null) {
-          pipeline.add({
-            r'$lookup': {
-              'from': foreignColl,
-              'localField': localField,
-              'foreignField': '_id',
-              'as': localField,
-            },
-          });
-          pipeline.add({
-            r'$unwind': {
-              "path": "\$${localField}",
-              "preserveNullAndEmptyArrays": true,
-            },
-          });
-        }
-      }
-      final _hasBaseType = projections.any(
-        (p) => p is OrganizationMemberProjections,
-      );
-      if (!_hasBaseType) {
-        projDoc.addAll(OrganizationMemberProjections().toProjection());
-      }
-      pipeline.add({r'$project': projDoc});
-    }
+    var (foundLookups, pipeline) = toAggregationPipelineWithMap(
+      lookupRef: _nestedCollections,
+      lookups: normalizedLookups,
+      projections: projDoc,
+      limit: 1,
+      sort: selector.isEmpty ? ('created_at', -1) : null,
+      raw: selector,
+      cleaned: selector.cleaned(),
+    );
 
-    if (lookups.isNotEmpty) {
+    if (normalizedLookups.isNotEmpty) {
       (foundLookups, pipeline) = mergeLookups(
-        lookups: lookups,
+        lookups: normalizedLookups,
         existingPipeline: foundLookups ? pipeline : null,
-        queryMap: foundLookups ? null : selector,
-        limit: 1,
+        queryMap: foundLookups ? null : selector.cleaned(),
+        sort: foundLookups || selector.isNotEmpty ? null : ('created_at', -1),
+        limit: foundLookups ? null : 1,
       );
     }
 
@@ -548,16 +601,16 @@ class OrganizationMembers {
       final organizationMembers =
           await coll.aggregateToStream(collisionFreePipeline).toList();
       if (organizationMembers.isEmpty) return null;
-      return organizationMembers
-          .map((d) => OrganizationMember.fromJson(d.withRefs()))
-          .toList()
-          .first;
+      return _organizationMemberDeserializeDocument(organizationMembers.first);
     }
 
-    final organizationMemberResult = await coll.findOne(selector);
+    final organizationMemberResult = await coll.modernFindOne(
+      filter: selector.cleaned(),
+      sort: selector.isEmpty ? {'created_at': -1} : null,
+    );
     return organizationMemberResult == null
         ? null
-        : OrganizationMember.fromJson(organizationMemberResult.withRefs());
+        : _organizationMemberDeserializeDocument(organizationMemberResult);
   }
 
   /// Type-safe findMany by predicate
@@ -572,15 +625,26 @@ class OrganizationMembers {
   }) async {
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
+    final normalizedLookups = remapLookups(
+      lookups,
+      _organizationMemberFieldMappings,
+    );
+    final normalizedProjections = normalizeProjectionList(
+      projections,
+      OrganizationMemberProjections(),
+    );
 
     var selectorBuilder = predicate(QOrganizationMember()).toSelectorBuilder();
     var selectorMap = selectorBuilder.map;
 
     final projDoc =
-        projections.isNotEmpty ? buildProjectionDoc(projections) : null;
+        projections.isNotEmpty
+            ? buildProjectionDoc(normalizedProjections)
+            : null;
 
     var (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
+      lookups: normalizedLookups,
       projections: projDoc,
       raw: selectorMap.raw(),
       sort: sort,
@@ -589,9 +653,9 @@ class OrganizationMembers {
       cleaned: selectorMap.cleaned(),
     );
 
-    if (lookups.isNotEmpty) {
+    if (normalizedLookups.isNotEmpty) {
       (foundLookups, pipeline) = mergeLookups(
-        lookups: lookups,
+        lookups: normalizedLookups,
         existingPipeline: foundLookups ? pipeline : null,
         queryMap: foundLookups ? null : selectorMap.cleaned(),
         sort: foundLookups ? null : sort,
@@ -605,20 +669,19 @@ class OrganizationMembers {
       final organizationMembers =
           await coll.aggregateToStream(collisionFreePipeline).toList();
       if (organizationMembers.isEmpty) return [];
-      return organizationMembers
-          .map((d) => OrganizationMember.fromJson(d.withRefs()))
-          .toList();
+      return _organizationMemberDeserializeDocuments(organizationMembers);
     }
 
-    if (skip != null) selectorBuilder = selectorBuilder.skip(skip);
-    selectorBuilder = selectorBuilder.limit(limit);
-
-    selectorMap = selectorBuilder.map;
-
-    final organizationMembers = await coll.find(selectorMap.cleaned()).toList();
-    return organizationMembers
-        .map((e) => OrganizationMember.fromJson(e.withRefs()))
-        .toList();
+    final organizationMembers =
+        await coll
+            .modernFind(
+              filter: selectorMap.cleaned(),
+              sort: {sort.$1: sort.$2},
+              skip: skip,
+              limit: limit,
+            )
+            .toList();
+    return _organizationMemberDeserializeDocuments(organizationMembers);
   }
 
   /// Type-safe findMany by named arguments
@@ -640,6 +703,14 @@ class OrganizationMembers {
   }) async {
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
+    final normalizedLookups = remapLookups(
+      lookups,
+      _organizationMemberFieldMappings,
+    );
+    final normalizedProjections = normalizeProjectionList(
+      projections,
+      OrganizationMemberProjections(),
+    );
 
     final selector = <String, dynamic>{};
 
@@ -652,77 +723,32 @@ class OrganizationMembers {
     if (createdAt != null) selector['created_at'] = createdAt;
     if (updatedAt != null) selector['updated_at'] = updatedAt;
 
-    if (selector.isEmpty) {
+    if (selector.isEmpty && projections.isEmpty && normalizedLookups.isEmpty) {
       final organizationMembers =
           await coll.modernFind(sort: sort, limit: limit, skip: skip).toList();
       if (organizationMembers.isEmpty) return [];
-      return organizationMembers
-          .map((e) => OrganizationMember.fromJson(e.withRefs()))
-          .toList();
+      return _organizationMemberDeserializeDocuments(organizationMembers);
     }
 
-    bool foundLookups = false;
-    List<Map<String, Object>> pipeline = [];
+    final projDoc =
+        projections.isNotEmpty
+            ? buildProjectionDoc(normalizedProjections)
+            : null;
 
-    if (projections.isNotEmpty) {
-      foundLookups = true;
-      final projDoc = <String, int>{};
-      pipeline.add({r"$match": selector});
-      pipeline.add({r"$sort": sort});
-      pipeline.add({r"$limit": limit});
-      for (var p in projections) {
-        final selected = <String, int>{};
-        final inclusions = p.inclusions ?? [];
-        final exclusions = p.exclusions ?? [];
-        final allProjections = p.toProjection();
-        final localField = allProjections.keys.first.split(".").first;
-        final foreignColl = _nestedCollections[localField];
-        if (inclusions.isNotEmpty) {
-          for (var f in inclusions) {
-            final path = p.fieldMappings[(f as Enum).name]!;
-            selected[path] = 1;
-          }
-        }
-        if (exclusions.isNotEmpty) {
-          for (var f in exclusions) {
-            final path = p.fieldMappings[(f as Enum).name]!;
-            selected[path] = 0;
-          }
-        }
-        if (selected.isEmpty) {
-          projDoc.addAll(allProjections);
-        } else {
-          projDoc.addAll(selected);
-        }
-        if (foreignColl != null) {
-          pipeline.add({
-            r'$lookup': {
-              'from': foreignColl,
-              'localField': localField,
-              'foreignField': '_id',
-              'as': localField,
-            },
-          });
-          pipeline.add({
-            r'$unwind': {
-              "path": "\$${localField}",
-              "preserveNullAndEmptyArrays": true,
-            },
-          });
-        }
-      }
-      final _hasBaseType = projections.any(
-        (p) => p is OrganizationMemberProjections,
-      );
-      if (!_hasBaseType) {
-        projDoc.addAll(OrganizationMemberProjections().toProjection());
-      }
-      pipeline.add({r'$project': projDoc});
-    }
+    var (foundLookups, pipeline) = toAggregationPipelineWithMap(
+      lookupRef: _nestedCollections,
+      lookups: normalizedLookups,
+      projections: projDoc,
+      sort: firstEntryToTuple(sort),
+      skip: skip,
+      limit: limit,
+      raw: selector,
+      cleaned: selector.cleaned(),
+    );
 
-    if (lookups.isNotEmpty) {
+    if (normalizedLookups.isNotEmpty) {
       (foundLookups, pipeline) = mergeLookups(
-        lookups: lookups,
+        lookups: normalizedLookups,
         existingPipeline: foundLookups ? pipeline : null,
         queryMap: foundLookups ? null : selector.cleaned(),
         sort: foundLookups ? null : firstEntryToTuple(sort),
@@ -731,23 +757,19 @@ class OrganizationMembers {
       );
     }
 
-    if (foundLookups && pipeline.isNotEmpty) {
+    if (foundLookups) {
       final collisionFreePipeline = withNoCollisions(pipeline);
       final organizationMembers =
           await coll.aggregateToStream(collisionFreePipeline).toList();
       if (organizationMembers.isEmpty) return [];
-      return organizationMembers
-          .map((d) => OrganizationMember.fromJson(d.withRefs()))
-          .toList();
+      return _organizationMemberDeserializeDocuments(organizationMembers);
     }
 
     final organizationMembers =
         await coll
             .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
             .toList();
-    return organizationMembers
-        .map((e) => OrganizationMember.fromJson(e.withRefs()))
-        .toList();
+    return _organizationMemberDeserializeDocuments(organizationMembers);
   }
 
   static Future<bool> deleteOne(
@@ -846,7 +868,6 @@ class OrganizationMembers {
   }) async {
     final modifier = _buildModifier(
       sanitizedDocument({
-        if (id != null) '_id': id.toJson(),
         if (user != null) 'user_id': user.id,
         if (organization != null) 'organization': organization.id,
         if (occupation != null) 'occupation': occupation,
@@ -858,15 +879,26 @@ class OrganizationMembers {
     );
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
-    final retrieved = await findOne(predicate);
+    final selectorMap =
+        predicate(QOrganizationMember()).toSelectorBuilder().map.cleaned();
+    final retrieved = await coll.modernFindOne(
+      filter: selectorMap,
+      projection: {'_id': 1},
+    );
     if (retrieved == null) return null;
-    final retrievedId = retrieved.id;
+    final rawRetrievedId = retrieved['_id'];
+    final retrievedId =
+        rawRetrievedId is ObjectId
+            ? rawRetrievedId
+            : rawRetrievedId is String
+            ? ObjectId.tryParse(rawRetrievedId)
+            : null;
     if (retrievedId == null) return null;
-    final result = await coll.updateOne(where.id(retrievedId), modifier);
+    final result = await coll.updateOne({'_id': retrievedId}, modifier);
     if (!result.isSuccess) return null;
-    final updatedDoc = await coll.findOne(where.id(retrievedId));
+    final updatedDoc = await coll.modernFindOne(filter: {'_id': retrievedId});
     if (updatedDoc == null) return null;
-    return OrganizationMember.fromJson(updatedDoc.withRefs());
+    return _organizationMemberDeserializeDocument(updatedDoc);
   }
 
   /// Type-safe updateMany
@@ -884,7 +916,6 @@ class OrganizationMembers {
   }) async {
     final modifier = _buildModifier(
       sanitizedDocument({
-        if (id != null) '_id': id.toJson(),
         if (user != null) 'user_id': user.id,
         if (organization != null) 'organization': organization.id,
         if (occupation != null) 'occupation': occupation,
@@ -896,24 +927,53 @@ class OrganizationMembers {
     );
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
-    final retrieved = await findMany(predicate);
+    final selectorMap =
+        predicate(QOrganizationMember()).toSelectorBuilder().map.cleaned();
+    final retrieved =
+        await coll
+            .modernFind(filter: selectorMap, projection: {'_id': 1})
+            .toList();
     if (retrieved.isEmpty) return [];
-    final ids = retrieved.map((doc) => doc.id).whereType<ObjectId>().toList();
+    final ids = <ObjectId>[];
+    for (final doc in retrieved) {
+      final rawId = doc['_id'];
+      if (rawId is ObjectId) {
+        ids.add(rawId);
+      } else if (rawId is String) {
+        final parsedId = ObjectId.tryParse(rawId);
+        if (parsedId != null) {
+          ids.add(parsedId);
+        }
+      }
+    }
     if (ids.isEmpty) return [];
-    final result = await coll.updateMany(where.oneFrom('_id', ids), modifier);
+    final result = await coll.updateMany({
+      '_id': {r'$in': ids},
+    }, modifier);
     if (!result.isSuccess) return [];
-    final updatedCursor = coll.find(where.oneFrom('_id', ids));
-    final updatedDocs = await updatedCursor.toList();
+    final updatedDocs =
+        await coll
+            .modernFind(
+              filter: {
+                '_id': {r'$in': ids},
+              },
+            )
+            .toList();
     if (updatedDocs.isEmpty) return [];
-    return updatedDocs
-        .map((doc) => OrganizationMember.fromJson(doc.withRefs()))
+    final docsById = {for (final doc in updatedDocs) doc['_id']: doc};
+    return ids
+        .map((id) => docsById[id])
+        .whereType<Map<String, dynamic>>()
+        .map(_organizationMemberDeserializeDocument)
         .toList();
   }
 
   static ModifierBuilder _buildModifier(Map<String, dynamic> updateMap) {
     final now = DateTime.now().toUtc();
+    final normalizedUpdateMap = Map<String, dynamic>.from(updateMap)
+      ..remove('_id');
     var modifier = modify.set('updated_at', now);
-    updateMap.forEach((k, v) => modifier = modifier.set(k, v));
+    normalizedUpdateMap.forEach((k, v) => modifier = modifier.set(k, v));
     return modifier;
   }
 
@@ -929,12 +989,12 @@ class OrganizationMembers {
     );
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
-    final result = await coll.updateOne(where.id(id), mod);
+    final result = await coll.updateOne({'_id': id}, mod);
     if (!result.isSuccess) return null;
-    final updatedDoc = await coll.findOne({'_id': id});
+    final updatedDoc = await coll.modernFindOne(filter: {'_id': id});
     return updatedDoc == null
         ? null
-        : OrganizationMember.fromJson(updatedDoc.withRefs());
+        : _organizationMemberDeserializeDocument(updatedDoc);
   }
 
   static Future<int> count(

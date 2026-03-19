@@ -1,5 +1,24 @@
 import 'package:mongo_document_annotation/mongo_document_annotation.dart';
 
+List<BaseProjections> normalizeProjectionList(
+  List<BaseProjections> projections,
+  BaseProjections baseProjection,
+) {
+  if (projections.isEmpty) {
+    return projections;
+  }
+
+  final hasBaseProjection = projections.any(
+    (projection) => projection.runtimeType == baseProjection.runtimeType,
+  );
+
+  if (hasBaseProjection) {
+    return projections;
+  }
+
+  return <BaseProjections>[...projections, baseProjection];
+}
+
 Map<String, dynamic> buildProjectionDoc(List<BaseProjections> projections) {
   final proj = <String, int>{};
   for (var p in projections) {

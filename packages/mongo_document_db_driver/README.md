@@ -3,54 +3,16 @@
 [![pub package](https://img.shields.io/pub/v/mongo_document_db_driver.svg)](https://pub.dev/packages/mongo_document_db_driver)
 [![license](https://img.shields.io/badge/license-MIT-green)](../../LICENSE)
 
-`mongo_document_db_driver` is the low-level Dart-facing MongoDB driver used by `mongo_document_annotation` and generated `mongo_document` code.
+`mongo_document_db_driver` is the low-level MongoDB driver package underneath `mongo_document_annotation` and generated `mongo_document` APIs.
 
-## Runtime Architecture
+Most app teams will work through generated models like `Post.save()` and `Posts.findMany(...)`. This package is for the lower-level cases where you want direct access to `Db`, `DbCollection`, filters, modifiers, commands, or aggregation pipelines.
 
-`mongo_document_db_driver` gives Dart applications a familiar MongoDB API while delegating live database execution to MongoDB's official Rust driver on supported native targets.
-
-Rather than reimplementing a production MongoDB runtime in Dart, the package relies on MongoDB's officially maintained driver for:
-
-- connection establishment
-- topology discovery and server selection
-- pooling and reconnect behavior
-- CRUD operations
-- aggregation
-- command execution
-- cursor iteration and `getMore`
-- change streams
-
-The Dart side provides:
-
-- the public API (`Db`, `DbCollection`, `ObjectId`, and friends)
-- BSON helpers and model-friendly value conversion
-- query builders such as `where` and `modify`
-- integration points used by `mongo_document_annotation` and generated code
-
-Optional Dart-side query builders are available as a convenience DSL. They shape requests in Dart, while execution happens in the official Rust driver.
-
-## What This Means Practically
-
-- Live database execution is handled by MongoDB's official Rust driver.
-- Consumers on shipped native targets do not need Rust installed locally.
-- The package keeps a familiar Dart API while the official Rust driver handles core MongoDB work.
-
-## Platform Support
-
-| Target | Status |
-| --- | --- |
-| Dart VM / server / CLI / desktop | Supported on bundled native targets: `macos-arm64`, `linux-x64`, `windows-x64` |
-| Web | The package can compile into shared/browser code, but opening a live MongoDB connection in the browser is unsupported |
-| Android / iOS | Flutter apps compile, but live MongoDB runtime on-device requires mobile native libraries, which are not bundled yet |
-
-## Installation
+## Install
 
 ```yaml
 dependencies:
-  mongo_document_db_driver: ^2.0.0
+  mongo_document_db_driver: ^2.1.0
 ```
-
-Then:
 
 ```bash
 dart pub get
@@ -86,18 +48,22 @@ Future<void> main() async {
 }
 ```
 
-## Querying
+## Read
 
-You can use plain MongoDB filter maps:
+Use plain Mongo filter maps when that is the clearest fit:
 
 ```dart
-final docs = await users.find({
-  'active': true,
-  'rating': {r'$gt': 10},
-}).toList();
+final docs = await users.modernFind(
+  filter: {
+    'active': true,
+    'rating': {r'$gt': 10},
+  },
+  sort: {'created_at': -1},
+  limit: 20,
+).toList();
 ```
 
-Or keep using the exported query DSL:
+You can also use the exported DSL:
 
 ```dart
 final docs = await users
@@ -105,9 +71,7 @@ final docs = await users
     .toList();
 ```
 
-The query builder is a Dart-side convenience layer. Execution happens through the Rust backend on supported runtimes.
-
-If you want to pass options like projection, limit, skip, and sort separately, prefer `modernFind` / `modernFindOne`.
+When you need projection, sort, skip, and limit as separate arguments, prefer `modernFind` and `modernFindOne`:
 
 ```dart
 final latest = await users.modernFindOne(
@@ -117,9 +81,7 @@ final latest = await users.modernFindOne(
 );
 ```
 
-## CRUD Examples
-
-### Insert
+## Create
 
 ```dart
 await users.insertOne({
@@ -133,7 +95,7 @@ await users.insertMany([
 ]);
 ```
 
-### Update
+## Update
 
 ```dart
 await users.updateOne(
@@ -156,7 +118,7 @@ await users.replaceOne(
 );
 ```
 
-### Delete
+## Delete
 
 ```dart
 await users.deleteOne({'email': 'john@doe.com'});
@@ -179,41 +141,39 @@ final result = await users.aggregateToStream([
 ]).toList();
 ```
 
-## Connection Strings and TLS
+## Connection Strings
 
-Prefer putting TLS and auth options in the MongoDB connection string itself:
+For most applications, the connection string is all you need:
 
 - `mongodb+srv://...`
-- `tls=true`
+- `retryWrites=true`
+- `w=majority`
 - `authSource=...`
-- `replicaSet=...`
+- `tls=true`
 
-For most applications, the connection string is all you need. High-level wrappers such as `MongoDbConnection.initialize(...)` in `mongo_document_annotation` now expect just the URI.
+High-level wrappers such as `MongoDbConnection.initialize(...)` in `mongo_document_annotation` expect just the URI.
 
-## Bundled Native Runtime
+## Platform Notes
 
-The package ships prebuilt native libraries for supported runtime targets. On those targets, consumers do not need Rust installed.
+- Dart VM / server / CLI / desktop: supported on bundled native targets `macos-arm64`, `linux-x64`, and `windows-x64`
+- Web: shared-code compilation is supported, but opening a live MongoDB connection in the browser is not
+- Android / iOS: Flutter apps compile, but live on-device runtime still requires mobile native libraries to be bundled
 
-See:
+The package ships the native runtime for supported bundled targets, so consumers do not need Rust installed locally.
 
-- [native/prebuilt/README.md](native/prebuilt/README.md)
-- [native/rust/README.md](native/rust/README.md)
+## Recommended Surface Area
 
-## Recommended API Surface
-
-Prefer the current CRUD and command APIs:
+If you are writing new code against this package directly, the main path is:
 
 - `Db.create(uri)`
 - `db.open()`
 - `db.collection(name)`
-- `find`, `modernFind`, `findOne`, `modernFindOne`
+- `modernFind`, `modernFindOne`
 - `insertOne`, `insertMany`
 - `updateOne`, `updateMany`, `replaceOne`
 - `deleteOne`, `deleteMany`
 - `aggregateToStream`
 - `count`, `distinct`
-
-The package also exposes a broader surface area, but the modern CRUD and aggregation APIs are the primary path.
 
 ## Troubleshooting
 
@@ -223,12 +183,8 @@ If you see:
 mongo_document_db_driver requires the bundled Rust runtime
 ```
 
-then one of these is usually true:
+it usually means one of these:
 
 - you are running on an unsupported runtime target
-- the matching native library is missing
+- the matching bundled native library is missing
 - the runtime is trying to perform live DB access on a platform where only shared-code compilation is supported
-
-## Contributing
-
-Contributions are welcome. See the repository root for development and release context.

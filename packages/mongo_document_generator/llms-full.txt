@@ -1,0 +1,68 @@
+# mongo_document
+
+This package generates the developer-facing MongoDB API.
+
+## What Gets Generated
+
+For a model like `Post`, generation typically produces:
+
+- `Posts`
+- `QPost`
+- `PostFields`
+- `PostProjections`
+- nested projection classes
+- instance methods like `save()`, `saveChanges()`, and `delete()`
+
+## Core Usage
+
+### Create
+
+```dart
+final post = await Post(body: 'Hello world').save();
+```
+
+### Read
+
+```dart
+final post = await Posts.findById(postId);
+final drafts = await Posts.findMany((q) => q.status.eq('draft'));
+```
+
+### Immutable update
+
+```dart
+final updated = await post.copyWith(body: 'Updated').save();
+```
+
+or:
+
+```dart
+final updated = await post.copyWith(body: 'Updated').saveChanges();
+```
+
+### Dynamic patch
+
+```dart
+await Posts.updateOneFromMap(postId, {'status': 'archived'});
+```
+
+## Important Semantics
+
+- generated helpers default to the shared `MongoDbConnection.instance`
+- named reads and predicate reads share the same lookup/projection path
+- typed refs like `Account? author` still store as `ObjectId` in Mongo
+- lookups fetch related data
+- projections trim returned fields
+- explicit lookups should use Dart field names, not stored Mongo keys
+
+## Commands
+
+```bash
+dart run build_runner build --delete-conflicting-outputs
+dart run build_runner watch --delete-conflicting-outputs
+```
+
+## Canonical Doc
+
+- [README.md](README.md)
+- [example/README.md](example/README.md)

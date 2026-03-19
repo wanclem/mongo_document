@@ -1,3 +1,12 @@
+## 2.1.0
+
+### Changed
+
+- Added snapshot-backed immutable save flows so `copyWith(...).save()` and `saveChanges()` can persist partial updates without caller-managed previous state.
+- Optimized projection-only generated reads to stay on direct `find` / `findOne` paths instead of escalating to aggregation unnecessarily.
+- Tightened generated CRUD helpers around cleaned selectors, direct `_id` operations, safer update modifiers, and clearer generated update code.
+- Expanded the public docs with usage-first guides, recipes, typed object-reference explanations, and LLM-friendly reference material.
+
 ## 2.0.4
 
 ### Fixed

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.0
+
+- Hardened Rust worker warmup retry behavior so transient startup connectivity misses are handled more gracefully during worker-pool bring-up.
+- Added focused regression coverage for worker retry behavior and aligned the published docs with the packaged runtime flow.
+
 ## 2.0.4
 
 - Made `MongoDbConnection.instance` return the existing `Db` immediately during transient reconnects so health checks do not stall behind background reopen work.

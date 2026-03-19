@@ -1,0 +1,273 @@
+# mongo_document
+
+This file gives LLMs a fuller mental model of the `mongo_document` package family.
+
+## What This Package Family Is For
+
+The goal is to make MongoDB usage feel natural in Dart code.
+
+Example:
+
+```dart
+final post = await Post(body: 'Hello world').save();
+
+final updated = await post.copyWith(
+  body: 'Updated body',
+).save();
+
+final drafts = await Posts.findMany(
+  (q) => q.status.eq('draft'),
+  limit: 20,
+);
+```
+
+The developer-facing surface is Dart-first. The runtime and storage details stay underneath.
+
+## Package Roles
+
+- `mongo_document_annotation`
+  - model annotations
+  - converters
+  - `MongoDbConnection.initialize(...)`
+  - lookup types
+  - projection types
+  - shared normalization helpers
+- `mongo_document`
+  - generates CRUD helpers, query builders, projection classes, and collection APIs
+- `mongo_document_db_driver`
+  - low-level database driver package
+
+## Startup Contract
+
+Initialize Mongo once at startup:
+
+```dart
+await MongoDbConnection.initialize(uri);
+```
+
+Generated helpers default to that shared connection:
+
+```dart
+final post = await Posts.findById(postId);
+```
+
+If needed, helpers can target another `Db` explicitly:
+
+```dart
+final analyticsDb = await Db.create(analyticsUri);
+await analyticsDb.open();
+
+final post = await Posts.findById(postId, db: analyticsDb);
+```
+
+## Model Contract
+
+Typical model:
+
+```dart
+@MongoDocument(collection: 'posts')
+@JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
+class Post {
+  Post({
+    @ObjectIdConverter() @JsonKey(name: '_id') this.id,
+    this.body,
+    this.status,
+  });
+
+  final ObjectId? id;
+  final String? body;
+  final String? status;
+
+  factory Post.fromJson(Map<String, dynamic> json) => _$PostFromJson(json);
+  Map<String, dynamic> toJson() => _$PostToJson(this);
+}
+```
+
+Freezed is common because `copyWith()` is useful, but plain Dart classes are supported too.
+
+## What Gets Generated
+
+For a model like `Post`, generation typically produces:
+
+- `Posts`
+- `QPost`
+- `PostFields`
+- `PostProjections`
+- nested projection classes like `PostAuthorProjections`
+- instance helpers like `save()`, `saveChanges()`, and `delete()`
+
+## Save Semantics
+
+### `save()`
+
+- inserts when the model has no id
+- updates when it already exists
+- returns the saved model
+
+### `saveChanges()`
+
+- same immutable-update flow
+- more explicit update intent at the call site
+
+### Partial immutable updates
+
+This package supports:
+
+```dart
+final updated = await post.copyWith(
+  body: 'Updated body',
+).save();
+```
+
+and
+
+```dart
+final updated = await post.copyWith(
+  body: 'Updated body',
+).saveChanges();
+```
+
+When the document originally came from the generated API, the package keeps enough snapshot information to update only changed fields instead of blindly writing the full document back.
+
+If the patch is truly dynamic, use collection helpers like `updateOneFromMap(...)`.
+
+## Typed Object References
+
+Prefer fields like:
+
+```dart
+Account? author
+```
+
+instead of:
+
+```dart
+ObjectId? authorId
+```
+
+Why:
+
+- the field reads better in Dart
+- queries stay readable: `p.author.id.eq(...)`
+- the package still stores a plain `ObjectId` in Mongo
+- the same field can hydrate into a richer nested model during projections and lookups
+
+Write path:
+
+- `author` reduces to `author._id`
+
+Read path:
+
+- normal reads rewrap stored ids into the typed Dart field shape
+- richer reads can populate the same field into a fuller nested model
+
+See [docs/object-references.md](docs/object-references.md).
+
+## Lookups vs Projections
+
+### Lookups
+
+Use lookups when MongoDB should fetch related data in the same read.
+
+Examples:
+
+- one related object: `Lookup.single(...)`
+- related list: `Lookup.array(...)`
+- boolean relationship: `Lookup.boolean(...)`
+- related count: `Lookup.count(...)`
+
+### Projections
+
+Use projections when you only want some fields back.
+
+Examples:
+
+- card/list screens
+- dashboard summaries
+- permission checks
+- trimming nested models
+
+### Important distinction
+
+- lookup decides whether related data is fetched and what shape it has
+- projection decides which fields survive in the final payload
+
+For typed object references, a nested projection alone can often be enough to trigger the default reference materialization for that field.
+
+Add an explicit lookup when you need custom join behavior such as:
+
+- `unsetFields`
+- `where`
+- nested lookups
+- boolean/count/array result shape
+
+Write lookup fields using Dart names like `author` or `user`. The package remaps them to stored Mongo keys using `@JsonKey(...)` and `fieldRename`.
+
+See [docs/lookups-and-projections.md](docs/lookups-and-projections.md).
+
+## Query Builder Contract
+
+Generated query builders should read naturally:
+
+```dart
+final drafts = await Posts.findMany(
+  (q) => q.status.eq('draft'),
+);
+```
+
+Typed refs also work naturally:
+
+```dart
+final posts = await CrossPosts.findMany(
+  (p) => p.author.id.eq(currentUser.id),
+);
+```
+
+That query still maps to the stored Mongo field correctly behind the scenes.
+
+## Field Mapping Contract
+
+This package respects:
+
+- `@JsonKey(name: ...)`
+- `@JsonSerializable(fieldRename: ...)`
+
+So a Dart field can stay:
+
+```dart
+Workspace? workspace
+```
+
+while Mongo stores:
+
+```json
+{ "work_space": ... }
+```
+
+Generated CRUD, lookups, and query builders should use the Dart field name and let the package map it.
+
+## Regeneration Rules
+
+Run generation again after changing:
+
+- fields
+- `@JsonKey(...)`
+- `fieldRename`
+- lookups
+- projections
+- nested refs
+
+Command:
+
+```bash
+dart run build_runner build --delete-conflicting-outputs
+```
+
+## Canonical Guides
+
+- [README.md](README.md)
+- [Generated API mental model](docs/generated-api-mental-model.md)
+- [Lookups and projections](docs/lookups-and-projections.md)
+- [Object references](docs/object-references.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Recipes](docs/recipes/README.md)

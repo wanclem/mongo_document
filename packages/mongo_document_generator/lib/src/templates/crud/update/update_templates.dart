@@ -9,8 +9,10 @@ class UpdateTemplates {
     return '''
   static ModifierBuilder _buildModifier(Map<String, dynamic> updateMap) {
     final now = DateTime.now().toUtc();
+    final normalizedUpdateMap = Map<String, dynamic>.from(updateMap)
+      ..remove('_id');
     var modifier = modify.set('updated_at', now);
-    updateMap.forEach((k, v) => modifier = modifier.set(k, v));
+    normalizedUpdateMap.forEach((k, v) => modifier = modifier.set(k, v));
     return modifier;
   }
   ''';
@@ -33,6 +35,9 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
       ${params.map((p) {
       final key = ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
       final name = p.name;
+      if (key == '_id') {
+        return '';
+      }
       if (nestedCollectionMap.containsKey(key)) {
         return "if ($name != null) '$key': $name.id,";
       } else {
@@ -50,15 +55,25 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
     }));
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
-    final retrieved = await findOne(predicate);
+    final cleanedSelector =
+        predicate(Q$className()).toSelectorBuilder().map.cleaned();
+    final retrieved = await coll.modernFindOne(
+      filter: cleanedSelector,
+      projection: {'_id': 1},
+    );
     if (retrieved == null) return null;
-    final retrievedId = retrieved.id;
+    final rawRetrievedId = retrieved['_id'];
+    final retrievedId = rawRetrievedId is ObjectId
+        ? rawRetrievedId
+        : rawRetrievedId is String
+        ? ObjectId.tryParse(rawRetrievedId)
+        : null;
     if (retrievedId == null) return null;
-    final result = await coll.updateOne(where.id(retrievedId), modifier);
+    final result = await coll.updateOne({'_id': retrievedId}, modifier);
     if (!result.isSuccess) return null;
-    final updatedDoc = await coll.findOne(where.id(retrievedId));
+    final updatedDoc = await coll.modernFindOne(filter: {'_id': retrievedId});
     if (updatedDoc == null) return null;
-    return $className.fromJson(updatedDoc.withRefs());
+    return _${className[0].toLowerCase()}${className.substring(1)}DeserializeDocument(updatedDoc);
   }
 
 ''';
@@ -81,6 +96,9 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
       ${params.map((p) {
       final key = ParameterTemplates.getParameterKey(typeChecker, p, fieldRename);
       final name = p.name;
+      if (key == '_id') {
+        return '';
+      }
       if (nestedCollectionMap.containsKey(key)) {
         return "if ($name != null) '$key': $name.id,";
       } else {
@@ -98,16 +116,40 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
     }));
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
-    final retrieved = await findMany(predicate);
+    final cleanedSelector =
+        predicate(Q$className()).toSelectorBuilder().map.cleaned();
+    final retrieved = await coll.modernFind(
+      filter: cleanedSelector,
+      projection: {'_id': 1},
+    ).toList();
     if (retrieved.isEmpty) return [];
-    final ids = retrieved.map((doc) => doc.id).whereType<ObjectId>().toList();
+    final ids = <ObjectId>[];
+    for (final doc in retrieved) {
+      final rawId = doc['_id'];
+      if (rawId is ObjectId) {
+        ids.add(rawId);
+      } else if (rawId is String) {
+        final parsedId = ObjectId.tryParse(rawId);
+        if (parsedId != null) {
+          ids.add(parsedId);
+        }
+      }
+    }
     if (ids.isEmpty) return [];
-    final result = await coll.updateMany(where.oneFrom('_id', ids), modifier);
+    final result = await coll.updateMany({'_id': {r'\$in': ids}}, modifier);
     if (!result.isSuccess) return [];
-    final updatedCursor = coll.find(where.oneFrom('_id', ids));
-    final updatedDocs = await updatedCursor.toList();
+    final updatedDocs = await coll
+        .modernFind(filter: {'_id': {r'\$in': ids}})
+        .toList();
     if (updatedDocs.isEmpty) return [];
-    return updatedDocs.map((doc) => $className.fromJson(doc.withRefs())).toList();
+    final docsById = {
+      for (final doc in updatedDocs) doc['_id']: doc,
+    };
+    return ids
+        .map((id) => docsById[id])
+        .whereType<Map<String, dynamic>>()
+        .map(_${className[0].toLowerCase()}${className.substring(1)}DeserializeDocument)
+        .toList();
   }
 ''';
   }
@@ -124,12 +166,14 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
     final mod = _buildModifier(sanitizedDocument(updateMap.withValidObjectReferences()));
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
-    final result = await coll.updateOne(where.id(id),mod);
+    final result = await coll.updateOne({'_id': id}, mod);
     if(!result.isSuccess) return null;
-    final updatedDoc = await coll.findOne({
+    final updatedDoc = await coll.modernFindOne(filter: {
       '_id': id
     });
-    return updatedDoc == null?null:$className.fromJson(updatedDoc.withRefs());
+    return updatedDoc == null
+        ? null
+        : _${className[0].toLowerCase()}${className.substring(1)}DeserializeDocument(updatedDoc);
   }''';
   }
 }

@@ -7,6 +7,21 @@ import 'package:recase/recase.dart';
 import 'package:source_gen/source_gen.dart';
 
 class ParameterTemplates {
+  static String buildFieldMappingsLiteral(
+    List<FormalParameterElement> params,
+    TypeChecker typeChecker,
+    FieldRename? fieldRename,
+  ) {
+    final entries = params
+        .map((p) {
+          final jsonKey = getParameterKey(typeChecker, p, fieldRename);
+          return "'${p.name}': '$jsonKey'";
+        })
+        .join(', ');
+
+    return '<String, String>{${entries.isEmpty ? '' : ' $entries '}}';
+  }
+
   static String buildNullableParams(
     List<FormalParameterElement> params,
     FieldRename? fieldRename,

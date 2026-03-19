@@ -1,0 +1,58 @@
+# mongo_document_annotation
+
+This package provides the annotations, connection helpers, converters, lookup types, and projection types used by `mongo_document`.
+
+## What It Does
+
+- marks models with `@MongoDocument(...)`
+- defines Mongo-friendly converters like `@ObjectIdConverter()`
+- owns `MongoDbConnection.initialize(...)`
+- provides `Lookup` and projection support types
+- provides shared normalization helpers used by generated CRUD code
+
+## Startup Contract
+
+Initialize once:
+
+```dart
+await MongoDbConnection.initialize(uri);
+```
+
+Generated CRUD helpers use that shared connection by default.
+
+## Field Mapping Contract
+
+This package respects:
+
+- `@JsonKey(name: ...)`
+- `@JsonSerializable(fieldRename: ...)`
+
+So your Dart API should keep using Dart field names even if Mongo stores a different key.
+
+## Typed References
+
+You can model references as:
+
+```dart
+Account? author
+```
+
+instead of:
+
+```dart
+ObjectId? authorId
+```
+
+The write path still stores a plain `ObjectId` in Mongo.
+
+## Lookups And Projections
+
+- use lookups to fetch related data
+- use projections to trim returned fields
+- nested projections can be enough for default typed-ref materialization
+- explicit lookups are for custom join behavior like `unsetFields`, `where`, nested lookups, or boolean/count/array shapes
+
+## Canonical Docs
+
+- [README.md](README.md)
+- [example/README.md](example/README.md)

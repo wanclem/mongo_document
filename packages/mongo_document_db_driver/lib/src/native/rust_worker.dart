@@ -5,14 +5,12 @@ import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart' as pkg_ffi;
 import 'package:mongo_document_db_driver/mongo_document_db_driver.dart';
+import 'package:mongo_document_db_driver/src/database/utils/recoverable_error_classifier.dart';
 
 import 'rust_bindings.dart';
 
 class RustWorkerCursorHandle {
-  const RustWorkerCursorHandle({
-    required this.worker,
-    required this.cursorId,
-  });
+  const RustWorkerCursorHandle({required this.worker, required this.cursorId});
 
   final RustWorkerClient worker;
   final int cursorId;
@@ -38,15 +36,17 @@ class RustWorkerPool {
       connectionString,
       workerCount: resolvedWorkerCount,
     );
-    final primaryWorker = await RustWorkerClient.spawn(
-      connectionString: perWorkerConnectionString,
-      databaseName: databaseName,
-      logContext: _workerLogContext(
-        workerNumber: 1,
-        workerCount: resolvedWorkerCount,
+    final primaryWorker = await debugRetryTransientWorkerStartupOperation(
+      operation: () => RustWorkerClient.spawn(
+        connectionString: perWorkerConnectionString,
+        databaseName: databaseName,
+        logContext: _workerLogContext(
+          workerNumber: 1,
+          workerCount: resolvedWorkerCount,
+        ),
+        connectTimeout: connectTimeout,
+        serverSelectionTimeout: serverSelectionTimeout,
       ),
-      connectTimeout: connectTimeout,
-      serverSelectionTimeout: serverSelectionTimeout,
     );
     final pool = RustWorkerPool._(<RustWorkerClient>[primaryWorker]);
     if (resolvedWorkerCount > 1) {
@@ -187,6 +187,37 @@ class RustWorkerPool {
   }
 }
 
+Future<T> debugRetryTransientWorkerStartupOperation<T>({
+  required Future<T> Function() operation,
+  int maxAttempts = 3,
+}) async {
+  if (maxAttempts < 1) {
+    throw ArgumentError.value(
+      maxAttempts,
+      'maxAttempts',
+      'Must be at least 1.',
+    );
+  }
+
+  Object? lastError;
+  StackTrace? lastStackTrace;
+
+  for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await operation();
+    } catch (error, stackTrace) {
+      lastError = error;
+      lastStackTrace = stackTrace;
+      if (!_isRetryableWorkerStartupError(error) || attempt >= maxAttempts) {
+        rethrow;
+      }
+      await Future<void>.delayed(_workerStartupRetryDelay(attempt));
+    }
+  }
+
+  Error.throwWithStackTrace(lastError!, lastStackTrace!);
+}
+
 class RustWorkerClient {
   RustWorkerClient._({
     required Isolate isolate,
@@ -257,8 +288,7 @@ class RustWorkerClient {
         'databaseName': databaseName,
         'logContext': logContext,
         'connectTimeoutMs': connectTimeout?.inMilliseconds ?? 0,
-        'serverSelectionTimeoutMs':
-            serverSelectionTimeout?.inMilliseconds ?? 0,
+        'serverSelectionTimeoutMs': serverSelectionTimeout?.inMilliseconds ?? 0,
       },
       onExit: exitPort.sendPort,
       onError: errorPort.sendPort,
@@ -292,31 +322,19 @@ class RustWorkerClient {
   }
 
   Future<Map<String, Object?>> runCommand(Uint8List requestBytes) {
-    return _sendRequest(
-      'runCommand',
-      requestBytes: requestBytes,
-    );
+    return _sendRequest('runCommand', requestBytes: requestBytes);
   }
 
   Future<Map<String, Object?>> executeCollectionAction(Uint8List requestBytes) {
-    return _sendRequest(
-      'executeCollectionAction',
-      requestBytes: requestBytes,
-    );
+    return _sendRequest('executeCollectionAction', requestBytes: requestBytes);
   }
 
   Future<Map<String, Object?>> runCursorCommand(Uint8List requestBytes) {
-    return _sendRequest(
-      'runCursorCommand',
-      requestBytes: requestBytes,
-    );
+    return _sendRequest('runCursorCommand', requestBytes: requestBytes);
   }
 
   Future<Map<String, Object?>> findOne(Uint8List requestBytes) {
-    return _sendRequest(
-      'findOne',
-      requestBytes: requestBytes,
-    );
+    return _sendRequest('findOne', requestBytes: requestBytes);
   }
 
   Future<RustWorkerCursorHandle> openFindCursor(Uint8List requestBytes) async {
@@ -344,10 +362,7 @@ class RustWorkerClient {
   }
 
   Future<Map<String, Object?>> nextCursorBatch(int cursorId) {
-    return _sendRequest(
-      'cursorNextBatch',
-      cursorId: cursorId,
-    );
+    return _sendRequest('cursorNextBatch', cursorId: cursorId);
   }
 
   Future<void> closeCursor(int cursorId) async {
@@ -369,9 +384,7 @@ class RustWorkerClient {
     bool allowClosedWorker = false,
   }) {
     if ((_closed || !_healthy) && !allowClosedWorker) {
-      throw ConnectionException(
-        _lastError ?? 'Rust worker is unavailable.',
-      );
+      throw ConnectionException(_lastError ?? 'Rust worker is unavailable.');
     }
     final requestId = _nextRequestId++;
     final completer = Completer<Map<String, Object?>>();
@@ -380,7 +393,9 @@ class RustWorkerClient {
       'id': requestId,
       'op': operation,
       if (requestBytes != null)
-        'requestData': TransferableTypedData.fromList(<Uint8List>[requestBytes]),
+        'requestData': TransferableTypedData.fromList(<Uint8List>[
+          requestBytes,
+        ]),
       'cursorId': ?cursorId,
     });
     return completer.future;
@@ -421,9 +436,10 @@ class RustWorkerClient {
     }
     _closing = true;
     try {
-      await _sendRequest('close', allowClosedWorker: true).timeout(
-        const Duration(seconds: 1),
-      );
+      await _sendRequest(
+        'close',
+        allowClosedWorker: true,
+      ).timeout(const Duration(seconds: 1));
     } catch (_) {
       // Best-effort shutdown.
     } finally {
@@ -507,7 +523,9 @@ Future<void> _mongoRustWorkerMain(Map<String, Object?> message) async {
             responsePort.send(<String, Object?>{
               'id': requestId,
               'ok': true,
-              'resultData': TransferableTypedData.fromList(<Uint8List>[resultBytes]),
+              'resultData': TransferableTypedData.fromList(<Uint8List>[
+                resultBytes,
+              ]),
             });
           case 'executeCollectionAction':
             final resultBytes = _workerExecuteCollectionAction(
@@ -518,7 +536,9 @@ Future<void> _mongoRustWorkerMain(Map<String, Object?> message) async {
             responsePort.send(<String, Object?>{
               'id': requestId,
               'ok': true,
-              'resultData': TransferableTypedData.fromList(<Uint8List>[resultBytes]),
+              'resultData': TransferableTypedData.fromList(<Uint8List>[
+                resultBytes,
+              ]),
             });
           case 'runCursorCommand':
             final resultBytes = _workerRunCursorCommand(
@@ -529,7 +549,9 @@ Future<void> _mongoRustWorkerMain(Map<String, Object?> message) async {
             responsePort.send(<String, Object?>{
               'id': requestId,
               'ok': true,
-              'resultData': TransferableTypedData.fromList(<Uint8List>[resultBytes]),
+              'resultData': TransferableTypedData.fromList(<Uint8List>[
+                resultBytes,
+              ]),
             });
           case 'findOne':
             final result = _workerFindOne(
@@ -542,7 +564,9 @@ Future<void> _mongoRustWorkerMain(Map<String, Object?> message) async {
               'ok': true,
               'found': result != null,
               if (result != null)
-                'resultData': TransferableTypedData.fromList(<Uint8List>[result]),
+                'resultData': TransferableTypedData.fromList(<Uint8List>[
+                  result,
+                ]),
             });
           case 'findCursorOpen':
             final cursor = _workerOpenFindCursor(
@@ -590,7 +614,9 @@ Future<void> _mongoRustWorkerMain(Map<String, Object?> message) async {
               'ok': true,
               'exhausted': result.exhausted,
               if (result.bytes != null)
-                'resultData': TransferableTypedData.fromList(<Uint8List>[result.bytes!]),
+                'resultData': TransferableTypedData.fromList(<Uint8List>[
+                  result.bytes!,
+                ]),
             });
           case 'cursorClose':
             final cursorId = request['cursorId'] as int;
@@ -603,7 +629,9 @@ Future<void> _mongoRustWorkerMain(Map<String, Object?> message) async {
             responsePort.send(<String, Object?>{'id': requestId, 'ok': true});
             break;
           default:
-            throw MongoDartError('Unsupported Rust worker operation: $operation');
+            throw MongoDartError(
+              'Unsupported Rust worker operation: $operation',
+            );
         }
         if (operation == 'close') {
           break;
@@ -628,10 +656,7 @@ Future<void> _mongoRustWorkerMain(Map<String, Object?> message) async {
       MongoDartError mongoError => mongoError.message,
       _ => error.toString(),
     };
-    readyPort.send(<String, Object?>{
-      'ok': false,
-      'error': message,
-    });
+    readyPort.send(<String, Object?>{'ok': false, 'error': message});
   } finally {
     for (final cursor in cursors.values) {
       bindings.cursorClose(cursor);
@@ -683,10 +708,7 @@ Pointer<RustClientHandle> _workerClientOpen(
   });
 }
 
-void _workerPing(
-  MongoRustBindings bindings,
-  Pointer<RustClientHandle> client,
-) {
+void _workerPing(MongoRustBindings bindings, Pointer<RustClientHandle> client) {
   pkg_ffi.using((arena) {
     final errorOut = arena<Pointer<pkg_ffi.Utf8>>()
       ..value = Pointer<pkg_ffi.Utf8>.fromAddress(0);
@@ -976,4 +998,35 @@ bool _isConnectionRelatedErrorMessage(String message) {
       normalized.contains('PRIMARY STEPPED DOWN') ||
       normalized.contains('SOCKET') ||
       normalized.contains('AUTHENTICATION REQUIRED');
+}
+
+bool _isRetryableWorkerStartupError(Object error) {
+  if (error is! ConnectionException) {
+    return false;
+  }
+
+  final message = error.message;
+  if (RecoverableErrorClassifier.isAuthenticationRequiredMessage(message)) {
+    return false;
+  }
+
+  if (RecoverableErrorClassifier.isPrimaryRoutingFailureMessage(message) ||
+      RecoverableErrorClassifier.isConnectionLifecycleFailureMessage(message)) {
+    return true;
+  }
+
+  final normalized = message.toUpperCase();
+  return normalized.contains('TIMED OUT') ||
+      normalized.contains('TIMEOUT') ||
+      normalized.contains('I/O ERROR') ||
+      normalized.contains('SERVER SELECTION') ||
+      normalized.contains('NO SUITABLE SERVERS') ||
+      normalized.contains('POOL CLEARED') ||
+      normalized.contains('RETRYABLEWRITEERROR') ||
+      normalized.contains('NETWORK');
+}
+
+Duration _workerStartupRetryDelay(int completedAttempt) {
+  final attempt = completedAttempt < 1 ? 1 : completedAttempt;
+  return Duration(milliseconds: 250 * attempt);
 }

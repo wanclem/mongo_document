@@ -1,14 +1,49 @@
+import '../lookups/lookup.dart';
+
+bool projectionDocSupportsDirectFind(Map<String, dynamic> projection) {
+  if (projection.isEmpty) {
+    return true;
+  }
+
+  bool? inclusionMode;
+  for (final entry in projection.entries) {
+    final key = entry.key;
+    final value = entry.value;
+    final normalized = switch (value) {
+      true => 1,
+      false => 0,
+      int() => value,
+      _ => null,
+    };
+    if (normalized == null || (normalized != 0 && normalized != 1)) {
+      return false;
+    }
+    if (key == '_id') {
+      continue;
+    }
+    inclusionMode ??= normalized == 1;
+    if ((normalized == 1) != inclusionMode) {
+      return false;
+    }
+  }
+  return true;
+}
+
 (bool, List<Map<String, Object>>) toAggregationPipelineWithMap({
   Map<String, String> lookupRef = const {},
+  List<Lookup> lookups = const [],
   Map<String, dynamic>? projections,
   required Map<String, dynamic> raw,
-  (String, int) sort = const ("created_at", -1),
-  int limit = 10,
+  (String, int)? sort,
+  int? limit,
   int? skip,
   required Map<String, dynamic> cleaned,
 }) {
   final prefixes = <String>{};
-  var lookupsCreated = false;
+  final explicitLookupsByAlias = <String, Lookup>{
+    for (final lookup in lookups) lookup.as: lookup,
+  };
+  var requiresAggregation = false;
 
   scan(lookupRef, prefixes, raw);
 
@@ -28,16 +63,25 @@
 
   var stages = <Map<String, Object>>[];
   stages.add({r'$match': cleaned});
-  stages.add({
-    r'$sort': {sort.$1: sort.$2},
-  });
+  if (sort != null) {
+    stages.add({
+      r'$sort': {sort.$1: sort.$2},
+    });
+  }
   if (skip != null) {
     stages.add({r'$skip': skip});
   }
-  stages.add({r'$limit': limit});
+  if (limit != null) {
+    stages.add({r'$limit': limit});
+  }
 
   for (final prefix in prefixes) {
-    lookupsCreated = true;
+    requiresAggregation = true;
+    final explicitLookup = explicitLookupsByAlias[prefix];
+    if (explicitLookup != null) {
+      stages.addAll(explicitLookup.buildPipeline());
+      continue;
+    }
     stages.add({
       r'$lookup': {
         'from': lookupRef[prefix]!,
@@ -51,47 +95,87 @@
     });
   }
   if (projections != null && projections.isNotEmpty) {
-    final projectionKeys = projections.keys;
-    final refined = <Map<String, Object>>[...stages];
-    for (final stage in stages) {
-      if (stage.containsKey(r'$lookup')) {
-        final asField = (stage[r'$lookup'] as Map)['as'] as String;
-        final hasMatch = projectionKeys.any((k) => k.startsWith('$asField.'));
-        if (!hasMatch) {
-          refined.remove(stage);
-          continue;
+    final needsAggregationForProjection =
+        requiresAggregation || !projectionDocSupportsDirectFind(projections);
+    if (needsAggregationForProjection) {
+      requiresAggregation = true;
+      final projectionKeys = projections.keys;
+      final refined = <Map<String, Object>>[...stages];
+      for (final stage in stages) {
+        if (stage.containsKey(r'$lookup')) {
+          final asField = (stage[r'$lookup'] as Map)['as'] as String;
+          final hasMatch = projectionKeys.any((k) => k.startsWith('$asField.'));
+          if (!hasMatch) {
+            refined.remove(stage);
+            continue;
+          }
+        }
+        if (stage.containsKey(r'$unwind')) {
+          final path = (stage[r'$unwind'] as Map)['path'] as String;
+          final prefix = path.startsWith(r'$') ? path.substring(1) : path;
+          final hasMatch = projectionKeys.any((k) => k.startsWith('$prefix.'));
+          if (!hasMatch) {
+            refined.remove(stage);
+            continue;
+          }
         }
       }
-      if (stage.containsKey(r'$unwind')) {
-        final path = (stage[r'$unwind'] as Map)['path'] as String;
-        final prefix = path.startsWith(r'$') ? path.substring(1) : path;
-        final hasMatch = projectionKeys.any((k) => k.startsWith('$prefix.'));
-        if (!hasMatch) {
-          refined.remove(stage);
-          continue;
+      stages = refined;
+      final includeProj = <String, Object>{};
+      final excludes = <String>[];
+      projections.forEach((key, value) {
+        if (value == 0 || value == false) {
+          excludes.add(key);
+        } else {
+          includeProj[key] = value;
         }
+      });
+      if (includeProj.isNotEmpty) {
+        stages.add({r'$project': includeProj});
+      }
+      if (excludes.isNotEmpty) {
+        stages.add({
+          r'$unset': excludes.length == 1 ? excludes.first : excludes,
+        });
       }
     }
-    stages = refined;
-    final includeProj = <String, Object>{};
-    final excludes = <String>[];
-    projections.forEach((key, value) {
-      if (value == 0 || value == false) {
-        excludes.add(key);
-      } else {
-        includeProj[key] = value;
-      }
-    });
-    if (includeProj.isNotEmpty) {
-      stages.add({r'$project': includeProj});
-    }
-    if (excludes.isNotEmpty) {
-      stages.add({r'$unset': excludes.length == 1 ? excludes.first : excludes});
-    }
-  } else {
-    lookupsCreated = false;
   }
-  return (lookupsCreated, stages);
+  return (requiresAggregation, stages);
+}
+
+bool mongoValuesEqual(Object? left, Object? right) {
+  if (identical(left, right)) {
+    return true;
+  }
+
+  if (left is List && right is List) {
+    if (left.length != right.length) {
+      return false;
+    }
+    for (var i = 0; i < left.length; i++) {
+      if (!mongoValuesEqual(left[i], right[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  if (left is Map && right is Map) {
+    if (left.length != right.length) {
+      return false;
+    }
+    for (final entry in left.entries) {
+      if (!right.containsKey(entry.key)) {
+        return false;
+      }
+      if (!mongoValuesEqual(entry.value, right[entry.key])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  return left == right;
 }
 
 void scan(Map<String, String> lookupRef, Set<String> prefixes, dynamic node) {
@@ -186,8 +270,14 @@ Map<String, dynamic> ensureSpecificDateFields(
   return result;
 }
 
-(String, Object)? firstEntryToTuple(Map<String, Object>? map) {
+(String, int)? firstEntryToTuple(Map<String, Object>? map) {
   if (map == null || map.isEmpty) return null;
   final entry = map.entries.first;
-  return (entry.key, entry.value);
+  final value = entry.value;
+  if (value is! int) {
+    throw ArgumentError(
+      'Sort direction for "${entry.key}" must be an int, got ${value.runtimeType}.',
+    );
+  }
+  return (entry.key, value);
 }

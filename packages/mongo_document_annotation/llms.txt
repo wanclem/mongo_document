@@ -1,0 +1,24 @@
+# mongo_document_annotation
+
+`mongo_document_annotation` is the package you import in models and startup code.
+
+Use it for:
+
+- `@MongoDocument(...)`
+- `MongoDbConnection.initialize(...)`
+- converters like `@ObjectIdConverter()`
+- lookup types
+- projection types
+
+Start here:
+
+- [README.md](README.md)
+- [llms-full.txt](llms-full.txt)
+- [example/README.md](example/README.md)
+
+Key rules:
+
+- initialize Mongo once with `MongoDbConnection.initialize(uri)`
+- generated CRUD helpers default to `MongoDbConnection.instance`
+- use Dart field names in lookups, not stored Mongo keys
+- typed refs like `Account? author` store as `ObjectId` behind the scenes

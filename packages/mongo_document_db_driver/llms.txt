@@ -1,0 +1,20 @@
+# mongo_document_db_driver
+
+`mongo_document_db_driver` is the low-level MongoDB driver package used underneath the higher-level generated API.
+
+Most app code should prefer:
+
+- `MongoDbConnection.initialize(...)` from `mongo_document_annotation`
+- generated CRUD from `mongo_document`
+
+Start here:
+
+- [README.md](README.md)
+- [llms-full.txt](llms-full.txt)
+- [example/README.md](example/README.md)
+
+Key rules:
+
+- prefer high-level wrappers unless you need direct low-level control
+- the package expects a MongoDB URI
+- use `modernFind` and `modernFindOne` when you want projection/sort/skip/limit as separate arguments
