@@ -7,6 +7,34 @@ import 'package:recase/recase.dart';
 import 'package:source_gen/source_gen.dart';
 
 class ParameterTemplates {
+  static bool isObjectIdField(DartType type) {
+    return type is InterfaceType && type.element.name == 'ObjectId';
+  }
+
+  static String buildStringSetLiteral(Iterable<String> values) {
+    final items = values.toList();
+    if (items.isEmpty) {
+      return '<String>{}';
+    }
+    return "<String>{${items.map((value) => "'$value'").join(', ')}}";
+  }
+
+  static String buildObjectIdFieldKeysLiteral(
+    List<FormalParameterElement> params,
+    TypeChecker typeChecker,
+    FieldRename? fieldRename, {
+    Set<String> excludedKeys = const {},
+  }) {
+    final keys =
+        params
+            .where((param) => param.name != 'id')
+            .where((param) => isObjectIdField(param.type))
+            .map((param) => getParameterKey(typeChecker, param, fieldRename))
+            .where((key) => !excludedKeys.contains(key));
+
+    return buildStringSetLiteral(keys);
+  }
+
   static String buildFieldMappingsLiteral(
     List<FormalParameterElement> params,
     TypeChecker typeChecker,

@@ -61,24 +61,70 @@ void main() {
       },
     );
 
-    test('saveMany strips _id before updates and preserves reload order', () {
+    test(
+      'persistence helpers are schema-aware for refs and plain ObjectId fields',
+      () async {
+        final output = await _schemaAwarePersistenceTemplate();
+
+        expect(output, contains("const _postRefFields = <String>{'author'};"));
+        expect(
+          output,
+          contains("const _postObjectIdFields = <String>{'owner_id'};"),
+        );
+        expect(
+          output,
+          contains(
+            "return Post.fromJson(\n    document.withRefs(\n      refFields: _postRefFields,\n      objectIdFields: _postObjectIdFields,",
+          ),
+        );
+        expect(output, contains("for (final key in _postObjectIdFields) {"));
+      },
+    );
+
+    test('saveMany diffs updates and preserves caller order', () {
       final output = CreateTemplates.saveMany('Post');
 
       expect(output, contains('_postNormalizePersistedDocument('));
+      expect(output, contains('final item = posts[index];'));
+      expect(output, contains('final orderedIds = List<dynamic>.filled('));
+      expect(output, contains('final insertPositions = <int>[];'));
+      expect(output, contains('final missingSnapshotIds = <ObjectId>[];'));
+      expect(
+        output,
+        contains(
+          "modernFind(filter: {'_id': {r'\$in': uniqueMissingSnapshotIds}})",
+        ),
+      );
+      expect(output, contains('rememberMongoDocumentSnapshots('));
+      expect(output, contains('buildMongoUpdateMapFromSnapshot('));
       expect(
         output,
         contains(
           "final updateDoc = Map<String, dynamic>.from(doc)..remove('_id');",
         ),
       );
+      expect(output, contains('if (updateMap.isEmpty) {'));
+      expect(output, contains('orderedIds[position] = docId;'));
       expect(output, contains('if (updateResult.isSuccess) {'));
       expect(
         output,
         contains("modernFind(filter: {'_id': {r'\$in': uniqueIds}})"),
       );
       expect(output, contains('final docsById = {'));
-      expect(output, contains('uniqueIds'));
-      expect(output, contains('.map(_postDeserializeDocument)'));
+      expect(output, contains('orderedIds'));
+      expect(output, contains('_postCoerceDocumentId('));
+      expect(
+        output,
+        contains('doc == null ? null : _postDeserializeDocument(doc)'),
+      );
+    });
+
+    test('saveMany avoids loop-variable collisions for i-prefixed models', () {
+      final output = CreateTemplates.saveMany('InBoundBuffer');
+
+      expect(output, contains('for (int index = 0; index < inBoundBuffers.length; index++) {'));
+      expect(output, contains('final item = inBoundBuffers[index];'));
+      expect(output, isNot(contains('final i = inBoundBuffers[i];')));
     });
 
     test('findById validates ids and uses modern reads', () {
@@ -100,6 +146,15 @@ void main() {
           "projection: canUseDirectProjection ? projDoc.cast<String, Object>() : null,",
         ),
       );
+      expect(
+        output,
+        contains('''
+    final post = await coll.modernFindOne(
+      filter: {'_id': id},
+      projection: canUseDirectProjection ? projDoc.cast<String, Object>() : null,
+    );'''),
+      );
+      expect(output, isNot(contains('toSelectorBuilder()')));
     });
 
     test('findOne and findMany use modern fallback reads', () {
@@ -152,6 +207,14 @@ final posts = await coll
         findManyOutput,
         isNot(contains("await coll.find(selectorMap.cleaned()).toList()")),
       );
+      expect(
+        findOneOutput,
+        contains('''
+    final postResult = await coll.modernFindOne(
+      filter: selectorMap.cleaned(),
+      projection: canUseDirectProjection ? projDoc.cast<String, Object>() : null,
+    );'''),
+      );
     });
 
     test(
@@ -178,6 +241,15 @@ final posts = await coll
           findOneByNamedOutput,
           isNot(contains('buildAggregationPipeline([')),
         );
+        expect(
+          findOneByNamedOutput,
+          contains('''
+    final postResult = await coll.modernFindOne(
+      filter: selector.cleaned(),
+      sort: selector.isEmpty ? {'created_at': -1} : null,
+      projection: canUseDirectProjection ? projDoc.cast<String, Object>() : null,
+    );'''),
+        );
 
         expect(
           findManyByNamedOutput,
@@ -199,6 +271,19 @@ final posts = await coll
           findManyByNamedOutput,
           isNot(contains('buildAggregationPipeline([')),
         );
+        expect(
+          findManyByNamedOutput,
+          contains('''
+    final posts = await coll
+        .modernFind(
+          filter: selector.cleaned(),
+          projection: canUseDirectProjection ? projDoc.cast<String, Object>() : null,
+          limit: limit,
+          skip: skip,
+          sort: sort,
+        )
+        .toList();'''),
+        );
       },
     );
 
@@ -211,6 +296,28 @@ final posts = await coll
         deleteOutput,
         contains("final res = await coll.deleteOne({'_id': id});"),
       );
+    });
+
+    test('updateOneFromMap applies schema-aware ObjectId normalization', () {
+      final output = UpdateTemplates.updateOneFromMap('Post');
+
+      expect(
+        output,
+        contains('''
+        updateMap.withValidObjectReferences(
+          refFields: _postRefFields,
+          objectIdFields: _postObjectIdFields,
+        ),'''),
+      );
+    });
+
+    test('count uses cleaned filters for direct counts', () {
+      final output = ReadTemplates.count('Post');
+
+      expect(output, contains('toAggregationPipelineWithMap('));
+      expect(output, contains('raw: selectorMap.raw(),'));
+      expect(output, contains('cleaned: selectorMap.cleaned()'));
+      expect(output, contains('return await coll.count(selectorMap.cleaned());'));
     });
   });
 
@@ -275,6 +382,7 @@ class Post {
       output,
       contains('void _rememberPostSnapshot(Map<String, dynamic> document) {'),
     );
+    expect(output, contains('ObjectId? _postCoerceDocumentId(dynamic rawId) {'));
     expect(output, contains('Future<Post?> save({Db? db}) async {'));
     expect(output, contains('buildMongoUpdateMapFromSnapshot('));
     expect(output, contains('Future<Post?> saveChanges({Db? db}) async {'));
@@ -351,6 +459,69 @@ class Post {
       return CreateTemplates.save('Post');
     },
     inputId: AssetId('mongo_document', 'lib/save_template_post.dart'),
+    readAllSourcesFromFilesystem: true,
+  );
+}
+
+Future<String> _schemaAwarePersistenceTemplate() async {
+  const source = r'''
+import 'package:json_annotation/json_annotation.dart';
+import 'package:mongo_document_annotation/mongo_document_annotation.dart';
+
+@MongoDocument(collection: 'users')
+@JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
+class User {
+  User({
+    @ObjectIdConverter() @JsonKey(name: '_id') this.id,
+    this.name,
+  });
+
+  final ObjectId? id;
+  final String? name;
+
+  factory User.fromJson(Map<String, dynamic> json) => throw UnimplementedError();
+  Map<String, dynamic> toJson() => throw UnimplementedError();
+}
+
+@MongoDocument(collection: 'posts')
+@JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
+class Post {
+  Post({
+    @ObjectIdConverter() @JsonKey(name: '_id') this.id,
+    this.author,
+    @ObjectIdConverter() this.ownerId,
+  });
+
+  final ObjectId? id;
+  final User? author;
+  final ObjectId? ownerId;
+
+  factory Post.fromJson(Map<String, dynamic> json) => throw UnimplementedError();
+  Map<String, dynamic> toJson() => throw UnimplementedError();
+}
+''';
+
+  return resolveSource<String>(
+    source,
+    (resolver) async {
+      final library = await resolver.libraryFor(
+        AssetId('mongo_document', 'lib/schema_post.dart'),
+      );
+      final postClass = library.classes.singleWhere(
+        (element) => element.name == 'Post',
+      );
+      return MongoDocumentGenerator().generateForAnnotatedElement(
+        postClass,
+        ConstantReader(
+          TypeChecker.typeNamed(
+            MongoDocument,
+            inPackage: 'mongo_document_annotation',
+          ).firstAnnotationOf(postClass),
+        ),
+        MockBuildStep(),
+      );
+    },
+    inputId: AssetId('mongo_document', 'lib/schema_post.dart'),
     readAllSourcesFromFilesystem: true,
   );
 }

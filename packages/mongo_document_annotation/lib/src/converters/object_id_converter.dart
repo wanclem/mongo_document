@@ -6,28 +6,32 @@ class ObjectIdConverter implements JsonConverter<ObjectId?, dynamic> {
 
   @override
   ObjectId? fromJson(dynamic json) {
-    if (json == null) {
-      return null;
-    }
-    if (json is String) {
-      return ObjectId.fromHexString(json);
-    }
-    if (json is ObjectId) {
-      return json;
-    }
-    if (json is Map<String, dynamic>) {
-      if (json['_id'] is String) {
-        return ObjectId.fromHexString(json['_id']);
-      }
-      if (json['_id'] is ObjectId) {
-        return json['_id'];
-      }
-    }
+    final parsed = _extractObjectId(json);
+    if (parsed != null || json == null) return parsed;
     throw ArgumentError('Invalid ObjectId format: $json');
   }
 
   @override
   ObjectId? toJson(ObjectId? objectId) {
     return objectId;
+  }
+
+  ObjectId? _extractObjectId(dynamic value) {
+    if (value == null) return null;
+    if (value is ObjectId) return value;
+    if (value is String) return ObjectId.tryParse(value.trim());
+    if (value is Map) {
+      final map = value.cast<dynamic, dynamic>();
+      final nestedId =
+          map.containsKey('_id')
+              ? _extractObjectId(map['_id'])
+              : map.containsKey(r'$oid')
+              ? _extractObjectId(map[r'$oid'])
+              : map.containsKey('oid')
+              ? _extractObjectId(map['oid'])
+              : null;
+      return nestedId;
+    }
+    return null;
   }
 }

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/wanclem/mongo_document/main/assets/logo/logo.png" width="160" alt="mongo_document logo" />
+  <img src="assets/logo/logo.svg" width="160" alt="mongo_document logo" />
 </p>
 
 # mongo_document

@@ -185,6 +185,128 @@ void main() {
       },
     );
 
+    test(
+      'explicit lookups keep root skip and limit ahead of lookup stages',
+      () {
+        final merged =
+            mergeLookups(
+              lookups: const [
+                Lookup.single(
+                  from: 'accounts',
+                  localField: 'author',
+                  foreignField: '_id',
+                  as: 'author',
+                ),
+              ],
+              queryMap: const {'status': 'published'},
+              sort: const ('created_at', -1),
+              skip: 5,
+              limit: 10,
+            ).$2;
+
+        expect(merged, hasLength(6));
+        expect(
+          merged,
+          equals([
+            {
+              r'$match': {'status': 'published'},
+            },
+            {
+              r'$sort': {'created_at': -1},
+            },
+            {r'$skip': 5},
+            {r'$limit': 10},
+            {
+              r'$lookup': {
+                'from': 'accounts',
+                'let': {'localValue': r'$author'},
+                'pipeline': [
+                  {
+                    r'$match': {
+                      r'$expr': {
+                        r'$eq': [r'$_id', r'$$localValue'],
+                      },
+                    },
+                  },
+                  {r'$limit': 1},
+                ],
+                'as': 'author',
+              },
+            },
+            {
+              r'$addFields': {
+                'author': {
+                  r'$cond': {
+                    'if': {
+                      r'$gt': [
+                        {r'$size': r'$author'},
+                        0,
+                      ],
+                    },
+                    'then': {
+                      r'$arrayElemAt': [r'$author', 0],
+                    },
+                    'else': null,
+                  },
+                },
+              },
+            },
+          ]),
+        );
+      },
+    );
+
+    test(
+      'explicit lookups still keep project stages after lookup stages',
+      () {
+        final merged =
+            mergeLookups(
+              lookups: const [
+                Lookup.single(
+                  from: 'accounts',
+                  localField: 'author',
+                  foreignField: '_id',
+                  as: 'author',
+                ),
+              ],
+              queryMap: const {'status': 'published'},
+              limit: 1,
+              existingPipeline: [
+                {
+                  r'$match': {'status': 'published'},
+                },
+                {r'$limit': 1},
+                {
+                  r'$project': {
+                    '_id': 1,
+                    'author._id': 1,
+                    'author.first_name': 1,
+                  },
+                },
+              ],
+            ).$2;
+
+        expect(merged[0], {
+          r'$match': {'status': 'published'},
+        });
+        expect(merged[1], {
+          r'$limit': 1,
+        });
+        expect(merged[2].containsKey(r'$lookup'), isTrue);
+        expect(merged[3].containsKey(r'$addFields'), isTrue);
+        expect(
+          merged.last,
+          {
+            r'$project': {
+              '_id': 1,
+              'author._id': 1,
+              'author.first_name': 1,
+            },
+          },
+        );
+      },
+    );
+
     test('remapLookups translates Dart field names to stored Mongo keys', () {
       final remapped = remapLookups(
         const [

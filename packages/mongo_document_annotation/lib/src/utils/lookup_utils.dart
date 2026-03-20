@@ -122,15 +122,11 @@ String _remapFieldPath(String path, Map<String, String> fieldMappings) {
 
   int insertPosition = pipeline.length;
   for (int i = 0; i < pipeline.length; i++) {
-    if (pipeline[i].containsKey('\$project') ||
-        pipeline[i].containsKey('\$skip') ||
-        pipeline[i].containsKey('\$limit')) {
+    if (pipeline[i].containsKey('\$project')) {
       insertPosition = i;
       break;
     }
   }
-
-  final List<Map<String, Object>> savedTerminalStages = [];
 
   final masterProjectMap = <String, Object>{};
 
@@ -142,8 +138,6 @@ String _remapFieldPath(String path, Map<String, String> fieldMappings) {
         masterProjectMap.putIfAbsent(key, () => value);
       });
       pipeline.removeAt(i);
-    } else if (stage.containsKey('\$limit') || stage.containsKey('\$skip')) {
-      savedTerminalStages.insert(0, pipeline.removeAt(i));
     }
   }
 
@@ -187,8 +181,6 @@ String _remapFieldPath(String path, Map<String, String> fieldMappings) {
   if (masterProjectMap.isNotEmpty) {
     pipeline.add({'\$project': masterProjectMap});
   }
-
-  pipeline.addAll(savedTerminalStages);
 
   return (true, pipeline);
 }

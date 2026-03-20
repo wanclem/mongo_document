@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.1
+
+- Added opt-in query shape tracing for reads and writes through `MONGO_DOCUMENT_TRACE_QUERIES`, including aggregate, count, find, insert, update, and delete operations.
+- Improved trace formatting so package-generated MongoDB operations are readable enough to diagnose overfetch and aggregation escalation.
+
 ## 2.1.0
 
 - Hardened Rust worker warmup retry behavior so transient startup connectivity misses are handled more gracefully during worker-pool bring-up.

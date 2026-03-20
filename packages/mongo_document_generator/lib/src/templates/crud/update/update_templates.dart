@@ -155,6 +155,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
   }
 
   static String updateOneFromMap(String className) {
+    final classNameVar = className[0].toLowerCase() + className.substring(1);
     return '''
    /// Prioritize `updateOne` whenever possible to avoid type mismatch.
   /// This method is a fallback for cases where you just had to use a map.
@@ -163,7 +164,14 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
     Map<String, dynamic> updateMap,
     {Db?db}
   ) async {
-    final mod = _buildModifier(sanitizedDocument(updateMap.withValidObjectReferences()));
+    final mod = _buildModifier(
+      sanitizedDocument(
+        updateMap.withValidObjectReferences(
+          refFields: _${classNameVar}RefFields,
+          objectIdFields: _${classNameVar}ObjectIdFields,
+        ),
+      ),
+    );
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
     final result = await coll.updateOne({'_id': id}, mod);
@@ -173,7 +181,7 @@ ${ParameterTemplates.buildNullableParams(params, fieldRename)}Db?db
     });
     return updatedDoc == null
         ? null
-        : _${className[0].toLowerCase()}${className.substring(1)}DeserializeDocument(updatedDoc);
+        : _${classNameVar}DeserializeDocument(updatedDoc);
   }''';
   }
 }

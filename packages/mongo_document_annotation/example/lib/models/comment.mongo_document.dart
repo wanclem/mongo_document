@@ -53,6 +53,8 @@ const _commentFieldMappings = <String, String>{
   'updatedAt': 'updated_at',
 };
 const _commentCollection = 'comments';
+const _commentRefFields = <String>{'author', 'post'};
+const _commentObjectIdFields = <String>{};
 const _commentTrackedPersistedKeys = <String>[
   'author',
   'post',
@@ -88,6 +90,26 @@ Map<String, dynamic> _commentNormalizePersistedDocument(
     }
   }
 
+  for (final key in _commentObjectIdFields) {
+    if (!source.containsKey(key)) continue;
+
+    final value = source[key];
+    final rawId =
+        value is Map ? Map<String, dynamic>.from(value)['_id'] : value;
+    final objectId =
+        rawId is ObjectId
+            ? rawId
+            : rawId is String
+            ? ObjectId.tryParse(rawId)
+            : null;
+
+    if (objectId != null) {
+      normalized[key] = objectId;
+    } else {
+      normalized[key] = value;
+    }
+  }
+
   return normalized;
 }
 
@@ -100,7 +122,12 @@ void _rememberCommentSnapshot(Map<String, dynamic> document) {
 
 Comment _commentDeserializeDocument(Map<String, dynamic> document) {
   _rememberCommentSnapshot(document);
-  return Comment.fromJson(document.withRefs());
+  return Comment.fromJson(
+    document.withRefs(
+      refFields: _commentRefFields,
+      objectIdFields: _commentObjectIdFields,
+    ),
+  );
 }
 
 List<Comment> _commentDeserializeDocuments(
@@ -111,6 +138,12 @@ List<Comment> _commentDeserializeDocuments(
 
 Map<String, dynamic>? _commentSnapshotFor(ObjectId id) {
   return mongoDocumentSnapshot(_commentCollection, id);
+}
+
+ObjectId? _commentCoerceDocumentId(dynamic rawId) {
+  if (rawId is ObjectId) return rawId;
+  if (rawId is String) return ObjectId.tryParse(rawId);
+  return null;
 }
 
 void _commentForgetSnapshotFor(ObjectId id) {
@@ -316,49 +349,100 @@ class Comments {
     final coll = database.collection(_collection);
     final now = DateTime.now().toUtc();
     final List<Map<String, dynamic>> toInsert = [];
-    final List<Map<String, dynamic>> toSave = [];
-    for (final c in comments) {
-      final json = _commentNormalizePersistedDocument(c.toJson());
+    final List<(int, Map<String, dynamic>)> toSave = [];
+    final orderedIds = List<dynamic>.filled(comments.length, null);
+    final insertPositions = <int>[];
+    for (int index = 0; index < comments.length; index++) {
+      final item = comments[index];
+      final json = _commentNormalizePersistedDocument(item.toJson());
       final hasId = json.containsKey('_id') && json['_id'] != null;
       if (hasId) {
         json.update('updated_at', (_) => now, ifAbsent: () => now);
-        toSave.add(json);
+        toSave.add((index, json));
       } else {
         json
           ..remove('_id')
           ..update('created_at', (v) => v ?? now, ifAbsent: () => now)
           ..update('updated_at', (_) => now, ifAbsent: () => now);
         toInsert.add(json);
+        insertPositions.add(index);
       }
     }
-    final affectedIds = <dynamic>[];
     if (toInsert.isNotEmpty) {
       final insertResult = await coll.insertMany(toInsert);
       if (!insertResult.isSuccess || insertResult.ids == null) {
         return [];
       }
-      affectedIds.addAll(insertResult.ids!);
-    }
-    for (final doc in toSave) {
-      dynamic docId = doc['_id'];
-      try {
-        if (docId is String && docId.length == 24) {
-          docId = ObjectId.fromHexString(docId);
-        }
-      } catch (_) {
-        // ignore invalid conversion and let the driver handle it
+      for (
+        int insertIndex = 0;
+        insertIndex < insertResult.ids!.length &&
+            insertIndex < insertPositions.length;
+        insertIndex++
+      ) {
+        orderedIds[insertPositions[insertIndex]] =
+            insertResult.ids![insertIndex];
       }
+    }
+    final missingSnapshotIds = <ObjectId>[];
+    for (final entry in toSave) {
+      final docId = _commentCoerceDocumentId(entry.$2['_id']);
+      if (docId == null) continue;
+      if (_commentSnapshotFor(docId) == null) {
+        missingSnapshotIds.add(docId);
+      }
+    }
+    final uniqueMissingSnapshotIds = <ObjectId>[];
+    for (final id in missingSnapshotIds) {
+      if (!uniqueMissingSnapshotIds.contains(id)) {
+        uniqueMissingSnapshotIds.add(id);
+      }
+    }
+    final fetchedSnapshotsById = <ObjectId, Map<String, dynamic>>{};
+    if (uniqueMissingSnapshotIds.isNotEmpty) {
+      final fetchedSnapshots =
+          await coll
+              .modernFind(
+                filter: {
+                  '_id': {r'$in': uniqueMissingSnapshotIds},
+                },
+              )
+              .toList();
+      rememberMongoDocumentSnapshots(_commentCollection, fetchedSnapshots);
+      for (final snapshot in fetchedSnapshots) {
+        final snapshotId = _commentCoerceDocumentId(snapshot['_id']);
+        if (snapshotId == null) continue;
+        fetchedSnapshotsById[snapshotId] = _commentNormalizePersistedDocument(
+          snapshot,
+        );
+      }
+    }
+    for (final entry in toSave) {
+      final position = entry.$1;
+      final doc = entry.$2;
+      final docId = _commentCoerceDocumentId(doc['_id']);
       if (docId == null) continue;
       final updateDoc = Map<String, dynamic>.from(doc)..remove('_id');
+      var snapshot = _commentSnapshotFor(docId) ?? fetchedSnapshotsById[docId];
+      if (snapshot == null) continue;
+      snapshot = _commentNormalizePersistedDocument(snapshot);
+      final updateMap = buildMongoUpdateMapFromSnapshot(
+        current: updateDoc,
+        snapshot: snapshot,
+        trackedKeys: _commentTrackedPersistedKeys,
+      );
+      if (updateMap.isEmpty) {
+        orderedIds[position] = docId;
+        continue;
+      }
       var parentMod = modify.set('updated_at', now);
-      updateDoc.forEach((k, v) => parentMod = parentMod.set(k, v));
+      updateMap.forEach((k, v) => parentMod = parentMod.set(k, v));
       final updateResult = await coll.updateOne({'_id': docId}, parentMod);
       if (updateResult.isSuccess) {
-        affectedIds.add(docId);
+        orderedIds[position] = docId;
       }
     }
     final uniqueIds = <dynamic>[];
-    for (final id in affectedIds) {
+    for (final id in orderedIds) {
       if (id == null || uniqueIds.contains(id)) continue;
       uniqueIds.add(id);
     }
@@ -372,10 +456,9 @@ class Comments {
             )
             .toList();
     final docsById = {for (final doc in insertedDocs) doc['_id']: doc};
-    return uniqueIds
-        .map((id) => docsById[id])
-        .whereType<Map<String, dynamic>>()
-        .map(_commentDeserializeDocument)
+    return orderedIds
+        .map((id) => id == null ? null : docsById[id])
+        .map((doc) => doc == null ? null : _commentDeserializeDocument(doc))
         .toList();
   }
 
@@ -407,6 +490,8 @@ class Comments {
         projections.isNotEmpty
             ? buildProjectionDoc(normalizedProjections)
             : null;
+    final canUseDirectProjection =
+        projDoc != null && projectionDocSupportsDirectFind(projDoc);
 
     var (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
@@ -432,7 +517,11 @@ class Comments {
       return _commentDeserializeDocument(results.first);
     }
     // fallback: return entire comment
-    final comment = await coll.modernFindOne(filter: {'_id': id});
+    final comment = await coll.modernFindOne(
+      filter: {'_id': id},
+      projection:
+          canUseDirectProjection ? projDoc.cast<String, Object>() : null,
+    );
     return comment == null ? null : _commentDeserializeDocument(comment);
   }
 
@@ -464,6 +553,8 @@ class Comments {
         projections.isNotEmpty
             ? buildProjectionDoc(normalizedProjections)
             : null;
+    final canUseDirectProjection =
+        projDoc != null && projectionDocSupportsDirectFind(projDoc);
 
     var (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
@@ -494,6 +585,8 @@ class Comments {
     // fallback to simple findOne
     final commentResult = await coll.modernFindOne(
       filter: selectorMap.cleaned(),
+      projection:
+          canUseDirectProjection ? projDoc.cast<String, Object>() : null,
     );
     return commentResult == null
         ? null
@@ -540,6 +633,8 @@ class Comments {
         projections.isNotEmpty
             ? buildProjectionDoc(normalizedProjections)
             : null;
+    final canUseDirectProjection =
+        projDoc != null && projectionDocSupportsDirectFind(projDoc);
 
     var (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
@@ -572,6 +667,8 @@ class Comments {
     final commentResult = await coll.modernFindOne(
       filter: selector.cleaned(),
       sort: selector.isEmpty ? {'created_at': -1} : null,
+      projection:
+          canUseDirectProjection ? projDoc.cast<String, Object>() : null,
     );
     return commentResult == null
         ? null
@@ -603,6 +700,8 @@ class Comments {
         projections.isNotEmpty
             ? buildProjectionDoc(normalizedProjections)
             : null;
+    final canUseDirectProjection =
+        projDoc != null && projectionDocSupportsDirectFind(projDoc);
 
     var (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
@@ -639,6 +738,10 @@ class Comments {
             .modernFind(
               filter: selectorMap.cleaned(),
               sort: {sort.$1: sort.$2},
+              projection:
+                  canUseDirectProjection
+                      ? projDoc.cast<String, Object>()
+                      : null,
               skip: skip,
               limit: limit,
             )
@@ -691,6 +794,8 @@ class Comments {
         projections.isNotEmpty
             ? buildProjectionDoc(normalizedProjections)
             : null;
+    final canUseDirectProjection =
+        projDoc != null && projectionDocSupportsDirectFind(projDoc);
 
     var (foundLookups, pipeline) = toAggregationPipelineWithMap(
       lookupRef: _nestedCollections,
@@ -724,7 +829,16 @@ class Comments {
 
     final comments =
         await coll
-            .modernFind(filter: selector, limit: limit, skip: skip, sort: sort)
+            .modernFind(
+              filter: selector.cleaned(),
+              projection:
+                  canUseDirectProjection
+                      ? projDoc.cast<String, Object>()
+                      : null,
+              limit: limit,
+              skip: skip,
+              sort: sort,
+            )
             .toList();
     return _commentDeserializeDocuments(comments);
   }
@@ -830,9 +944,10 @@ class Comments {
     );
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
-    final selectorMap = predicate(QComment()).toSelectorBuilder().map.cleaned();
+    final cleanedSelector =
+        predicate(QComment()).toSelectorBuilder().map.cleaned();
     final retrieved = await coll.modernFindOne(
-      filter: selectorMap,
+      filter: cleanedSelector,
       projection: {'_id': 1},
     );
     if (retrieved == null) return null;
@@ -875,10 +990,11 @@ class Comments {
     );
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);
-    final selectorMap = predicate(QComment()).toSelectorBuilder().map.cleaned();
+    final cleanedSelector =
+        predicate(QComment()).toSelectorBuilder().map.cleaned();
     final retrieved =
         await coll
-            .modernFind(filter: selectorMap, projection: {'_id': 1})
+            .modernFind(filter: cleanedSelector, projection: {'_id': 1})
             .toList();
     if (retrieved.isEmpty) return [];
     final ids = <ObjectId>[];
@@ -932,7 +1048,12 @@ class Comments {
     Db? db,
   }) async {
     final mod = _buildModifier(
-      sanitizedDocument(updateMap.withValidObjectReferences()),
+      sanitizedDocument(
+        updateMap.withValidObjectReferences(
+          refFields: _commentRefFields,
+          objectIdFields: _commentObjectIdFields,
+        ),
+      ),
     );
     final database = db ?? await MongoDbConnection.instance;
     final coll = database.collection(_collection);

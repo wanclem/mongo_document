@@ -1,0 +1,20 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="36" y1="28" x2="212" y2="228" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F766E"/>
+      <stop offset="1" stop-color="#10B981"/>
+    </linearGradient>
+    <linearGradient id="page" x1="76" y1="46" x2="176" y2="192" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFC"/>
+      <stop offset="1" stop-color="#D9F99D"/>
+    </linearGradient>
+  </defs>
+  <rect x="20" y="20" width="216" height="216" rx="48" fill="url(#bg)"/>
+  <path d="M78 46C78 38.268 84.268 32 92 32H148L178 62V178C178 185.732 171.732 192 164 192H92C84.268 192 78 185.732 78 178V46Z" fill="url(#page)"/>
+  <path d="M148 32V54C148 61.732 154.268 68 162 68H178" fill="#A7F3D0"/>
+  <path d="M148 32V54C148 61.732 154.268 68 162 68H178" stroke="#0F766E" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M96 154V86H110L128 120L146 86H160V154H148V110L132 139H124L108 110V154H96Z" fill="#0F172A"/>
+  <circle cx="190" cy="188" r="28" fill="#0F172A"/>
+  <path d="M190 172C183.373 172 178 177.373 178 184C178 190.627 183.373 196 190 196C196.627 196 202 190.627 202 184C202 177.373 196.627 172 190 172ZM190 166C199.941 166 208 174.059 208 184C208 193.941 199.941 202 190 202C180.059 202 172 193.941 172 184C172 174.059 180.059 166 190 166Z" fill="#A7F3D0"/>
+  <circle cx="190" cy="184" r="6" fill="#A7F3D0"/>
+</svg>

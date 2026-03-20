@@ -1,5 +1,5 @@
 name: mongo_document_db_driver
-version: 2.1.0
+version: 2.1.1
 description: MongoDB driver for Dart, backed by MongoDB's official Rust driver. CRUD, aggregation, and more.
 homepage: https://github.com/wanclem/mongo_document
 repository: https://github.com/wanclem/mongo_document

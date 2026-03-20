@@ -45,7 +45,7 @@ bool projectionDocSupportsDirectFind(Map<String, dynamic> projection) {
   };
   var requiresAggregation = false;
 
-  scan(lookupRef, prefixes, raw);
+  scan(lookupRef, prefixes, raw, cleaned: cleaned);
 
   if (projections != null) {
     for (final projKey in projections.keys) {
@@ -178,7 +178,12 @@ bool mongoValuesEqual(Object? left, Object? right) {
   return left == right;
 }
 
-void scan(Map<String, String> lookupRef, Set<String> prefixes, dynamic node) {
+void scan(
+  Map<String, String> lookupRef,
+  Set<String> prefixes,
+  dynamic node, {
+  Map<String, dynamic>? cleaned,
+}) {
   if (node is Map<String, dynamic>) {
     for (final entry in node.entries) {
       final key = entry.key;
@@ -186,18 +191,44 @@ void scan(Map<String, String> lookupRef, Set<String> prefixes, dynamic node) {
         final parts = key.split('.');
         for (var i = 1; i < parts.length; i++) {
           final prefix = parts.sublist(0, i).join('.');
-          if (lookupRef.containsKey(prefix) && lookupRef[prefix]!.isNotEmpty) {
+          final isDirectRefIdQuery =
+              key == '$prefix._id' &&
+              cleaned != null &&
+              _containsKeyDeep(cleaned, prefix);
+          if (lookupRef.containsKey(prefix) &&
+              lookupRef[prefix]!.isNotEmpty &&
+              !isDirectRefIdQuery) {
             prefixes.add(prefix);
           }
         }
       }
-      scan(lookupRef, prefixes, entry.value);
+      scan(lookupRef, prefixes, entry.value, cleaned: cleaned);
     }
   } else if (node is Iterable) {
     for (final item in node) {
-      scan(lookupRef, prefixes, item);
+      scan(lookupRef, prefixes, item, cleaned: cleaned);
     }
   }
+}
+
+bool _containsKeyDeep(dynamic node, String key) {
+  if (node is Map) {
+    if (node.containsKey(key)) {
+      return true;
+    }
+    for (final value in node.values) {
+      if (_containsKeyDeep(value, key)) {
+        return true;
+      }
+    }
+  } else if (node is Iterable) {
+    for (final item in node) {
+      if (_containsKeyDeep(item, key)) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 Map<String, dynamic> sanitizedDocument(Map<String, dynamic> map) {

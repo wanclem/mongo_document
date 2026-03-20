@@ -9,9 +9,9 @@ void main() {
         final (foundLookups, pipeline) = toAggregationPipelineWithMap(
           lookupRef: const {'workspace': 'workspaces'},
           raw: const {
-            r'$query': {'workspace._id': '507f1f77bcf86cd799439011'},
+            r'$query': {'workspace.name': 'Launch Room'},
           },
-          cleaned: const {'workspace': '507f1f77bcf86cd799439011'},
+          cleaned: const {'workspace.name': 'Launch Room'},
         );
 
         expect(foundLookups, isTrue);
@@ -39,13 +39,66 @@ void main() {
       },
     );
 
+    test(
+      'does not force aggregation when a typed ref id query has already been cleaned',
+      () {
+        final (foundLookups, pipeline) = toAggregationPipelineWithMap(
+          lookupRef: const {'author': 'accounts'},
+          raw: const {
+            r'$query': {'author._id': '507f1f77bcf86cd799439011'},
+          },
+          cleaned: const {'author': '507f1f77bcf86cd799439011'},
+        );
+
+        expect(foundLookups, isFalse);
+        expect(
+          pipeline,
+          [
+            {
+              r'$match': {'author': '507f1f77bcf86cd799439011'},
+            },
+          ],
+        );
+      },
+    );
+
+    test(
+      'keeps projection-only typed ref queries on the direct find path',
+      () {
+        final (foundLookups, pipeline) = toAggregationPipelineWithMap(
+          lookupRef: const {'author': 'accounts'},
+          projections: const {'_id': 1, 'body': 1},
+          raw: const {
+            r'$query': {'author._id': '507f1f77bcf86cd799439011'},
+          },
+          sort: ('created_at', -1),
+          limit: 5,
+          cleaned: const {'author': '507f1f77bcf86cd799439011'},
+        );
+
+        expect(foundLookups, isFalse);
+        expect(
+          pipeline,
+          [
+            {
+              r'$match': {'author': '507f1f77bcf86cd799439011'},
+            },
+            {
+              r'$sort': {'created_at': -1},
+            },
+            {r'$limit': 5},
+          ],
+        );
+      },
+    );
+
     test('does not inject sort or limit stages when omitted', () {
       final (foundLookups, pipeline) = toAggregationPipelineWithMap(
         lookupRef: const {'workspace': 'workspaces'},
         raw: const {
-          r'$query': {'workspace._id': '507f1f77bcf86cd799439011'},
+          r'$query': {'workspace.name': 'Launch Room'},
         },
-        cleaned: const {'workspace': '507f1f77bcf86cd799439011'},
+        cleaned: const {'workspace.name': 'Launch Room'},
       );
 
       expect(foundLookups, isTrue);

@@ -1,5 +1,102 @@
 part of '../../mongo_document_db_driver.dart';
 
+const bool _traceMongoQueriesFromDefine = bool.fromEnvironment(
+  'MONGO_DOCUMENT_TRACE_QUERIES',
+);
+
+bool get _traceMongoQueries =>
+    _traceMongoQueriesFromDefine || _traceMongoQueriesFromEnvironment();
+
+bool _traceMongoQueriesFromEnvironment() {
+  final raw = Platform.environment['MONGO_DOCUMENT_TRACE_QUERIES'];
+  if (raw == null) return false;
+  switch (raw.trim().toLowerCase()) {
+    case '1':
+    case 'true':
+    case 'yes':
+    case 'on':
+      return true;
+    default:
+      return false;
+  }
+}
+
+String _traceIndent(int depth) => List.filled(depth, '  ').join();
+
+String _traceFormatScalar(Object? value) {
+  if (value is String) {
+    final escaped = value
+        .replaceAll(r'\', r'\\')
+        .replaceAll("'", r"\'")
+        .replaceAll('\n', r'\n');
+    return "'$escaped'";
+  }
+  return '$value';
+}
+
+String _traceFormatValue(Object? value, {int depth = 0}) {
+  if (value is Map) {
+    final map = value.cast<Object?, Object?>();
+    if (map.isEmpty) return '{}';
+
+    final indent = _traceIndent(depth);
+    final childIndent = _traceIndent(depth + 1);
+    final entries =
+        map.entries
+            .map(
+              (entry) =>
+                  '$childIndent${entry.key}: ${_traceFormatValue(entry.value, depth: depth + 1)}',
+            )
+            .join(',\n');
+    return '{\n$entries\n$indent}';
+  }
+
+  if (value is Iterable) {
+    final items = value.toList();
+    if (items.isEmpty) return '[]';
+
+    final indent = _traceIndent(depth);
+    final childIndent = _traceIndent(depth + 1);
+    final lines =
+        items
+            .map(
+              (item) =>
+                  '$childIndent${_traceFormatValue(item, depth: depth + 1)}',
+            )
+            .join(',\n');
+    return '[\n$lines\n$indent]';
+  }
+
+  return _traceFormatScalar(value);
+}
+
+String _tracePrettyBlock(Map<String, Object?> shape) {
+  final formatted = _traceFormatValue(shape);
+  return formatted
+      .split('\n')
+      .map((line) => '  $line')
+      .join('\n');
+}
+
+void _traceMongoQueryShape(
+  String operation,
+  String collectionName,
+  Map<String, Object?> shape,
+) {
+  if (!_traceMongoQueries) return;
+  final compactShape = <String, Object?>{};
+  for (final entry in shape.entries) {
+    final value = entry.value;
+    if (value == null) continue;
+    compactShape[entry.key] = value;
+  }
+  print('[mongo_document_db_driver][trace] $operation $collectionName');
+  print(_tracePrettyBlock(compactShape));
+}
+
+Map<String, Object>? _traceWriteConcern(Db db, WriteConcern? writeConcern) =>
+    writeConcern?.asMap(db.writeConcernServerStatus);
+
 class DbCollection {
   Db db;
   String collectionName;
@@ -389,6 +486,9 @@ class DbCollection {
   // **************************************************
 
   Future<int> count([dynamic selector]) async {
+    _traceMongoQueryShape('count', collectionName, {
+      'filter': _selectorBuilder2Map(selector),
+    });
     if (_canUseRustRead()) {
       var result = await modernCount(
         selector: selector is SelectorBuilder ? selector : null,
@@ -494,6 +594,11 @@ class DbCollection {
     Map<String, Object> cursorOptions = const <String, Object>{},
     bool allowDiskUse = false,
   }) {
+    _traceMongoQueryShape('aggregate', collectionName, {
+      'pipeline': pipeline,
+      'cursorOptions': cursorOptions,
+      'allowDiskUse': allowDiskUse,
+    });
     if (_canUseRustAggregate(pipeline: pipeline)) {
       return _runRustStream(
         (backend) => backend.aggregateToStream(
@@ -898,6 +1003,11 @@ class DbCollection {
     WriteConcern? writeConcern,
     bool? bypassDocumentValidation,
   }) async {
+    _traceMongoQueryShape('insertOne', collectionName, {
+      'document': document,
+      'writeConcern': _traceWriteConcern(db, writeConcern),
+      'bypassDocumentValidation': bypassDocumentValidation,
+    });
     if (_canUseRustWrite(writeConcern)) {
       return _runRust(
         (backend) => backend.insertOne(
@@ -938,6 +1048,12 @@ class DbCollection {
     bool? ordered,
     bool? bypassDocumentValidation,
   }) async {
+    _traceMongoQueryShape('insertMany', collectionName, {
+      'documents': documents,
+      'writeConcern': _traceWriteConcern(db, writeConcern),
+      'ordered': ordered,
+      'bypassDocumentValidation': bypassDocumentValidation,
+    });
     if (_canUseRustWrite(writeConcern)) {
       return _runRust(
         (backend) => backend.insertMany(
@@ -977,6 +1093,13 @@ class DbCollection {
     String? hint,
     Map<String, Object>? hintDocument,
   }) async {
+    _traceMongoQueryShape('deleteOne', collectionName, {
+      'filter': _selectorBuilder2Map(selector),
+      'writeConcern': _traceWriteConcern(db, writeConcern),
+      'collation': collation?.options,
+      'hint': hint,
+      'hintDocument': hintDocument,
+    });
     if (_canUseRustWrite(writeConcern)) {
       return _runRust(
         (backend) => backend.deleteOne(
@@ -1010,6 +1133,13 @@ class DbCollection {
     String? hint,
     Map<String, Object>? hintDocument,
   }) async {
+    _traceMongoQueryShape('deleteMany', collectionName, {
+      'filter': _selectorBuilder2Map(selector),
+      'writeConcern': _traceWriteConcern(db, writeConcern),
+      'collation': collation?.options,
+      'hint': hint,
+      'hintDocument': hintDocument,
+    });
     if (_canUseRustWrite(writeConcern)) {
       return _runRust(
         (backend) => backend.deleteMany(
@@ -1088,6 +1218,15 @@ class DbCollection {
     String? hint,
     Map<String, Object>? hintDocument,
   }) async {
+    _traceMongoQueryShape('replaceOne', collectionName, {
+      'filter': _selectorBuilder2Map(selector),
+      'replacement': update,
+      'upsert': upsert,
+      'writeConcern': _traceWriteConcern(db, writeConcern),
+      'collation': collation?.options,
+      'hint': hint,
+      'hintDocument': hintDocument,
+    });
     if (_canUseRustWrite(writeConcern)) {
       return _runRust(
         (backend) => backend.replaceOne(
@@ -1128,6 +1267,16 @@ class DbCollection {
     String? hint,
     Map<String, Object>? hintDocument,
   }) async {
+    _traceMongoQueryShape('updateOne', collectionName, {
+      'filter': _selectorBuilder2Map(selector),
+      'update': update is List ? update : _updateBuilder2Map(update),
+      'upsert': upsert,
+      'writeConcern': _traceWriteConcern(db, writeConcern),
+      'collation': collation?.options,
+      'arrayFilters': arrayFilters,
+      'hint': hint,
+      'hintDocument': hintDocument,
+    });
     if (_canUseRustWrite(writeConcern)) {
       return _runRust(
         (backend) => backend.updateOne(
@@ -1170,6 +1319,16 @@ class DbCollection {
     String? hint,
     Map<String, Object>? hintDocument,
   }) async {
+    _traceMongoQueryShape('updateMany', collectionName, {
+      'filter': _selectorBuilder2Map(selector),
+      'update': update is List ? update : _updateBuilder2Map(update),
+      'upsert': upsert,
+      'writeConcern': _traceWriteConcern(db, writeConcern),
+      'collation': collation?.options,
+      'arrayFilters': arrayFilters,
+      'hint': hint,
+      'hintDocument': hintDocument,
+    });
     if (_canUseRustWrite(writeConcern)) {
       return _runRust(
         (backend) => backend.updateMany(
@@ -1287,6 +1446,22 @@ class DbCollection {
     FindOptions? findOptions,
     Map<String, Object>? rawOptions,
   }) {
+    _traceMongoQueryShape('find', collectionName, {
+      'filter': filter ?? (selector?.map == null ? null : selector!.map[key$Query]),
+      'sort': sort ??
+          (selector?.map[keyOrderby] == null
+              ? null
+              : <String, Object>{...selector!.map[keyOrderby]}),
+      'projection': projection ?? selector?.paramFields,
+      'hint': hint,
+      'hintDocument': hintDocument,
+      'skip':
+          skip ??
+          (selector != null && selector.paramSkip > 0 ? selector.paramSkip : null),
+      'limit': limit ?? selector?.paramLimit,
+      'findOptions': findOptions?.options,
+      'rawOptions': rawOptions,
+    });
     if (!db.supportsOpMsg) {
       throw MongoDartError(
         'At least MongoDb version 3.6 is required '
@@ -1366,6 +1541,21 @@ class DbCollection {
     FindOptions? findOptions,
     Map<String, Object>? rawOptions,
   }) async {
+    _traceMongoQueryShape('findOne', collectionName, {
+      'filter': filter ?? (selector?.map == null ? null : selector!.map[key$Query]),
+      'sort': sort ??
+          (selector?.map[keyOrderby] == null
+              ? null
+              : <String, Object>{...selector!.map[keyOrderby]}),
+      'projection': projection ?? selector?.paramFields,
+      'hint': hint,
+      'hintDocument': hintDocument,
+      'skip':
+          skip ??
+          (selector != null && selector.paramSkip > 0 ? selector.paramSkip : 0),
+      'findOptions': findOptions?.options,
+      'rawOptions': rawOptions,
+    });
     if (_canUseRustFind(findOptions: findOptions, rawOptions: rawOptions)) {
       var sortMap = sort;
       if (sortMap == null && selector?.map[keyOrderby] != null) {

@@ -1,3 +1,11 @@
+## 2.1.1
+
+### Fixed
+
+- Made `ObjectId` parsing and query normalization more tolerant of nested `_id`, `$oid`, and string-backed values.
+- Added schema-aware reference and `ObjectId` coercion helpers so generated models can distinguish typed refs from plain `ObjectId` fields.
+- Tightened lookup pipeline rewriting so merged projections stop reshuffling `\$skip` and `\$limit`, and direct-find-compatible projections stay on cheaper read paths more often.
+
 ## 2.1.0
 
 ### Changed

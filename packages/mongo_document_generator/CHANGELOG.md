@@ -1,3 +1,11 @@
+## 2.1.1
+
+### Fixed
+
+- Made generated persistence helpers schema-aware for nested references and plain `ObjectId` fields.
+- Updated generated `saveMany` flows to diff against stored snapshots, preserve caller order, and avoid emitting full-document updates when nothing changed.
+- Aligned generated map-based updates with the annotation runtime’s stricter reference normalization.
+
 ## 2.1.0
 
 ### Changed
