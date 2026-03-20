@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.2
+
+- Version alignment release for the coordinated `mongo_document` 2.1.2 package set.
+
 ## 2.1.1
 
 - Added opt-in query shape tracing for reads and writes through `MONGO_DOCUMENT_TRACE_QUERIES`, including aggregate, count, find, insert, update, and delete operations.

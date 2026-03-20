@@ -1,3 +1,9 @@
+## 2.1.2
+
+### Fixed
+
+- Aligned dependency constraints to `mongo_document_annotation: ^2.1.2` and `mongo_document_db_driver: ^2.1.2` for the coordinated workspace release.
+
 ## 2.1.1
 
 ### Fixed

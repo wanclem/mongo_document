@@ -177,8 +177,15 @@ extension QueryExtensions on Map<String, dynamic> {
     if (value is Map) {
       final map = value.cast<String, dynamic>();
       final parsed = _extractObjectId(map);
-      if (parsed != null) return {'_id': parsed};
-      return map.withRefs();
+      if (parsed == null) return map.withRefs();
+
+      final normalized = Map<String, dynamic>.from(map);
+      if (_containsExpandedDocumentFields(normalized)) {
+        normalized['_id'] = parsed;
+        return normalized.withRefs();
+      }
+
+      return {'_id': parsed};
     }
     if (value is Iterable) {
       return value.map(_wrapReferenceValue).toList();
@@ -207,6 +214,12 @@ extension QueryExtensions on Map<String, dynamic> {
       }
     }
     return null;
+  }
+
+  bool _containsExpandedDocumentFields(Map<String, dynamic> value) {
+    return value.keys.any(
+      (key) => key != '_id' && key != r'$oid' && key != 'oid',
+    );
   }
 
   dynamic _sniffObjectIdValue(dynamic value) {

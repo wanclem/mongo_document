@@ -1,3 +1,10 @@
+## 2.1.2
+
+### Fixed
+
+- Preserved expanded nested document filters while still normalizing typed `_id` references, so mixed object filters no longer collapse to `_id`-only lookups unexpectedly.
+- Added regression coverage around nested object-id query normalization to protect lookup-heavy app flows.
+
 ## 2.1.1
 
 ### Fixed

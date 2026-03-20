@@ -46,6 +46,25 @@ void main() {
         ObjectId.fromHexString('507f1f77bcf86cd799439020'),
       );
     });
+
+    test('schema-aware mode preserves expanded lookup documents for refs', () {
+      final wrapped = {
+        'author': {
+          '_id': '507f1f77bcf86cd799439023',
+          'avatar': 'https://cdn.example.com/avatar.png',
+          'first_name': 'Wan',
+        },
+      }.withRefs(refFields: {'author'});
+
+      expect(
+        wrapped['author'],
+        {
+          '_id': ObjectId.fromHexString('507f1f77bcf86cd799439023'),
+          'avatar': 'https://cdn.example.com/avatar.png',
+          'first_name': 'Wan',
+        },
+      );
+    });
   });
 
   group('withValidObjectReferences', () {
