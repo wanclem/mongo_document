@@ -3,7 +3,18 @@
 
 # mongo_document_annotation
 
-`mongo_document_annotation` is the package you usually import in your models and startup code.
+`mongo_document_annotation` is the runtime package you usually import in your models and startup code.
+
+This is the package that defines the annotations and shared runtime pieces.
+
+It is not the generator itself.
+
+Use it when you want:
+
+- `@MongoDocument(...)` on a model
+- `MongoDbConnection.initialize(...)` during startup
+- converters such as `@ObjectIdConverter()` and `@DateTimeConverter()`
+- lookup and projection types used by generated queries
 
 It provides:
 
@@ -16,16 +27,22 @@ It provides:
 
 If `mongo_document` gives you `Post.save()` and `Posts.findMany(...)`, this package gives the annotations, mapping rules, and query-shaping tools those generated helpers depend on.
 
+The usual setup is:
+
+- add `mongo_document_annotation` to `dependencies`
+- add `mongo_document` to `dev_dependencies`
+- run `build_runner`
+
 ## Install
 
 ```yaml
 dependencies:
-  mongo_document_annotation: ^2.1.0
+  mongo_document_annotation: ^2.1.4
   json_annotation: ^4.9.0
   freezed_annotation: ">=2.4.4 <4.0.0" # optional
 
 dev_dependencies:
-  mongo_document: ^2.1.0
+  mongo_document: ^2.1.4
   build_runner: ^2.10.3
   json_serializable: ^6.9.3
   freezed: ">=2.5.8 <4.0.0" # optional
@@ -34,6 +51,17 @@ dev_dependencies:
 ```bash
 dart pub get
 ```
+
+## When To Import This Package Directly
+
+Import `mongo_document_annotation` directly when you are:
+
+- defining a MongoDB-backed model
+- configuring the shared MongoDB connection
+- writing custom converters or annotations
+- using low-level lookup / projection types in hand-written query helpers
+
+If what you want is the generated CRUD API such as `findOne`, `findMany`, `save`, or `delete`, that comes from the generated output produced by `mongo_document`.
 
 ## Initialize MongoDB
 

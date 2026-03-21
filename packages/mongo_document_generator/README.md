@@ -3,7 +3,17 @@
 
 # mongo_document
 
-`mongo_document` is the code generator that turns your annotated MongoDB models into a Dart-native API.
+`mongo_document` is the code generator that turns annotated MongoDB models into a Dart-native ODM API.
+
+This is the package published on pub.dev as `mongo_document`.
+
+Use it when you want `build_runner` to generate things like:
+
+- `Post.save()`
+- `Posts.findById(...)`
+- `Posts.findMany(...)`
+- typed query builders such as `QPost`
+- projections and lookup helpers
 
 After generation, your app code reads like this:
 
@@ -24,12 +34,12 @@ final drafts = await Posts.findMany(
 
 ```yaml
 dependencies:
-  mongo_document_annotation: ^2.1.0
+  mongo_document_annotation: ^2.1.4
   json_annotation: ^4.9.0
   freezed_annotation: ">=2.4.4 <4.0.0" # optional
 
 dev_dependencies:
-  mongo_document: ^2.1.0
+  mongo_document: ^2.1.4
   build_runner: ^2.10.3
   json_serializable: ^6.9.3
   freezed: ">=2.5.8 <4.0.0" # optional
@@ -38,6 +48,20 @@ dev_dependencies:
 ```bash
 dart pub get
 ```
+
+## When To Use This Package
+
+Add `mongo_document` when you want generated model-aware APIs instead of hand-writing:
+
+- collection wrappers
+- query builders
+- projection classes
+- lookup glue
+- save / update / delete helpers
+
+If you only want annotations and runtime helpers, `mongo_document_annotation` is the package you import.
+
+If you want raw MongoDB access with no generation, use `mongo_document_db_driver` directly.
 
 ## Initialize MongoDB Once
 

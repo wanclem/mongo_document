@@ -1,3 +1,10 @@
+## 2.1.4
+
+### Changed
+
+- Improved the package README to clarify package roles, installation, and when to use `mongo_document_annotation` directly.
+- Aligned dependency to `mongo_document_db_driver: ^2.1.4` for the coordinated workspace release.
+
 ## 2.1.3
 
 ### Fixed

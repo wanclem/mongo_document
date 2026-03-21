@@ -1,3 +1,15 @@
+## 2.1.4
+
+### Changed
+
+- Improved the package README to better explain the generated ODM surface, package split, and install flow.
+
+### Fixed
+
+- Aligned dependencies:
+  - `mongo_document_annotation: ^2.1.4`
+  - `mongo_document_db_driver: ^2.1.4`
+
 ## 2.1.3
 
 ### Fixed

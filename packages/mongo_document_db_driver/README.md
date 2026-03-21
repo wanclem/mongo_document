@@ -7,11 +7,23 @@
 
 Most app teams will work through generated models like `Post.save()` and `Posts.findMany(...)`. This package is for the lower-level cases where you want direct access to `Db`, `DbCollection`, filters, modifiers, commands, or aggregation pipelines.
 
+Use this package directly when you want:
+
+- raw `Db` and `DbCollection` access
+- direct aggregation pipelines
+- direct command execution
+- fine-grained control outside the generated ODM layer
+
+If your goal is model-driven CRUD with generation, you usually want:
+
+- `mongo_document_annotation` in `dependencies`
+- `mongo_document` in `dev_dependencies`
+
 ## Install
 
 ```yaml
 dependencies:
-  mongo_document_db_driver: ^2.1.0
+  mongo_document_db_driver: ^2.1.4
 ```
 
 ```bash

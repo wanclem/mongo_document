@@ -9,7 +9,20 @@
 [![mongo_document_db_driver](https://img.shields.io/pub/v/mongo_document_db_driver.svg)](https://pub.dev/packages/mongo_document_db_driver)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-`mongo_document` helps you talk to MongoDB in a Dart-native way.
+`mongo_document` is a type-safe MongoDB ODM and code generation stack for Dart.
+
+It lets you:
+
+- define MongoDB documents as normal Dart models
+- run `build_runner`
+- get generated CRUD helpers, typed query builders, projections, and lookups
+- keep application code close to Dart instead of raw Mongo maps
+
+If you are trying to understand the package split quickly:
+
+- `mongo_document` = the generator you add to `dev_dependencies`
+- `mongo_document_annotation` = the runtime annotations, converters, and shared `MongoDbConnection`
+- `mongo_document_db_driver` = the low-level raw driver underneath everything else
 
 Define a model once, run generation, and write code like:
 
@@ -29,6 +42,16 @@ final drafts = await Posts.findMany(
 
 Instead of hand-writing collection wrappers, raw update maps, field-name translation, reference conversion, and aggregation glue over and over, you stay close to normal Dart models and normal Dart code.
 
+## What This Repository Contains
+
+This repo is intentionally split into three public packages because they solve different layers of the problem:
+
+| Package | What It Is | Typical Place In `pubspec.yaml` |
+| --- | --- | --- |
+| `mongo_document` | the code generator / ODM surface | `dev_dependencies` |
+| `mongo_document_annotation` | annotations, converters, connection management, lookup/projection types | `dependencies` |
+| `mongo_document_db_driver` | low-level MongoDB driver for direct `Db` / `DbCollection` access | `dependencies`, only if needed directly |
+
 ## Package Map
 
 Most apps only need these two packages:
@@ -44,12 +67,12 @@ Most apps only need these two packages:
 
 ```yaml
 dependencies:
-  mongo_document_annotation: ^2.1.0
+  mongo_document_annotation: ^2.1.4
   json_annotation: ^4.9.0
   freezed_annotation: ">=2.4.4 <4.0.0" # optional
 
 dev_dependencies:
-  mongo_document: ^2.1.0
+  mongo_document: ^2.1.4
   build_runner: ^2.10.3
   json_serializable: ^6.9.3
   freezed: ">=2.5.8 <4.0.0" # optional
@@ -84,6 +107,37 @@ Future<void> main() async {
   });
 }
 ```
+
+## Is This An ODM?
+
+Yes, but it is a generated ODM rather than a runtime reflection system.
+
+That means:
+
+- you keep your own Dart models
+- you opt into generation with `@MongoDocument(...)`
+- generation produces typed CRUD and query APIs around those models
+- the generated code still uses normal MongoDB concepts underneath
+
+If you want raw driver control without model generation, use `mongo_document_db_driver` directly instead.
+
+## Quick Answers
+
+### Does it use `build_runner`?
+
+Yes. `mongo_document` is a build-time generator that works with `build_runner`.
+
+### Do I have to use Freezed?
+
+No. Freezed is a good fit, but plain Dart classes also work as long as they expose `fromJson`, `toJson`, the generated `part` file, and ideally `copyWith()`.
+
+### Is `mongo_document_annotation` enough by itself?
+
+No, not for generated CRUD. `mongo_document_annotation` gives you the annotations and runtime helpers. `mongo_document` is what generates `save()`, `findOne()`, `findMany()`, projections, lookups, and query builders.
+
+### When should I use `mongo_document_db_driver` directly?
+
+Use it when you want raw MongoDB access, direct aggregation pipelines, direct commands, or lower-level control than the generated ODM surface.
 
 ## Define A Model
 
