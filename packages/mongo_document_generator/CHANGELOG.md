@@ -1,3 +1,11 @@
+## 2.1.3
+
+### Fixed
+
+- Aligned dependencies:
+  - `mongo_document_annotation: ^2.1.3`
+  - `mongo_document_db_driver: ^2.1.3`
+
 ## 2.1.2
 
 ### Fixed

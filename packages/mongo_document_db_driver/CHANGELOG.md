@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.3
+
+- Added a safe `modernFindOne` fallback for legacy-compatible reads when OP_MSG is unavailable.
+- Stopped surfacing the misleading MongoDB 3.6 capability error for simple reads during connection-state failures.
+- Added focused regression coverage for fallback, state-error precedence, and modern-only option handling.
+
 ## 2.1.2
 
 - Version alignment release for the coordinated `mongo_document` 2.1.2 package set.

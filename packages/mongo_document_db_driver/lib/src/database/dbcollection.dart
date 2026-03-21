@@ -41,13 +41,12 @@ String _traceFormatValue(Object? value, {int depth = 0}) {
 
     final indent = _traceIndent(depth);
     final childIndent = _traceIndent(depth + 1);
-    final entries =
-        map.entries
-            .map(
-              (entry) =>
-                  '$childIndent${entry.key}: ${_traceFormatValue(entry.value, depth: depth + 1)}',
-            )
-            .join(',\n');
+    final entries = map.entries
+        .map(
+          (entry) =>
+              '$childIndent${entry.key}: ${_traceFormatValue(entry.value, depth: depth + 1)}',
+        )
+        .join(',\n');
     return '{\n$entries\n$indent}';
   }
 
@@ -57,13 +56,11 @@ String _traceFormatValue(Object? value, {int depth = 0}) {
 
     final indent = _traceIndent(depth);
     final childIndent = _traceIndent(depth + 1);
-    final lines =
-        items
-            .map(
-              (item) =>
-                  '$childIndent${_traceFormatValue(item, depth: depth + 1)}',
-            )
-            .join(',\n');
+    final lines = items
+        .map(
+          (item) => '$childIndent${_traceFormatValue(item, depth: depth + 1)}',
+        )
+        .join(',\n');
     return '[\n$lines\n$indent]';
   }
 
@@ -72,10 +69,7 @@ String _traceFormatValue(Object? value, {int depth = 0}) {
 
 String _tracePrettyBlock(Map<String, Object?> shape) {
   final formatted = _traceFormatValue(shape);
-  return formatted
-      .split('\n')
-      .map((line) => '  $line')
-      .join('\n');
+  return formatted.split('\n').map((line) => '  $line').join('\n');
 }
 
 void _traceMongoQueryShape(
@@ -786,6 +780,45 @@ class DbCollection {
     );
   }
 
+  bool _canFallbackModernFindOneToLegacy({
+    SelectorBuilder? selector,
+    Map<String, dynamic>? filter,
+    Map<String, Object>? sort,
+    Map<String, Object>? projection,
+    String? hint,
+    Map<String, Object>? hintDocument,
+    int? skip,
+    FindOptions? findOptions,
+    Map<String, Object>? rawOptions,
+  }) {
+    if (hint != null ||
+        hintDocument != null ||
+        findOptions != null ||
+        rawOptions != null) {
+      return false;
+    }
+
+    if (sort != null || projection != null || (skip != null && skip > 0)) {
+      return false;
+    }
+
+    if (selector != null) {
+      return true;
+    }
+
+    return true;
+  }
+
+  dynamic _legacySelectorForModernFindOne({
+    SelectorBuilder? selector,
+    Map<String, dynamic>? filter,
+  }) {
+    if (selector != null) {
+      return selector;
+    }
+    return filter;
+  }
+
   Future<CountResult> _modernCountFromSelector(dynamic selector) {
     if (selector is SelectorBuilder) {
       return modernCount(selector: selector);
@@ -1447,8 +1480,10 @@ class DbCollection {
     Map<String, Object>? rawOptions,
   }) {
     _traceMongoQueryShape('find', collectionName, {
-      'filter': filter ?? (selector?.map == null ? null : selector!.map[key$Query]),
-      'sort': sort ??
+      'filter':
+          filter ?? (selector?.map == null ? null : selector!.map[key$Query]),
+      'sort':
+          sort ??
           (selector?.map[keyOrderby] == null
               ? null
               : <String, Object>{...selector!.map[keyOrderby]}),
@@ -1457,7 +1492,9 @@ class DbCollection {
       'hintDocument': hintDocument,
       'skip':
           skip ??
-          (selector != null && selector.paramSkip > 0 ? selector.paramSkip : null),
+          (selector != null && selector.paramSkip > 0
+              ? selector.paramSkip
+              : null),
       'limit': limit ?? selector?.paramLimit,
       'findOptions': findOptions?.options,
       'rawOptions': rawOptions,
@@ -1542,8 +1579,10 @@ class DbCollection {
     Map<String, Object>? rawOptions,
   }) async {
     _traceMongoQueryShape('findOne', collectionName, {
-      'filter': filter ?? (selector?.map == null ? null : selector!.map[key$Query]),
-      'sort': sort ??
+      'filter':
+          filter ?? (selector?.map == null ? null : selector!.map[key$Query]),
+      'sort':
+          sort ??
           (selector?.map[keyOrderby] == null
               ? null
               : <String, Object>{...selector!.map[keyOrderby]}),
@@ -1584,9 +1623,29 @@ class DbCollection {
     }
 
     if (!db.supportsOpMsg) {
+      if (db.state != State.open) {
+        throw MongoDartError('Db is in the wrong state: ${db.state}');
+      }
+
+      if (_canFallbackModernFindOneToLegacy(
+        selector: selector,
+        filter: filter,
+        sort: sort,
+        projection: projection,
+        hint: hint,
+        hintDocument: hintDocument,
+        skip: skip,
+        findOptions: findOptions,
+        rawOptions: rawOptions,
+      )) {
+        return legacyFindOne(
+          _legacySelectorForModernFindOne(selector: selector, filter: filter),
+        );
+      }
+
       throw MongoDartError(
-        'At least MongoDb version 3.6 is required '
-        'to run the findOne operation',
+        'findOne with the requested options requires an active '
+        'MongoDB 3.6+ OP_MSG-capable connection',
       );
     }
 

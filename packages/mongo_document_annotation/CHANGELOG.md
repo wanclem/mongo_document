@@ -1,3 +1,9 @@
+## 2.1.3
+
+### Fixed
+
+- Aligned dependency to `mongo_document_db_driver: ^2.1.3` for the coordinated workspace release.
+
 ## 2.1.2
 
 ### Fixed
