@@ -1,3 +1,10 @@
+## 2.1.5
+
+### Changed
+
+- Improved the package README to better explain the shared runtime role of `MongoDbConnection` and the stack's reliability focus.
+- Aligned dependency to `mongo_document_db_driver: ^2.1.5` for the coordinated workspace release.
+
 ## 2.1.4
 
 ### Changed

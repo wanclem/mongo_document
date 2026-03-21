@@ -9,6 +9,8 @@ This is the package that defines the annotations and shared runtime pieces.
 
 It is not the generator itself.
 
+It also carries the shared `MongoDbConnection` surface used by generated CRUD helpers, so this package sits on the runtime path where connection lifecycle and recovery behavior matter in real applications.
+
 Use it when you want:
 
 - `@MongoDocument(...)` on a model
@@ -37,12 +39,12 @@ The usual setup is:
 
 ```yaml
 dependencies:
-  mongo_document_annotation: ^2.1.4
+  mongo_document_annotation: ^2.1.5
   json_annotation: ^4.9.0
   freezed_annotation: ">=2.4.4 <4.0.0" # optional
 
 dev_dependencies:
-  mongo_document: ^2.1.4
+  mongo_document: ^2.1.5
   build_runner: ^2.10.3
   json_serializable: ^6.9.3
   freezed: ">=2.5.8 <4.0.0" # optional

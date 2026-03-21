@@ -7,6 +7,16 @@
 
 Most app teams will work through generated models like `Post.save()` and `Posts.findMany(...)`. This package is for the lower-level cases where you want direct access to `Db`, `DbCollection`, filters, modifiers, commands, or aggregation pipelines.
 
+It was built with connection resilience as a primary design goal.
+
+In practice that means the driver work here pays a lot of attention to:
+
+- connection stability
+- reconnect and recovery behavior
+- primary election / failover handling
+- startup behavior
+- read and write execution resilience under real production conditions
+
 Use this package directly when you want:
 
 - raw `Db` and `DbCollection` access
@@ -23,7 +33,7 @@ If your goal is model-driven CRUD with generation, you usually want:
 
 ```yaml
 dependencies:
-  mongo_document_db_driver: ^2.1.4
+  mongo_document_db_driver: ^2.1.5
 ```
 
 ```bash

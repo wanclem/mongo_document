@@ -1,3 +1,15 @@
+## 2.1.5
+
+### Changed
+
+- Improved the package README to call out the stack's connection resilience positioning alongside the generated ODM surface.
+
+### Fixed
+
+- Aligned dependencies:
+  - `mongo_document_annotation: ^2.1.5`
+  - `mongo_document_db_driver: ^2.1.5`
+
 ## 2.1.4
 
 ### Changed

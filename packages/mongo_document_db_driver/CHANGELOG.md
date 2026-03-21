@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.5
+
+- Improved the package README to position connection resilience, failover handling, and recovery behavior as core design goals of the driver.
+
 ## 2.1.4
 
 - Improved the package README so the low-level driver role is clearer in relation to `mongo_document_annotation` and generated `mongo_document` APIs.

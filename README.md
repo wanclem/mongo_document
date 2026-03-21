@@ -18,6 +18,16 @@ It lets you:
 - get generated CRUD helpers, typed query builders, projections, and lookups
 - keep application code close to Dart instead of raw Mongo maps
 
+It was also built with connection resilience as a primary design goal.
+
+The low-level driver work in this stack focuses heavily on the operational issues Dart teams often run into with MongoDB under real load, especially around:
+
+- connection stability
+- reconnect and recovery behavior
+- primary failover handling
+- startup reliability
+- query execution resilience
+
 If you are trying to understand the package split quickly:
 
 - `mongo_document` = the generator you add to `dev_dependencies`
@@ -67,12 +77,12 @@ Most apps only need these two packages:
 
 ```yaml
 dependencies:
-  mongo_document_annotation: ^2.1.4
+  mongo_document_annotation: ^2.1.5
   json_annotation: ^4.9.0
   freezed_annotation: ">=2.4.4 <4.0.0" # optional
 
 dev_dependencies:
-  mongo_document: ^2.1.4
+  mongo_document: ^2.1.5
   build_runner: ^2.10.3
   json_serializable: ^6.9.3
   freezed: ">=2.5.8 <4.0.0" # optional
@@ -138,6 +148,10 @@ No, not for generated CRUD. `mongo_document_annotation` gives you the annotation
 ### When should I use `mongo_document_db_driver` directly?
 
 Use it when you want raw MongoDB access, direct aggregation pipelines, direct commands, or lower-level control than the generated ODM surface.
+
+### Why not just use any MongoDB package directly?
+
+One of the goals of this stack is to reduce the connection instability and recovery issues teams often end up fighting in production. That is why the low-level `mongo_document_db_driver` package puts significant emphasis on connection lifecycle, recovery, failover handling, and runtime reliability rather than only CRUD surface area.
 
 ## Define A Model
 

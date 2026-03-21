@@ -7,6 +7,8 @@
 
 This is the package published on pub.dev as `mongo_document`.
 
+The generated ODM surface is backed by a lower-level driver that was built with connection resilience as a primary design goal, so the stack is not just about nicer model APIs. It is also meant to reduce the connection, failover, and recovery pain that teams often hit with MongoDB in Dart.
+
 Use it when you want `build_runner` to generate things like:
 
 - `Post.save()`
@@ -34,12 +36,12 @@ final drafts = await Posts.findMany(
 
 ```yaml
 dependencies:
-  mongo_document_annotation: ^2.1.4
+  mongo_document_annotation: ^2.1.5
   json_annotation: ^4.9.0
   freezed_annotation: ">=2.4.4 <4.0.0" # optional
 
 dev_dependencies:
-  mongo_document: ^2.1.4
+  mongo_document: ^2.1.5
   build_runner: ^2.10.3
   json_serializable: ^6.9.3
   freezed: ">=2.5.8 <4.0.0" # optional
