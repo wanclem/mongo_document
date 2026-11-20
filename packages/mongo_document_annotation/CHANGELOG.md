@@ -1,3 +1,14 @@
+## 2.1.6
+
+### Fixed
+
+- Anchored `QueryField.startsWith()` regex patterns with `^`, so prefix queries no longer match the value anywhere. `endsWith()` and `contains()` behavior is unchanged.
+- Added regression coverage for text query expressions, including escaped regular-expression metacharacters.
+
+### Changed
+
+- Aligned dependency to `mongo_document_db_driver: ^2.1.6` for the coordinated workspace release.
+
 ## 2.1.5
 
 ### Changed

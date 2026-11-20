@@ -36,12 +36,12 @@ final drafts = await Posts.findMany(
 
 ```yaml
 dependencies:
-  mongo_document_annotation: ^2.1.5
+  mongo_document_annotation: ^2.1.6
   json_annotation: ^4.9.0
   freezed_annotation: ">=2.4.4 <4.0.0" # optional
 
 dev_dependencies:
-  mongo_document: ^2.1.5
+  mongo_document: ^2.1.6
   build_runner: ^2.10.3
   json_serializable: ^6.9.3
   freezed: ">=2.5.8 <4.0.0" # optional

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.6
+
+- Version alignment release for the coordinated `mongo_document` 2.1.6 package set.
+
 ## 2.1.5
 
 - Improved the package README to position connection resilience, failover handling, and recovery behavior as core design goals of the driver.

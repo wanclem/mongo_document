@@ -33,7 +33,7 @@ If your goal is model-driven CRUD with generation, you usually want:
 
 ```yaml
 dependencies:
-  mongo_document_db_driver: ^2.1.5
+  mongo_document_db_driver: ^2.1.6
 ```
 
 ```bash

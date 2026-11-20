@@ -142,14 +142,12 @@ class MethodCall implements Expression {
   @override
   SelectorBuilder toSelectorBuilder() {
     final safeValue = processedValue(value);
-    final pattern =
-        method == 'startsWith'
-            ? RegExp.escape(safeValue)
-            : method == 'endsWith'
-            ? '${RegExp.escape(safeValue)}\$'
-            : method == 'contains'
-            ? RegExp.escape(safeValue)
-            : RegExp.escape(safeValue);
+    final escapedValue = RegExp.escape(safeValue);
+    final pattern = switch (method) {
+      'startsWith' => '^$escapedValue',
+      'endsWith' => '$escapedValue\$',
+      _ => escapedValue,
+    };
     if (field.contains('.')) {
       final parts = field.split('.');
       final nestedField = parts.last;
